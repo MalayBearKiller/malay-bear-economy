@@ -466,45 +466,60 @@ const tickRound = p => p >= 500000 ? Math.round(p / 1000) * 1000 : p >= 100000 ?
 function pickSrc(R) { let x = R(); for (const c of SRC) { if (x < c.w) return c; x -= c.w; } return SRC[2]; }
 
 function buildSeason(sid) {
-  const R = rng('gaemi-v2:' + sid);
-  const trend = {}; STOCKS.forEach(s => trend[s.id] = (R() - .5) * .014);
+  const R = rng('gaemi-v3:' + sid);
+  const trend = {}; STOCKS.forEach(s => trend[s.id] = (R() - .5) * .03);
+  // live random walk (log price) sampled every minute for the whole week, with fat-tail jumps
+  const MIN = 7 * 24 * 60, walk = {};
+  STOCKS.forEach(s => {
+    const W = rng('walk3:' + sid + ':' + s.id); const L = new Float64Array(MIN + 1); const sd = s.vol * .12;
+    for (let m = 1; m <= MIN; m++) {
+      let z = gauss(W) * sd;
+      if (W() < .015) z += (W() < .5 ? 1 : -1) * (.015 + W() * .045) * s.sens;
+      L[m] = L[m - 1] + z;
+    }
+    walk[s.id] = L;
+  });
   const secKeys = Object.keys(SECTORS);
   const news = [[]];
   for (let k = 1; k <= NT; k++) {
     const items = [];
     if (R() < .35) {
-      const sec = pick(R, secKeys), dir = R() < .5 ? 1 : -1, src = pickSrc(R), truth = R() < src.rel, mag = .03 + R() * .05;
+      const sec = pick(R, secKeys), dir = R() < .5 ? 1 : -1, src = pickSrc(R), truth = R() < src.rel, mag = .05 + R() * .08;
       items.push({ sec, dir, src: src.k, truth, mag, text: `${SECTORS[sec].n} ${dir > 0 ? SECTOR_NEWS.u : SECTOR_NEWS.d}` });
     }
     const used = new Set();
     while (items.length < 3) {
       const s = STOCKS[Math.floor(R() * STOCKS.length)]; if (used.has(s.id)) continue; used.add(s.id);
-      const dir = R() < .5 ? 1 : -1, src = pickSrc(R), truth = R() < src.rel, mag = (.05 + R() * .09) * s.sens;
+      const dir = R() < .5 ? 1 : -1, src = pickSrc(R), truth = R() < src.rel, mag = (.08 + R() * .17) * s.sens;
       items.push({ sym: s.id, dir, src: src.k, truth, mag, text: pick(R, dir > 0 ? NEWS[s.s].u : NEWS[s.s].d) });
     }
     news[k] = items;
   }
   const shocks = {};
-  const k1 = 4 + Math.floor(R() * 8), k2 = 12 + Math.floor(R() * 9);
-  [k1, k2].forEach(k => { shocks[k] = { sym: STOCKS[Math.floor(R() * STOCKS.length)].id, mag: (.2 + R() * .15) * (R() < .5 ? 1 : -1) }; });
+  const k1 = 3 + Math.floor(R() * 5), k2 = 9 + Math.floor(R() * 5), k3 = 15 + Math.floor(R() * 6);
+  [k1, k2, k3].forEach(k => { shocks[k] = { sym: STOCKS[Math.floor(R() * STOCKS.length)].id, mag: (.3 + R() * .25) * (R() < .5 ? 1 : -1) }; });
   const prices = {}; STOCKS.forEach(s => prices[s.id] = [s.p0]);
   for (let k = 1; k <= NT; k++) {
     STOCKS.forEach(s => {
-      let r = gauss(R) * s.vol + trend[s.id];
+      const prev = prices[s.id][k - 1];
+      let r = gauss(R) * s.vol * 1.8 + trend[s.id] - .12 * Math.log(prev / s.p0);
       news[k].forEach(n => {
         const hit = n.sym ? n.sym === s.id : n.sec === s.s; if (!hit) return;
         const m = n.sym ? n.mag : n.mag * s.sens;
         r += n.truth ? n.dir * m : -n.dir * m * .35;
       });
       if (shocks[k] && shocks[k].sym === s.id) r += shocks[k].mag;
-      r = Math.max(-.6, r);
-      prices[s.id].push(Math.max(1, tickRound(prices[s.id][k - 1] * (1 + r))));
+      r = Math.max(-.6, Math.min(1.2, r));
+      // where the live walk drifted during the last round carries over, then the round result lands on top
+      const m0 = Math.round((tickTimeRel(k - 1)) / 60e3), m1 = Math.round(tickTimeRel(k) / 60e3);
+      const drift = Math.exp(walk[s.id][m1] - walk[s.id][m0]);
+      prices[s.id].push(Math.max(1, tickRound(prev * drift * (1 + r))));
     });
   }
   // MPL 종합지수: equal-weight average of price relatives, Monday open = 1,000
   const index = []; for (let k = 0; k <= NT; k++) index.push(1000 * STOCKS.reduce((a, s) => a + prices[s.id][k] / s.p0, 0) / STOCKS.length);
   const secIndex = {}; Object.keys(SECTORS).forEach(sec => { const list = STOCKS.filter(s => s.s === sec); secIndex[sec] = []; for (let k = 0; k <= NT; k++) secIndex[sec].push(list.reduce((a, s) => a + prices[s.id][k] / s.p0, 0) / list.length); });
-  return { sid, news, shocks, prices, index, secIndex };
+  return { sid, news, shocks, prices, index, secIndex, walk };
 }
 
 /* ───────── time ───────── */
@@ -516,6 +531,7 @@ function seasonAt(t) {
   const mon = day - dow;
   return { sid: isoDay(mon), start: mon * D - KST, monDate: new Date(mon * D) };
 }
+function tickTimeRel(k) { if (k === 0) return 0; const d = Math.floor((k - 1) / 3), j = (k - 1) % 3; return d * D + TICK_H[j] * H; }
 function tickTime(start, k) { if (k === 0) return start; const d = Math.floor((k - 1) / 3), j = (k - 1) % 3; return start + d * D + TICK_H[j] * H; }
 function curTick(t, start) { let k = 0; for (let i = 1; i <= NT; i++) if (tickTime(start, i) <= t) k = i; return k; }
 function tickLabel(k) { if (k === 0) return '월요일 개장'; const d = Math.floor((k - 1) / 3), h = TICK_H[(k - 1) % 3]; return `${DOW[d]} ${h}시 ${TICK_NAME[h]}`; }
@@ -544,20 +560,18 @@ const LIVE_MS = 2000;
 const liveStep = t => Math.floor(t / LIVE_MS);
 const LV = { step: -1, map: {} };
 // Between rounds prices keep wiggling around the round price (same for everyone: derived from the clock).
-function liveFactor(sym, t) {
-  const s = SM[sym]; const sd = seedOf(S.season.sid + ':' + sym);
-  const a = (sd % 1000) / 159, b = ((sd >>> 10) % 1000) / 159, c = ((sd >>> 20) % 1000) / 159;
-  const x = t / 60000;
-  const wave = Math.sin(x / 6 + a) * .5 + Math.sin(x / 19 + b) * .35 + Math.sin(x / 53 + c) * .3;
-  const jit = (seedOf(sym + ':' + liveStep(t)) / 4294967296 - .5) * .6;
-  const since = t - tickTime(S.season.start, S.tick);
-  const ramp = Math.min(1, Math.max(0, since / (8 * 60e3)));
-  return 1 + s.vol * .5 * (wave + jit) * ramp;
+function walkAt(sym, t) {
+  const L = S.SE.walk[sym]; const rel = Math.max(0, t - S.season.start); const MIN = L.length - 1;
+  const m = Math.min(MIN - 1, Math.floor(rel / 60e3)); const f = Math.min(1, (rel - m * 60e3) / 60e3);
+  const j = Math.floor(f * 30); let c = 0, cj = 0;
+  const sd = SM[sym].vol * .3 / Math.sqrt(30);
+  for (let i = 0; i < 30; i++) { const e = (seedOf(S.season.sid + sym + m + ':' + i) / 4294967296 - .5) * 3.46 * sd; c += e; if (i < j) cj = c; }
+  return L[m] + f * (L[m + 1] - L[m]) + (cj - (j / 30) * c);
 }
 function livePx(sym) {
   const st = liveStep(now());
   if (LV.step !== st) { LV.step = st; LV.map = {}; }
-  if (LV.map[sym] == null) LV.map[sym] = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * liveFactor(sym, now())));
+  if (LV.map[sym] == null) { const t0 = tickTime(S.season.start, S.tick); LV.map[sym] = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, now()) - walkAt(sym, t0)))); }
   return LV.map[sym];
 }
 const isLive = k => k === S.tick && S.tick < NT;
