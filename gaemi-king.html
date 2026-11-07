@@ -1,0 +1,1317 @@
+<title>MPL 주식 리그</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: clean white board with soft tinted cards. Home = index card + ranking card; stocks/wallet/feed in tabs; a long rounded bar floats above the bottom nav with my total. Single light theme by choice. */
+:root{
+  --bg:#ffffff; --paper:#f5f5f9; --paper2:#ebebf2; --ink:#17161f; --dim:#747386; --faint:#adacbd; --line:#ececf2;
+  --up:#f2414f; --up-bg:#fdeced; --down:#2f78ee; --down-bg:#e9f0fd;
+  --violet:#6a4cf5; --violet-bg:#f0edff; --mint:#16b27e; --mint-bg:#e3f6ee; --gold:#f2b300; --gold-bg:#fff6dc;
+  --f-body:"Gothic A1","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-game:var(--f-body);
+  --gut-l:max(16px,env(safe-area-inset-left,0px)); --gut-r:max(16px,env(safe-area-inset-right,0px));
+  color-scheme:light;
+}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:var(--gut-l);padding-right:var(--gut-r);padding-block:10px calc(150px + env(safe-area-inset-bottom,0px));overflow-x:hidden;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+.wrap{max-width:520px;margin-inline:auto}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.g{font-weight:800}
+.up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--dim)} .dim{color:var(--dim)}
+h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balance}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.sec-h small{color:var(--faint);font-size:12.5px;font-weight:600}
+.card{background:var(--paper);border-radius:22px}
+.press:active{opacity:.7}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:8px;padding:4px 0 12px}
+.logo{font-size:23px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.logo i{font-style:normal;color:var(--violet)}
+.round{font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--violet-bg);color:var(--violet)}
+.helpbtn{margin-left:auto;width:34px;height:34px;border-radius:50%;font-weight:800;font-size:15px;background:var(--paper);color:var(--dim)}
+
+/* timer */
+.timer{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--ink);color:var(--bg);border-radius:18px}
+.timer .lab{font-size:12px;opacity:.6;font-weight:600}
+.timer .nm{font-size:15px;font-weight:700}
+.timer .cd{margin-left:auto;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.rounds{display:flex;gap:3px;margin-top:8px}
+.rounds i{flex:1;height:4px;border-radius:2px;background:var(--paper2)}
+.rounds i.done{background:var(--violet)} .rounds i.now{background:var(--violet);opacity:.35}
+.rounds i.gap{margin-left:4px}
+
+/* index */
+.index{padding:18px 18px 12px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.index .row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.index .lab{font-size:13px;font-weight:700;color:var(--dim)}
+.index .v{font-size:clamp(34px,10.5vw,42px);font-weight:800;line-height:1.1;letter-spacing:-.03em}
+.index .c{font-size:15px;font-weight:700}
+.mood{font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap;background:var(--bg)}
+.mood.up{color:var(--up)} .mood.down{color:var(--down)} .mood.flat{color:var(--dim)}
+.ichart{width:100%;height:110px;display:block;margin-top:6px}
+.sectors{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.sectors div{background:var(--bg);border-radius:12px;padding:7px 4px;text-align:center;font-size:11.5px;font-weight:600;color:var(--dim);min-width:0}
+.sectors b{display:block;font-size:13.5px;font-weight:800}
+.join{display:flex;flex-direction:column;gap:6px;padding:18px;text-align:center;background:var(--violet-bg)}
+.join b{font-size:18px;font-weight:800}
+
+/* avatars */
+.ava{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:var(--ink);flex:none}
+.ava.lg{width:52px;height:52px;font-size:20px}
+.ava .crown{display:none}
+
+/* rival */
+.rival{padding:14px 16px;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%}
+.rival-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.rival-top .g{font-size:14px}
+.tug{position:relative;height:8px;border-radius:99px;background:var(--down);overflow:hidden}
+.tug i{position:absolute;inset:0 auto 0 0;background:var(--up);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.tug::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--bg)}
+
+/* leaderboard */
+.lb{display:flex;flex-direction:column;padding:6px;gap:2px}
+.lrow{display:grid;grid-template-columns:26px 38px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;width:100%;text-align:left;border-radius:16px}
+.lrow.isme{background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--violet)}
+.lrow .rk{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--dim)}
+.lrow .rk.r1{background:var(--gold);color:#fff} .lrow .rk.r2{background:#a7adbb;color:#fff} .lrow .rk.r3{background:#cf8d5a;color:#fff}
+.lrow .who{min-width:0}
+.lrow .who b{font-size:15px;font-weight:700}
+.lrow .who small{display:block;font-size:12px;color:var(--dim);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .r{text-align:right}
+.lrow .r b{font-size:15px;font-weight:800}
+.lrow .r small{display:block;font-size:12.5px;font-weight:700}
+.mv{font-size:11.5px;font-weight:800;margin-left:4px}
+.tag{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:4px;vertical-align:2px}
+.tag.rv{background:var(--up-bg);color:var(--up)} .tag.bot{background:var(--paper2);color:var(--dim)} .tag.you{background:var(--violet);color:#fff}
+
+/* news */
+.news{display:flex;flex-direction:column;gap:6px}
+.nrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;padding:12px 14px;border-radius:16px;background:var(--paper)}
+.src{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:8px;background:var(--bg);color:var(--dim);white-space:nowrap}
+.src.공시{background:var(--mint-bg);color:var(--mint)} .src.기사{background:var(--violet-bg);color:var(--violet)} .src.긴급{background:var(--ink);color:#fff}
+.nrow .t{font-size:14.5px;font-weight:700;line-height:1.4}
+.nrow .t small{display:block;font-size:12px;font-weight:500;color:var(--dim)}
+.nrow.shock{background:var(--gold-bg)}
+
+/* chips */
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1 * var(--gut-l)) calc(-1 * var(--gut-r));padding:2px var(--gut-r) 2px var(--gut-l)}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;font-size:13.5px;font-weight:700;padding:7px 13px;border-radius:99px;background:var(--paper);color:var(--dim)}
+.chips button[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+/* stock rows */
+.slist{display:flex;flex-direction:column}
+.srow{display:flex;align-items:center;gap:8px;padding:8px 0}
+.srow-main{flex:1;min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:10px;text-align:left}
+.srow-main:active{opacity:.6}
+.tbtns{display:flex;gap:4px;flex:none}
+.tb{font-size:12.5px;font-weight:800;padding:8px 9px;border-radius:10px}
+.tb.buy{background:var(--up-bg);color:var(--up)} .tb.sell{background:var(--down-bg);color:var(--down)}
+.tb:disabled{opacity:.3;cursor:default}
+.sprice .p{border-radius:6px;padding:0 3px;margin-right:-3px}
+.sprice .p.fu{animation:fu .9s} .sprice .p.fd{animation:fd .9s}
+@keyframes fu{0%{background:var(--up-bg);color:var(--up)}}
+@keyframes fd{0%{background:var(--down-bg);color:var(--down)}}
+.livedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-left:8px;vertical-align:middle;animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.2}}
+.seg.two{grid-template-columns:1fr 1fr}
+.sheet-wrap.center{align-items:center;padding:16px}
+.sheet-wrap.center .sheet{border-radius:24px;max-width:400px;padding:18px 18px 18px;animation:pop .22s}
+.sheet-wrap.center .grab{display:none}
+.logo-b{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800;letter-spacing:-.03em;flex:none}
+.sname{min-width:0}
+.sname b{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sname small{display:block;font-size:12.5px;color:var(--dim);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sname .mine{color:var(--violet);font-weight:700}
+.sprice{text-align:right}
+.sprice .p{font-size:15px;font-weight:700}
+.sprice .c{font-size:13px;font-weight:700}
+
+/* wallet */
+.cards2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{padding:14px 16px}
+.stat .lab{font-size:12.5px;color:var(--dim);font-weight:600}
+.stat .v{font-size:18px;font-weight:800;margin-top:2px}
+.pos{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 0;width:100%;text-align:left}
+.pos .r{text-align:right}
+.pos .r b{font-weight:800}
+.pos small{font-size:12.5px;font-weight:600}
+.empty{padding:26px 16px;text-align:center;color:var(--dim);font-size:14px;font-weight:600;background:var(--paper);border-radius:18px}
+
+/* feed */
+.fitem{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;font-size:14px}
+.fitem .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:14px;background:var(--paper)}
+.fitem .ic.up{background:var(--up-bg)} .fitem .ic.down{background:var(--down-bg)} .fitem .ic.gold{background:var(--gold-bg)}
+.fitem time{font-size:12px;color:var(--faint);white-space:nowrap;font-weight:600}
+.fitem small{color:var(--dim);font-size:12.5px;font-weight:500}
+.verdict{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap}
+.verdict.t{background:var(--mint-bg);color:var(--mint)} .verdict.f{background:var(--up-bg);color:var(--up)} .verdict.g{background:var(--ink);color:#fff}
+
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:6px var(--gut-r) calc(6px + env(safe-area-inset-bottom,0px)) var(--gut-l);background:rgba(255,255,255,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.nav-in{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav button{padding:6px 4px 4px;font-size:11.5px;font-weight:700;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+.nav button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-selected="true"]{color:var(--ink)}
+.nav .dot{position:absolute;top:4px;right:calc(50% - 16px);width:7px;height:7px;border-radius:50%;background:var(--up)}
+
+/* payout */
+.bonus{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.bonus .t{flex:1;min-width:0}
+.bonus .t b{display:block;font-size:15px;font-weight:800}
+.bonus .t small{font-size:12.5px;color:var(--dim);font-weight:600}
+.bonus button{flex:none;padding:10px 18px;border-radius:12px;background:var(--violet);color:#fff;font-weight:800;font-size:14px}
+.bonus button:disabled{background:var(--paper2);color:var(--dim);cursor:default}
+.bonus{background:var(--violet-bg)}
+.bonus-amt{flex:none;font-size:15px;font-weight:800;color:var(--violet)}
+.lb-gap{text-align:center;color:var(--faint);font-weight:800;letter-spacing:.2em;padding:2px 0}
+
+/* casino */
+.bal{display:flex;justify-content:space-between;align-items:center;padding:14px 16px}
+.bal b{font-size:22px;font-weight:800}
+.betrow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.betrow button{background:var(--paper);border-radius:12px;padding:10px 0;font-weight:800;font-size:14px;color:var(--dim)}
+.betrow button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.betrow button:disabled{opacity:.35}
+.game{padding:18px 16px;display:flex;flex-direction:column;gap:12px}
+.game h3{margin:0;font-size:17px;font-weight:800}
+.game .desc{font-size:12.5px;color:var(--dim);font-weight:500;margin:2px 0 0}
+.game .res{text-align:center;font-size:15px;font-weight:700;margin:0;min-height:22px}
+.coin{width:104px;height:104px;margin:4px auto 0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe58a,#f2b300 72%);display:grid;place-items:center;font-size:30px;font-weight:800;color:#7a5600;box-shadow:inset 0 -6px 0 rgba(0,0,0,.12)}
+.coin.spin{animation:flip .95s cubic-bezier(.3,.7,.4,1)}
+@keyframes flip{0%{transform:rotateY(0) translateY(0)}50%{transform:rotateY(900deg) translateY(-34px)}100%{transform:rotateY(1800deg) translateY(0)}}
+.pick2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wheel-wrap{position:relative;width:240px;height:240px;margin:14px auto 0;max-width:100%}
+.wheel{position:absolute;inset:0;border-radius:50%;transition:transform 2.8s cubic-bezier(.12,.8,.18,1);box-shadow:0 0 0 5px var(--bg),0 0 0 7px var(--paper2)}
+.wheel span{position:absolute;left:50%;top:50%;width:0;height:0}
+.wheel span i{position:absolute;transform:translate(-50%,-50%);font-style:normal;font-weight:800;font-size:13.5px;color:var(--ink);white-space:nowrap}
+.pointer{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:20px solid var(--ink);z-index:2}
+.hub{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 3px var(--paper2)}
+
+/* floating total-asset bar */
+.fab{position:fixed;z-index:25;left:0;right:0;margin-inline:auto;width:calc(100% - var(--gut-l) - var(--gut-r));max-width:520px;
+  bottom:calc(70px + env(safe-area-inset-bottom,0px));height:58px;border-radius:18px;background:var(--ink);color:#fff;
+  box-shadow:0 8px 24px rgba(23,22,31,.22);display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:0 16px;text-align:left;transition:transform .1s}
+.fab:active{transform:scale(.98)}
+.fab .rk{min-width:40px;height:32px;padding:0 8px;border-radius:10px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:14px;font-weight:800}
+.fab .rk.r1{background:var(--gold);color:var(--ink)}
+.fab .mid{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.fab .l{font-size:11.5px;font-weight:600;opacity:.6}
+.fab .v{font-size:18px;font-weight:800}
+.fab .c{font-size:15px;font-weight:800;text-align:right}
+.fab .c.up{color:#ff7a85} .fab .c.down{color:#7fb0ff} .fab .c.flat{color:rgba(255,255,255,.6)}
+.fab.bump{animation:bump .5s}
+@keyframes bump{40%{transform:scale(1.03)}}
+
+/* stock detail page */
+.detail{position:fixed;inset:0;z-index:35;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;
+  padding:env(safe-area-inset-top,0px) var(--gut-r) calc(96px + env(safe-area-inset-bottom,0px)) var(--gut-l);animation:slidein .22s cubic-bezier(.2,.8,.2,1)}
+@keyframes slidein{from{transform:translateX(24px);opacity:0}}
+.detail .in{max-width:520px;margin:auto;display:flex;flex-direction:column;gap:18px}
+.dtop{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 0;background:var(--bg)}
+.dtop .back{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;margin-left:-6px}
+.dtop .back svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.dtop b{font-size:16px;font-weight:800}
+.dhead{display:flex;gap:12px;align-items:center}
+.dhead .logo-b{width:52px;height:52px;font-size:16px;border-radius:15px}
+.dhead h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-.02em;line-height:1.2}
+.dhead small{color:var(--dim);font-size:13px;font-weight:600}
+.dprice .p{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+.dprice .c{font-size:15px;font-weight:700;margin-top:2px}
+.dchart{width:100%;height:190px;display:block}
+.drange{display:flex;justify-content:space-between;font-size:12px;color:var(--faint);font-weight:700;margin-top:-10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats div{background:var(--paper);border-radius:14px;padding:11px 13px;font-size:12.5px;color:var(--dim);font-weight:600;min-width:0}
+.stats b{display:block;color:var(--ink);font-size:15.5px;font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mypos{padding:16px;display:flex;flex-direction:column;gap:10px}
+.mypos .r{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:600}
+.mypos .r span:first-child{color:var(--dim)}
+.mypos .r b{font-weight:800}
+.dbar{position:fixed;left:0;right:0;bottom:0;z-index:36;padding:10px var(--gut-r) calc(10px + env(safe-area-inset-bottom,0px)) var(--gut-l);background:rgba(255,255,255,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.dbar .in{max-width:520px;margin:auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.dbar .cta{padding:14px 6px;font-size:15.5px}
+body.noscroll{overflow:hidden}
+.mypos .r span:first-child{font-size:13px}
+.vote{padding:16px;display:flex;flex-direction:column;gap:10px}
+.vq b{display:block;font-size:15.5px;font-weight:800}
+.vq small{font-size:12.5px;color:var(--dim);font-weight:600}
+.vbar{height:8px;border-radius:99px;background:var(--down);overflow:hidden}
+.vbar i{display:block;height:100%;background:var(--up);transition:width .5s}
+.vbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vb{padding:11px;border-radius:12px;font-weight:800;font-size:14.5px;background:var(--bg)}
+.vb.up{color:var(--up)} .vb.down{color:var(--down)}
+.vb.up.on{background:var(--up);color:#fff} .vb.down.on{background:var(--down);color:#fff}
+.vb:disabled{opacity:.45;cursor:default}
+.composer{display:flex;gap:8px}
+.composer input{flex:1;min-width:0;background:var(--paper);border:0;border-radius:14px;padding:13px 14px;font-family:var(--f-body);font-size:15px;font-weight:600;color:var(--ink)}
+.composer button{flex:none;width:48px;border-radius:14px;background:var(--violet);color:#fff;display:grid;place-items:center}
+.chat{background:var(--paper);border-radius:20px;padding:12px 12px 8px;height:min(420px,56vh);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:3px}
+.chat-empty{margin:auto;color:var(--dim);font-size:14px;font-weight:600}
+.chat-day{align-self:center;font-size:11.5px;font-weight:700;color:var(--faint);padding:8px 0 4px}
+.msg{display:flex;gap:8px;align-items:flex-start;max-width:86%;margin-top:6px}
+.msg.cont{margin-top:0}
+.msg .ava{width:32px;height:32px;font-size:13px}
+.ava-sp{width:32px;flex:none}
+.msg .mb{min-width:0;display:flex;flex-direction:column;gap:3px}
+.msg .mn{font-size:12.5px;font-weight:700;color:var(--dim);display:flex;align-items:center;gap:4px}
+.mrow{display:flex;align-items:flex-end;gap:5px}
+.bubble{background:var(--bg);padding:8px 12px;border-radius:4px 16px 16px 16px;font-size:14.5px;font-weight:500;line-height:1.45;word-break:break-word;white-space:pre-wrap}
+.msg.cont .bubble{border-radius:16px}
+.mrow time{font-size:10.5px;color:var(--faint);font-weight:600;white-space:nowrap;flex:none}
+.msg.me{align-self:flex-end}
+.msg.me .mn{justify-content:flex-end;color:var(--violet)}
+.msg.me .mrow{flex-direction:row-reverse}
+.msg.me .bubble{background:var(--violet);color:#fff;border-radius:16px 4px 16px 16px}
+.msg.me.cont .bubble{border-radius:16px}
+.composer button svg{width:20px;height:20px;fill:#fff}
+.posts{display:flex;flex-direction:column}
+.post{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.post:last-child{border-bottom:0}
+.post .ph{display:flex;align-items:center;gap:6px;font-size:14px}
+.post .ph b{font-weight:800}
+.post .ph time{margin-left:auto;font-size:12px;color:var(--faint);font-weight:600}
+.post p{margin:3px 0 6px;font-size:15px;font-weight:500;line-height:1.5;word-break:break-word}
+.post .pa{display:flex;gap:6px}
+.post .like,.post .del{font-size:12.5px;font-weight:700;color:var(--dim);padding:4px 10px;border-radius:99px;background:var(--paper)}
+.post .like.on{color:var(--up);background:var(--up-bg)}
+.tag.hold{background:var(--violet-bg);color:var(--violet);margin-left:0}
+
+/* sheet */
+.sheet-wrap{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.scrim{position:absolute;inset:0;background:rgba(23,22,31,.4);animation:fade .2s}
+.sheet{position:relative;width:100%;max-width:560px;max-height:92%;overflow-y:auto;background:var(--bg);border-radius:26px 26px 0 0;
+  padding:10px var(--gut-r) calc(20px + env(safe-area-inset-bottom,0px)) var(--gut-l);animation:rise .26s cubic-bezier(.2,.8,.2,1)}
+.sheet .grab{width:40px;height:5px;border-radius:9px;background:var(--paper2);margin:0 auto 14px}
+.sheet .x{position:absolute;right:12px;top:12px;width:32px;height:32px;border-radius:50%;background:var(--paper);color:var(--dim);font-size:18px;line-height:1}
+.sbody{display:flex;flex-direction:column;gap:16px}
+@keyframes rise{from{transform:translateY(36px);opacity:0}}
+@keyframes fade{from{opacity:0}}
+.shead{display:flex;gap:12px;align-items:center;padding-right:44px}
+.shead .logo-b,.shead .ava{width:48px;height:48px;font-size:15px}
+.shead h3{font-size:21px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-.02em}
+.shead small{color:var(--dim);font-size:13px;font-weight:500}
+.bigp .p{font-size:30px;font-weight:800;line-height:1.15;letter-spacing:-.03em}
+.bigp .c{font-size:14px;font-weight:700;margin-top:2px}
+.chart{width:100%;height:150px;display:block}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.info div{background:var(--paper);border-radius:14px;padding:10px 12px;font-size:12.5px;color:var(--dim);font-weight:600;min-width:0}
+.info b{display:block;color:var(--ink);font-size:15px;font-weight:800;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);background:var(--paper);border-radius:14px;padding:3px;gap:3px}
+.seg button{padding:9px 2px;border-radius:11px;font-weight:700;font-size:14px;color:var(--dim)}
+.seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.seg button[aria-pressed="true"][data-m="buy"]{color:var(--up)}
+.seg button[aria-pressed="true"][data-m="sell"]{color:var(--down)}
+.qtyrow{display:grid;grid-template-columns:50px 1fr 50px;gap:8px}
+.qtyrow button{background:var(--paper);border-radius:14px;font-size:22px;font-weight:700;color:var(--dim)}
+.qtyrow input{width:100%;min-width:0;background:var(--bg);border:1.5px solid var(--line);border-radius:14px;color:var(--ink);font-family:var(--f-body);font-size:21px;font-weight:800;text-align:center;padding:10px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.quick button{background:var(--paper);border-radius:12px;padding:8px 0;font-size:13.5px;font-weight:700;color:var(--dim)}
+.est{display:flex;justify-content:space-between;font-size:13.5px;color:var(--dim);font-weight:600;gap:8px}
+.est b{color:var(--ink);font-weight:800}
+.cta{width:100%;padding:15px;border-radius:16px;font-size:16px;font-weight:800;background:var(--violet);color:#fff;transition:transform .1s,opacity .2s}
+.cta:active{transform:scale(.98)}
+.cta:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.cta.buy{background:var(--up)} .cta.sell{background:var(--down)} .cta.short{background:var(--ink)} .cta.cover{background:var(--mint)}
+.cta.soft{background:var(--paper);color:var(--ink)} .cta.violet{background:var(--violet)}
+.hint{font-size:12.5px;color:var(--dim);line-height:1.55;margin:0;font-weight:500}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input{background:var(--bg);border:1.5px solid var(--line);border-radius:14px;color:var(--ink);font-size:17px;font-weight:700;padding:13px 14px;font-family:var(--f-body)}
+.rules{display:flex;flex-direction:column;gap:12px;font-size:14.5px;margin:0;padding:0;list-style:none;font-weight:500}
+.rules li{display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:start}
+.rules li>span:first-child{width:22px;height:22px;border-radius:50%;background:var(--violet-bg);color:var(--violet);font-size:12px;font-weight:800;display:grid;place-items:center;margin-top:1px}
+
+/* reveal */
+.rv-head{text-align:center}
+.rv-head .k{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:99px;background:var(--violet-bg);color:var(--violet)}
+.rv-head h3{font-size:24px;font-weight:800;margin:8px 0 0;line-height:1.2;letter-spacing:-.02em}
+.rv-me{text-align:center;padding:18px}
+.rv-me .v{font-size:32px;font-weight:800;line-height:1.15;letter-spacing:-.03em}
+.rv-rank{font-size:16px;font-weight:800;margin-top:4px}
+.overtake{padding:12px 14px;border-radius:14px;font-size:14px;font-weight:700}
+.overtake.bad{background:var(--up-bg);color:var(--up)} .overtake.good{background:var(--mint-bg);color:var(--mint)}
+.rv-row{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:6px 0;animation:pop .4s both}
+.rv-row .chg{font-size:17px;font-weight:800}
+@keyframes pop{from{transform:translateY(8px);opacity:0}}
+
+.toast{position:fixed;left:0;right:0;margin-inline:auto;width:fit-content;bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:99px;max-width:calc(100% - 32px);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:rise .25s}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:360px){.sectors{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <span class="logo">MPL<i>.</i></span>
+    <span class="round num" id="roundChip">R 0/21</span>
+    <button class="helpbtn" id="helpBtn" type="button" aria-label="규칙 보기">?</button>
+  </div>
+  <div class="timer" id="timer">
+    <div><div class="lab" id="nextLab">다음 라운드</div><div class="nm" id="nextName">-</div></div>
+    <div class="cd num" id="countdown">--:--:--</div>
+  </div>
+  <div class="rounds" id="rounds" aria-hidden="true"></div>
+</div>
+
+<main class="wrap" style="padding-top:18px">
+  <section class="tab sec" id="tab-home" style="gap:22px"></section>
+  <section class="tab sec" id="tab-market" style="gap:22px" hidden></section>
+  <section class="tab sec" id="tab-casino" style="gap:18px" hidden></section>
+  <section class="tab sec" id="tab-wallet" style="gap:22px" hidden></section>
+  <section class="tab sec" id="tab-feed" style="gap:22px" hidden></section>
+</main>
+
+<nav class="nav" aria-label="메뉴">
+  <div class="nav-in" role="tablist">
+    <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>홈</button>
+    <button type="button" role="tab" data-tab="market" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8 3 3"/><path d="M3 21h18"/></svg>종목</button>
+    <button type="button" role="tab" data-tab="casino" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="15" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="9" cy="15" r="1.2"/></svg>게임</button>
+    <button type="button" role="tab" data-tab="wallet" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M16 13h2M3 10h18"/></svg>내 지갑</button>
+    <button type="button" role="tab" data-tab="feed" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>소식<i class="dot" id="feedDot" hidden></i></button>
+  </div>
+</nav>
+
+<button class="fab" id="fab" type="button" data-tab-go="wallet" aria-label="내 총자산, 내 지갑 열기" hidden></button>
+
+<div class="sheet-wrap" id="sheetWrap" hidden>
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="grab"></div>
+    <button class="x" id="sheetX" type="button" aria-label="닫기">×</button>
+    <div class="sbody" id="sheetBody"></div>
+  </div>
+</div>
+<section class="detail" id="detail" hidden aria-label="종목 상세"></section>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+'use strict';
+/* ───────── constants ───────── */
+const FEE = 0.003, CASH0 = 10_000_000, NT = 21;
+const BONUS = 2_000_000, MAXBET = 2_000_000, MINBET = 10_000;
+const WHEEL = [0, 1.5, 0, 0.5, 2, 0, 1, 0.5, 4, 0]; // EV 0.95
+const COIN_PAY = 1.95;
+const H = 3600e3, D = 86400e3, KST = 9 * H, TICK_H = [12, 18, 22];
+const TICK_NAME = { 12: '점심장', 18: '퇴근장', 22: '야간장' };
+const DOW = ['월', '화', '수', '목', '금', '토', '일'];
+const SECTORS = {
+  semi: { n: '반도체', c: '#7b5cff' },
+  tech: { n: '빅테크', c: '#2b2745' },
+  auto: { n: '자동차', c: '#1fb589' },
+  plat: { n: '플랫폼', c: '#17a6c9' },
+  ent:  { n: '엔터·게임', c: '#ff7ab0' },
+  batt: { n: '배터리', c: '#ff9f1c' },
+  bio:  { n: '바이오', c: '#ff5c6c' },
+};
+// a: badge text · vol: per-round volatility · sens: news sensitivity · p0: game starting price (원, not real quotes)
+const STOCKS = [
+  { id: 'SEC',  a: '삼성', n: '삼성전자',      s: 'semi', vol: .028, sens: 1.0, p0: 72000 },
+  { id: 'SKH',  a: 'SK',   n: 'SK하이닉스',    s: 'semi', vol: .038, sens: 1.2, p0: 210000 },
+  { id: 'NVDA', a: 'NV',   n: '엔비디아',      s: 'semi', vol: .045, sens: 1.3, p0: 190000 },
+  { id: 'TSM',  a: 'TS',   n: 'TSMC',          s: 'semi', vol: .03,  sens: 1.0, p0: 280000 },
+  { id: 'AMD',  a: 'AMD',  n: 'AMD',           s: 'semi', vol: .045, sens: 1.3, p0: 220000 },
+  { id: 'INTC', a: 'IN',   n: '인텔',          s: 'semi', vol: .05,  sens: 1.3, p0: 30000 },
+  { id: 'ASML', a: 'AS',   n: 'ASML',          s: 'semi', vol: .032, sens: 1.0, p0: 950000 },
+  { id: 'AVGO', a: 'AV',   n: '브로드컴',      s: 'semi', vol: .038, sens: 1.1, p0: 250000 },
+  { id: 'QCOM', a: 'QC',   n: '퀄컴',          s: 'semi', vol: .032, sens: 1.0, p0: 230000 },
+  { id: 'MU',   a: 'MU',   n: '마이크론',      s: 'semi', vol: .042, sens: 1.2, p0: 140000 },
+  { id: 'HMS',  a: '한미', n: '한미반도체',    s: 'semi', vol: .06,  sens: 1.5, p0: 110000 },
+  { id: 'AAPL', a: 'AP',   n: '애플',          s: 'tech', vol: .022, sens: .8,  p0: 300000 },
+  { id: 'MSFT', a: 'MS',   n: '마이크로소프트', s: 'tech', vol: .02,  sens: .8,  p0: 600000 },
+  { id: 'GOOG', a: 'GO',   n: '알파벳',        s: 'tech', vol: .026, sens: 1.0, p0: 250000 },
+  { id: 'AMZN', a: 'AM',   n: '아마존',        s: 'tech', vol: .027, sens: 1.0, p0: 300000 },
+  { id: 'META', a: 'ME',   n: '메타',          s: 'tech', vol: .033, sens: 1.1, p0: 900000 },
+  { id: 'PLTR', a: 'PL',   n: '팔란티어',      s: 'tech', vol: .065, sens: 1.5, p0: 200000 },
+  { id: 'TSLA', a: 'TL',   n: '테슬라',        s: 'auto', vol: .06,  sens: 1.5, p0: 450000 },
+  { id: 'HMC',  a: '현대', n: '현대차',        s: 'auto', vol: .025, sens: .9,  p0: 220000 },
+  { id: 'KIA',  a: '기아', n: '기아',          s: 'auto', vol: .025, sens: .9,  p0: 100000 },
+  { id: 'NAVR', a: 'N',    n: '네이버',        s: 'plat', vol: .03,  sens: 1.0, p0: 210000 },
+  { id: 'KAKO', a: '카카', n: '카카오',        s: 'plat', vol: .038, sens: 1.2, p0: 40000 },
+  { id: 'CPNG', a: 'CP',   n: '쿠팡',          s: 'plat', vol: .04,  sens: 1.1, p0: 35000 },
+  { id: 'NFLX', a: 'NF',   n: '넷플릭스',      s: 'ent',  vol: .035, sens: 1.1, p0: 160000 },
+  { id: 'KRAF', a: '크래', n: '크래프톤',      s: 'ent',  vol: .042, sens: 1.3, p0: 300000 },
+  { id: 'HYBE', a: '하이', n: '하이브',        s: 'ent',  vol: .045, sens: 1.3, p0: 250000 },
+  { id: 'LGES', a: 'LG',   n: 'LG에너지솔루션', s: 'batt', vol: .038, sens: 1.1, p0: 380000 },
+  { id: 'POSC', a: 'PO',   n: 'POSCO홀딩스',   s: 'batt', vol: .035, sens: 1.0, p0: 300000 },
+  { id: 'SBIO', a: '삼바', n: '삼성바이오로직스', s: 'bio', vol: .03,  sens: 1.0, p0: 1000000 },
+  { id: 'CELT', a: '셀트', n: '셀트리온',      s: 'bio',  vol: .04,  sens: 1.2, p0: 180000 },
+];
+const SM = Object.fromEntries(STOCKS.map(s => [s.id, s]));
+const SRC = [ { k: '공시', rel: .85, w: .25 }, { k: '기사', rel: .65, w: .4 }, { k: '찌라시', rel: .45, w: .35 } ];
+const NEWS = {
+  semi: { u: ['AI 서버용 칩 주문 급증 전망', '차세대 공정 수율 개선 소식', '대형 고객사 공급 계약 체결설'], d: ['메모리 가격 하락 우려', '재고 증가 경고 리포트', '수출 규제 강화 가능성'] },
+  tech: { u: ['AI 신기능 발표 호평', '분기 실적 기대 이상 전망', '자사주 매입 확대설'], d: ['규제 당국 조사 착수설', '광고 매출 둔화 우려', '핵심 서비스 장애 발생'] },
+  auto: { u: ['신차 사전계약 흥행', '해외 판매 역대 최대 전망', '관세 부담 완화 기대'], d: ['대규모 리콜 가능성 제기', '해외 공장 가동 차질', '관세 부담 확대 우려'] },
+  plat: { u: ['신규 서비스 이용자 급증', '광고 매출 회복 신호', '해외 진출 기대감'], d: ['이용자 이탈 우려', '플랫폼 규제 강화 논의', '서비스 장애 여파'] },
+  ent:  { u: ['신작 사전예약 흥행', '대형 신작 공개 기대감', '글로벌 매출 신기록 전망'], d: ['신작 공개 일정 연기', '기대작 흥행 부진 우려', '핵심 인력 이탈설'] },
+  batt: { u: ['대형 공급 계약 수주설', '원자재 가격 안정세', '신규 공장 가동 개시'], d: ['전기차 수요 둔화 우려', '원자재 가격 급등', '수주 지연 가능성'] },
+  bio:  { u: ['신약 임상 결과 기대감', '해외 허가 획득 임박설', '대형 위탁생산 계약'], d: ['임상 일정 지연 공지', '경쟁 약품 출시', '허가 심사 보완 요구'] },
+};
+const SECTOR_NEWS = { u: '업종 전반에 외국인 매수세 유입', d: '업종 전반에 차익 실현 매물 출회' };
+const AVA_COLORS = ['#ffd23f', '#9be7c4', '#c7b8ff', '#ffb3c7', '#a8d8ff', '#ffcf9e', '#d9f27c'];
+
+/* ───────── deterministic RNG ───────── */
+function seedOf(str) { let h = 1779033703 ^ str.length; for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; } h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); return (h ^= h >>> 16) >>> 0; }
+function rng(str) { let a = seedOf(str); return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const pick = (R, arr) => arr[Math.floor(R() * arr.length)];
+function gauss(R) { const u = Math.max(1e-9, R()), v = R(); return Math.max(-3, Math.min(3, Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v))); }
+const tickRound = p => p >= 500000 ? Math.round(p / 1000) * 1000 : p >= 100000 ? Math.round(p / 500) * 500 : p >= 50000 ? Math.round(p / 100) * 100 : p >= 10000 ? Math.round(p / 50) * 50 : p >= 1000 ? Math.round(p / 5) * 5 : Math.max(1, Math.round(p));
+function pickSrc(R) { let x = R(); for (const c of SRC) { if (x < c.w) return c; x -= c.w; } return SRC[2]; }
+
+function buildSeason(sid) {
+  const R = rng('gaemi-v2:' + sid);
+  const trend = {}; STOCKS.forEach(s => trend[s.id] = (R() - .5) * .014);
+  const secKeys = Object.keys(SECTORS);
+  const news = [[]];
+  for (let k = 1; k <= NT; k++) {
+    const items = [];
+    if (R() < .35) {
+      const sec = pick(R, secKeys), dir = R() < .5 ? 1 : -1, src = pickSrc(R), truth = R() < src.rel, mag = .03 + R() * .05;
+      items.push({ sec, dir, src: src.k, truth, mag, text: `${SECTORS[sec].n} ${dir > 0 ? SECTOR_NEWS.u : SECTOR_NEWS.d}` });
+    }
+    const used = new Set();
+    while (items.length < 3) {
+      const s = STOCKS[Math.floor(R() * STOCKS.length)]; if (used.has(s.id)) continue; used.add(s.id);
+      const dir = R() < .5 ? 1 : -1, src = pickSrc(R), truth = R() < src.rel, mag = (.05 + R() * .09) * s.sens;
+      items.push({ sym: s.id, dir, src: src.k, truth, mag, text: pick(R, dir > 0 ? NEWS[s.s].u : NEWS[s.s].d) });
+    }
+    news[k] = items;
+  }
+  const shocks = {};
+  const k1 = 4 + Math.floor(R() * 8), k2 = 12 + Math.floor(R() * 9);
+  [k1, k2].forEach(k => { shocks[k] = { sym: STOCKS[Math.floor(R() * STOCKS.length)].id, mag: (.2 + R() * .15) * (R() < .5 ? 1 : -1) }; });
+  const prices = {}; STOCKS.forEach(s => prices[s.id] = [s.p0]);
+  for (let k = 1; k <= NT; k++) {
+    STOCKS.forEach(s => {
+      let r = gauss(R) * s.vol + trend[s.id];
+      news[k].forEach(n => {
+        const hit = n.sym ? n.sym === s.id : n.sec === s.s; if (!hit) return;
+        const m = n.sym ? n.mag : n.mag * s.sens;
+        r += n.truth ? n.dir * m : -n.dir * m * .35;
+      });
+      if (shocks[k] && shocks[k].sym === s.id) r += shocks[k].mag;
+      r = Math.max(-.6, r);
+      prices[s.id].push(Math.max(1, tickRound(prices[s.id][k - 1] * (1 + r))));
+    });
+  }
+  // MPL 종합지수: equal-weight average of price relatives, Monday open = 1,000
+  const index = []; for (let k = 0; k <= NT; k++) index.push(1000 * STOCKS.reduce((a, s) => a + prices[s.id][k] / s.p0, 0) / STOCKS.length);
+  const secIndex = {}; Object.keys(SECTORS).forEach(sec => { const list = STOCKS.filter(s => s.s === sec); secIndex[sec] = []; for (let k = 0; k <= NT; k++) secIndex[sec].push(list.reduce((a, s) => a + prices[s.id][k] / s.p0, 0) / list.length); });
+  return { sid, news, shocks, prices, index, secIndex };
+}
+
+/* ───────── time ───────── */
+const now = () => Date.now() + (window.__dt || 0);
+const isoDay = day => new Date(day * D).toISOString().slice(0, 10);
+function seasonAt(t) {
+  const day = Math.floor((t + KST) / D);
+  const dow = (new Date(day * D).getUTCDay() + 6) % 7;
+  const mon = day - dow;
+  return { sid: isoDay(mon), start: mon * D - KST, monDate: new Date(mon * D) };
+}
+function tickTime(start, k) { if (k === 0) return start; const d = Math.floor((k - 1) / 3), j = (k - 1) % 3; return start + d * D + TICK_H[j] * H; }
+function curTick(t, start) { let k = 0; for (let i = 1; i <= NT; i++) if (tickTime(start, i) <= t) k = i; return k; }
+function tickLabel(k) { if (k === 0) return '월요일 개장'; const d = Math.floor((k - 1) / 3), h = TICK_H[(k - 1) % 3]; return `${DOW[d]} ${h}시 ${TICK_NAME[h]}`; }
+const kstDay = t => isoDay(Math.floor((t + KST) / D));
+
+/* ───────── state ───────── */
+const S = {
+  mode: 'loading', db: null, uid: null, readOnly: false, loaded: false,
+  players: {}, feed: [], talk: [], drafts: {}, me: null, season: null, SE: null, tick: 0,
+  tab: 'home', filter: 'all', sheet: null, saving: false, joinShown: false, rival: null, feedSeen: 0,
+};
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('gaemi:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('gaemi:' + k, JSON.stringify(v)); } catch {} },
+};
+
+/* ───────── helpers ───────── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => Math.round(n).toLocaleString('ko-KR') + '원';
+const man = n => Math.round(n / 10000).toLocaleString('ko-KR') + '만';
+const signWon = n => (n > 0 ? '+' : n < 0 ? '-' : '') + Math.abs(Math.round(n)).toLocaleString('ko-KR') + '원';
+const cls = v => v > 0.00001 ? 'up' : v < -0.00001 ? 'down' : 'flat';
+const pctTxt = v => (v > 0 ? '▲' : v < 0 ? '▼' : '') + Math.abs(v * 100).toFixed(1) + '%';
+const LIVE_MS = 2000;
+const liveStep = t => Math.floor(t / LIVE_MS);
+const LV = { step: -1, map: {} };
+// Between rounds prices keep wiggling around the round price (same for everyone: derived from the clock).
+function liveFactor(sym, t) {
+  const s = SM[sym]; const sd = seedOf(S.season.sid + ':' + sym);
+  const a = (sd % 1000) / 159, b = ((sd >>> 10) % 1000) / 159, c = ((sd >>> 20) % 1000) / 159;
+  const x = t / 60000;
+  const wave = Math.sin(x / 6 + a) * .5 + Math.sin(x / 19 + b) * .35 + Math.sin(x / 53 + c) * .3;
+  const jit = (seedOf(sym + ':' + liveStep(t)) / 4294967296 - .5) * .6;
+  const since = t - tickTime(S.season.start, S.tick);
+  const ramp = Math.min(1, Math.max(0, since / (8 * 60e3)));
+  return 1 + s.vol * .5 * (wave + jit) * ramp;
+}
+function livePx(sym) {
+  const st = liveStep(now());
+  if (LV.step !== st) { LV.step = st; LV.map = {}; }
+  if (LV.map[sym] == null) LV.map[sym] = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * liveFactor(sym, now())));
+  return LV.map[sym];
+}
+const isLive = k => k === S.tick && S.tick < NT;
+const px = (sym, k) => !SM[sym] ? 0 : isLive(k) ? livePx(sym) : S.SE.prices[sym][Math.max(0, Math.min(k, NT))];
+function liveX() { if (S.tick >= NT) return NT; const a = tickTime(S.season.start, S.tick), b = tickTime(S.season.start, S.tick + 1); return S.tick + Math.min(1, (now() - a) / (b - a)); }
+const indexNow = () => 1000 * STOCKS.reduce((a, s) => a + px(s.id, S.tick) / s.p0, 0) / STOCKS.length;
+const secNow = sec => { const l = STOCKS.filter(s => s.s === sec); return l.reduce((a, s) => a + px(s.id, S.tick) / s.p0, 0) / l.length; };
+const nowChg = sym => px(sym, S.tick) / (S.tick ? S.SE.prices[sym][S.tick - 1] : SM[sym].p0) - 1;
+const badge = s => `<span class="logo-b" style="background:${SECTORS[s.s].c}">${esc(s.a)}</span>`;
+const avaColor = id => AVA_COLORS[seedOf(String(id)) % AVA_COLORS.length];
+const ava = (p, lg, crown) => `<span class="ava${lg ? ' lg' : ''}" style="background:${p.bot ? '#e4e2ee' : avaColor(p.id)}">${crown ? '<span class="crown">👑</span>' : ''}${esc(p.bot ? '🤖' : (p.name || '?').slice(0, 1))}</span>`;
+function worth(p, k) {
+  if (!p) return 0; let v = (p.cash || 0) + BONUS * pendingOf(p);
+  for (const [s, q] of Object.entries(p.hold || {})) v += q * px(s, k);
+  for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += Math.max(0, o.q * (2 * o.e - px(s, k)));
+  return Math.round(v);
+}
+function activePlayers() { return Object.entries(S.players).filter(([, p]) => p && p.season === S.season.sid).map(([id, p]) => ({ id, ...p })); }
+function ranking(k) { return activePlayers().map(p => ({ ...p, w: worth(p, k) })).sort((a, b) => b.w - a.w); }
+const nameOf = id => (S.players[id] && S.players[id].name) || '누군가';
+function topHolding(p, k) { let best = null, bv = 0; for (const [s, q] of Object.entries(p.hold || {})) { if (!SM[s]) continue; const v = q * px(s, k); if (v > bv) { bv = v; best = s; } } return best; }
+function lockedCount(p) { const top = topHolding(p, S.tick); return Object.keys(p.hold || {}).filter(s => SM[s] && s !== top).length + Object.keys(p.shorts || {}).filter(s => SM[s]).length; }
+const spiedOn = id => S.me && S.me.spy && S.me.spy.day === kstDay(now()) && S.me.spy.target === id;
+const seasonOver = () => S.tick >= NT;
+const roiOf = (p, w) => { const b = CASH0 + BONUS * (p ? earnedOf(p) : 0); return (w - b) / b; };
+const chg = (sym, from, to) => px(sym, to) / px(sym, from) - 1;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
+function moodOf(c) { return c > .02 ? ['up', '불장'] : c > .004 ? ['up', '훈훈'] : c < -.02 ? ['down', '공포'] : c < -.004 ? ['down', '쌀쌀'] : ['flat', '눈치보기']; }
+
+/* ───────── season sync ───────── */
+function syncTime() {
+  const t = now(); const se = seasonAt(t);
+  if (!S.season || S.season.sid !== se.sid) { S.season = se; S.SE = buildSeason(se.sid); S.joinShown = false; if (S.mode === 'demo') loadDemo(); }
+  const k = curTick(t, S.season.start);
+  const changed = k !== S.tick; S.tick = k; return changed;
+}
+
+/* ───────── header ───────── */
+function renderHeader() {
+  $('#roundChip').textContent = `R ${S.tick}/${NT}`;
+  let h = ''; for (let k = 1; k <= NT; k++) h += `<i class="${k <= S.tick ? 'done' : ''}${k === S.tick + 1 && !seasonOver() ? ' now' : ''}${(k - 1) % 3 === 0 && k > 1 ? ' gap' : ''}"></i>`;
+  $('#rounds').innerHTML = h;
+  const fab = $('#fab');
+  if (!S.me) { fab.hidden = true; return; }
+  const w = worth(S.me, S.tick), roi = roiOf(S.me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
+  const sig = String(rk);
+  fab.hidden = false;
+  fab.innerHTML = `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · ${activePlayers().length}명 중</span><span class="v num">${won(w)}</span></span><span class="c num ${cls(roi)}">${pctTxt(roi)}</span>`;
+  if (fab.dataset.sig && fab.dataset.sig !== sig) { fab.classList.remove('bump'); void fab.offsetWidth; fab.classList.add('bump'); }
+  fab.dataset.sig = sig;
+}
+function renderClock() {
+  const t = now();
+  const bc = $('#bonusCd'); if (bc) bc.textContent = hms(nextSlotAt(t) - t);
+  if (seasonOver()) { $('#nextLab').textContent = '시즌 끝! 새 시즌까지'; $('#nextName').textContent = '월요일 0시'; $('#countdown').textContent = hms(S.season.start + 7 * D - t); return; }
+  $('#nextLab').textContent = `다음 라운드 ${S.tick + 1}`;
+  $('#nextName').textContent = tickLabel(S.tick + 1);
+  $('#countdown').textContent = hms(tickTime(S.season.start, S.tick + 1) - t);
+}
+function hms(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h > 23 ? Math.floor(h / 24) + '일 ' + String(h % 24).padStart(2, '0') : String(h).padStart(2, '0')) + ':' + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); }
+
+/* ───────── home: index + leaderboard ───────── */
+function renderHome() {
+  const el = $('#tab-home'); const k = S.tick; const I = S.SE.index;
+  const Ik = indexNow(); const ic = Ik / (k ? I[k - 1] : 1000) - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
+  let h = `<div class="card index"><div class="row"><div><div class="lab">MPL 종합지수 · ${STOCKS.length}종목</div><div class="v num">${Ik.toFixed(2)}<span class="livedot" title="실시간"></span></div>
+      <div class="c num"><span class="${cls(ic)}">${pctTxt(ic)}</span> <span class="dim" style="font-size:14px">이번 주 <span class="${cls(iw)}">${pctTxt(iw)}</span></span></div></div>
+      <span class="mood ${mc}">${ml}</span></div>
+    <canvas class="ichart" id="indexChart" aria-label="MPL 종합지수 이번 주 흐름"></canvas>
+    <div class="sectors">${Object.entries(SECTORS).slice(0, 4).map(([sec, v]) => { const a = S.SE.secIndex[sec]; const c = secNow(sec) / (k ? a[k - 1] : 1) - 1; return `<div>${v.n}<b class="${cls(c)}">${pctTxt(c)}</b></div>`; }).join('')}</div></div>`;
+
+  h = bonusCard() + h;
+  if (!S.me && !S.readOnly && S.mode !== 'loading') {
+    h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">1,000만원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
+  }
+  if (S.mode === 'demo') h += `<p class="hint" style="margin-top:-10px">연습 모드예요. 연습봇 셋과 겨뤄요. 공유 링크로 열면 친구 순위가 떠요.</p>`;
+  if (S.readOnly) h += `<p class="hint" style="margin-top:-10px">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
+
+  if (S.me && S.rival && S.players[S.rival] && S.rival !== S.uid) {
+    const r = S.players[S.rival]; const mw = worth(S.me, k), rw = worth(r, k), gap = mw - rw;
+    const share = mw + rw > 0 ? mw / (mw + rw) : .5; const vis = Math.max(.08, Math.min(.92, .5 + (share - .5) * 6));
+    h += `<button class="card rival press" type="button" data-player="${esc(S.rival)}"><div class="rival-top"><span class="g up">나</span><span class="num ${cls(gap)}">${gap >= 0 ? '앞서는 중' : '뒤지는 중'} ${signWon(gap)}</span><span class="g down">${esc(r.name)}</span></div><div class="tug"><i style="width:${(vis * 100).toFixed(1)}%"></i></div></button>`;
+  }
+
+  h += `<div class="sec"><div class="sec-h"><h2>이번 주 순위</h2><small>${tickLabel(k)} 기준</small></div>`;
+  if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
+  else {
+    const cur = ranking(k), prev = ranking(Math.max(0, k - 1)); const prevIdx = Object.fromEntries(prev.map((p, i) => [p.id, i]));
+    if (!cur.length) h += `<div class="empty">아직 아무도 없어요. 첫 번째로 참가해보세요.</div>`;
+    else {
+      h += `<div class="card lb">`;
+      const myIdx = cur.findIndex(p => p.id === S.uid);
+      const shown = cur.map((p, i) => [p, i]).filter(([, i]) => i < 5 || i === myIdx);
+      shown.forEach(([p, i]) => {
+        if (i >= 5) h += `<div class="lb-gap">···</div>`;
+        const roi = roiOf(p, p.w), d = (prevIdx[p.id] ?? i) - i;
+        const mv = k && d ? `<span class="mv ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span>` : '';
+        let info;
+        if (p.id === S.uid) { const n = Object.keys(p.hold || {}).filter(x => SM[x]).length; info = n ? `보유 ${n}종목` : '아직 현금만'; }
+        else if (spiedOn(p.id)) info = '오늘 엿봄 · 전부 공개';
+        else { const t = topHolding(p, k), l = lockedCount(p); info = `${t ? '대표 ' + esc(SM[t].n) : '현금 대기'}${l ? ` · 비공개 ${l}` : ''}`; }
+        h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}" type="button" data-player="${esc(p.id)}"><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
+          <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${mv}<small>${info}</small></span>
+          <span class="r num"><b>${man(p.w)}</b><small class="${cls(roi)}">${pctTxt(roi)}</small></span></button>`;
+      });
+      h += `</div><p class="hint">상위 5명만 보여요${cur.length > 5 ? ` · 전체 ${cur.length}명` : ''}. 이름을 누르면 하루 한 번 🕵️ 엿보기를 쓸 수 있어요.</p>`;
+    }
+  }
+  h += `</div>`;
+  h += `<div class="sec"><div class="sec-h"><h2>전체 종목</h2><small>${tickLabel(k)} 가격</small></div><div class="slist">${STOCKS.map(stockRow).join('')}</div></div>`;
+  el.innerHTML = h;
+  requestAnimationFrame(() => { const cv = $('#indexChart'); if (cv) drawChart(cv, I.slice(0, k + 1), { padB: 4, base: 1000, live: S.tick < NT ? { x: liveX(), v: Ik } : null }); });
+}
+
+function stockRow(s) {
+  const p = px(s.id, S.tick), c = nowChg(s.id);
+  const q = S.me && S.me.hold && S.me.hold[s.id], sq = S.me && S.me.shorts && S.me.shorts[s.id];
+  const tc = S.talk.filter(t => t.sym === s.id).length;
+  const sub = (q ? `<span class="mine">${q.toLocaleString()}주 보유</span>` : sq ? `<span class="mine">공매도 중</span>` : SECTORS[s.s].n) + (tc ? ` · 💬${tc}` : '');
+  const fl = LV.flash && LV.flash[s.id] ? ' f' + LV.flash[s.id] : '';
+  const off = seasonOver() || S.readOnly;
+  return `<div class="srow"><button class="srow-main" type="button" data-stock="${s.id}">${badge(s)}<span class="sname"><b>${esc(s.n)}</b><small>${sub}</small></span>
+    <span class="sprice"><div class="p num${fl}">${won(p)}</div><div class="c num ${cls(c)}">${pctTxt(c)}</div></span></button>
+    <span class="tbtns"><button class="tb buy" type="button" data-quick="buy" data-sym="${s.id}" ${off ? 'disabled' : ''}>매수</button><button class="tb sell" type="button" data-quick="sell" data-sym="${s.id}" ${off || (S.me && !q) ? 'disabled' : ''}>매도</button></span></div>`;
+}
+
+/* ───────── payout every 12h ───────── */
+const slotOf = t => { const x = t + KST; return isoDay(Math.floor(x / D)) + ((x % D) < 12 * H ? 'a' : 'b'); };
+const slotStart = t => Math.floor((t + KST) / (12 * H)) * 12 * H - KST;
+const nextSlotAt = t => slotStart(t) + 12 * H;
+// payouts earned = 12h slots touched since joining (the joining slot counts), capped at season end
+function earnedOf(p) {
+  const j = p && (p.joined || (p.bot ? S.season.start : 0)); if (!j) return 0;
+  const end = Math.min(now(), S.season.start + 7 * D - 1); if (end < j) return 0;
+  return Math.floor((slotStart(end) - slotStart(j)) / (12 * H)) + 1;
+}
+const paidOf = p => p.bonusN != null ? p.bonusN : Math.max(0, Math.round(((p.inflow || CASH0) - CASH0) / BONUS));
+const pendingOf = p => Math.max(0, earnedOf(p) - paidOf(p));
+function bonusCard() {
+  if (!S.me || S.readOnly) return '';
+  const n = earnedOf(S.me);
+  return `<div class="card bonus"><span class="t"><b>${seasonOver() ? '이번 시즌 지원금 끝' : '다음 지원금 200만원'}</b><small>${seasonOver() ? `이번 주 ${n}번 받았어요` : `<span class="num" id="bonusCd">${hms(nextSlotAt(now()) - now())}</span> 뒤 자동 지급 · 지금까지 ${n}번`}</small></span><span class="bonus-amt num">${man(BONUS * n)}원</span></div>`;
+}
+let crediting = false;
+async function autoCredit() {
+  if (!S.me || S.readOnly || S.saving || crediting || (S.mode === 'live' && !S.loaded)) return;
+  const due = pendingOf(S.me); if (!due) return;
+  crediting = true;
+  const before = S.me; const me = JSON.parse(JSON.stringify(before));
+  const n = earnedOf(before); me.cash += BONUS * due; me.bonusN = n; me.inflow = CASH0 + BONUS * n;
+  const ok = await saveMe(me, before); crediting = false;
+  if (ok) { toast(due > 1 ? `지원금 ${due}번 밀린 거 ${man(BONUS * due)}원이 들어왔어요` : '지원금 200만원이 들어왔어요'); renderAll(); }
+}
+
+/* ───────── casino ───────── */
+const C = { coinFace: '?', coinMsg: '', wheelRot: 0, wheelMsg: '', busy: false };
+function wheelBg() { const cols = ['#6a4cf5', '#f5f5f9']; return 'conic-gradient(' + WHEEL.map((m, i) => `${m === 0 ? '#ececf2' : m >= 2 ? '#ffcf4a' : m >= 1 ? '#c3b7ff' : '#e4deff'} ${i * 36}deg ${(i + 1) * 36}deg`).join(',') + ')'; }
+function renderCasino() {
+  const el = $('#tab-casino');
+  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 게임을 할 수 없어요.' : '참가하면 게임을 할 수 있어요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
+  const bet = Math.min(S.bet || 500000, MAXBET);
+  const mx = Math.min(MAXBET, S.me.cash);
+  const bets = [[100000, '10만'], [500000, '50만'], [1000000, '100만'], [2000000, '200만']];
+  let h = `<div class="card bal"><span class="dim" style="font-weight:700;font-size:13px">현금</span><b class="num">${won(S.me.cash)}</b></div>
+    <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>한 판 최대 200만원</small></div>
+    <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${bet === v}" ${v > S.me.cash ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>
+    <div class="card game"><div><h3>홀짝</h3><p class="desc">맞히면 1.95배. 50% 확률.</p></div>
+      <div class="coin" id="coin">${C.coinFace}</div>
+      <p class="res" id="coinMsg">${C.coinMsg}</p>
+      <div class="pick2"><button class="cta" type="button" data-coin="홀" ${C.busy || bet > S.me.cash ? 'disabled' : ''}>홀</button><button class="cta sell" type="button" data-coin="짝" ${C.busy || bet > S.me.cash ? 'disabled' : ''}>짝</button></div></div>
+    <div class="card game"><div><h3>룰렛</h3><p class="desc">0배부터 4배까지. 돌려봐야 알아요.</p></div>
+      <div class="wheel-wrap"><div class="pointer"></div><div class="wheel" id="wheel" style="background:${wheelBg()};transform:rotate(${C.wheelRot}deg)">${WHEEL.map((m, i) => `<span style="transform:rotate(${i * 36 + 18}deg) translateY(-92px)"><i>${m}x</i></span>`).join('')}</div><div class="hub"></div></div>
+      <p class="res" id="wheelMsg">${C.wheelMsg}</p>
+      <button class="cta" type="button" id="spinBtn" ${C.busy || bet > S.me.cash ? 'disabled' : ''}>${won(bet)} 걸고 돌리기</button></div>
+    <p class="hint">게임 결과도 총자산에 그대로 반영돼요. 기대값은 걸어둔 돈보다 조금 낮아요. 크게 따거나 크게 잃으면 소식에 떠요.</p>`;
+  if (mx < MINBET) h = `<div class="empty">현금이 부족해요. 지원금을 받거나 주식을 팔아보세요.</div>`;
+  el.innerHTML = h;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function playCasino(game, choice) {
+  if (!S.me || S.saving || C.busy || seasonOver()) { if (seasonOver()) toast('시즌이 끝나서 게임도 닫혔어요'); return; }
+  const bet = Math.min(S.bet || 500000, MAXBET);
+  if (bet > S.me.cash) { toast('현금이 부족해요'); return; }
+  C.busy = true; let mult, label;
+  if (game === 'coin') {
+    const face = Math.random() < .5 ? '홀' : '짝'; mult = face === choice ? COIN_PAY : 0;
+    C.coinMsg = ''; renderCasino(); const coin = $('#coin'); coin.textContent = '?'; coin.classList.add('spin');
+    await sleep(950); C.coinFace = face; label = '홀짝';
+  } else {
+    const i = Math.floor(Math.random() * WHEEL.length); mult = WHEEL[i];
+    const target = 360 - (i * 36 + 18) + (Math.random() * 20 - 10);
+    const cur = C.wheelRot % 360; C.wheelRot += 360 * 5 + ((target - cur) % 360 + 360) % 360;
+    C.wheelMsg = ''; renderCasino(); await sleep(30); $('#wheel').style.transform = `rotate(${C.wheelRot}deg)`;
+    await sleep(2900); label = '룰렛';
+  }
+  const payout = Math.floor(bet * mult), net = payout - bet;
+  const before = S.me; const me = JSON.parse(JSON.stringify(before));
+  me.cash = Math.round(me.cash + net); me.casino = (me.casino || 0) + net;
+  const ok = await saveMe(me, before);
+  const msg = net > 0 ? `<b class="up">+${won(net)}</b> ${mult}배!` : net < 0 ? `<b class="down">-${won(-net)}</b> ${mult ? mult + '배' : '꽝'}` : '본전';
+  if (game === 'coin') C.coinMsg = ok ? `${C.coinFace} · ${msg}` : ''; else C.wheelMsg = ok ? msg : '';
+  C.busy = false;
+  if (ok && (mult >= 2 || (mult === 0 && bet >= 1000000))) addFeed({ kind: 'casino', game: label, mult, amt: net });
+  renderAll();
+}
+
+/* ───────── market: news + stocks ───────── */
+function newsTitle(n) { return n.sym ? `${SM[n.sym].n} · ${n.text}` : n.text; }
+function renderMarket() {
+  const el = $('#tab-market'); const k = S.tick; let h = '';
+  if (!seasonOver()) {
+    h += `<div class="sec"><div class="sec-h"><h2>다음 라운드 뉴스</h2><small>${tickLabel(k + 1)}에 반영</small></div><div class="news">`;
+    if (S.SE.shocks[k + 1]) h += `<div class="nrow shock"><span class="src 긴급">긴급</span><div class="t">시장에 큰손이 움직인다는 소문<small>어느 종목인지는 몰라요. 20~35% 급등 또는 급락</small></div></div>`;
+    (S.SE.news[k + 1] || []).forEach(n => { h += `<div class="nrow"><span class="src ${n.src}">${n.src}</span><div class="t">${esc(newsTitle(n))}</div></div>`; });
+    h += `</div></div>`;
+  }
+  const mine = S.me ? new Set([...Object.keys(S.me.hold || {}), ...Object.keys(S.me.shorts || {})].filter(s => SM[s])) : new Set();
+  const chips = [['all', '전체'], ...(mine.size ? [['mine', '내 종목']] : []), ['up', '급등'], ['down', '급락'], ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
+  if (S.filter === 'mine' && !mine.size) S.filter = 'all';
+  let list = STOCKS.slice();
+  if (S.filter === 'mine') list = list.filter(s => mine.has(s.id));
+  else if (S.filter === 'up' || S.filter === 'down') list = list.map(s => ({ s, c: k ? chg(s.id, k - 1, k) : 0 })).sort((a, b) => S.filter === 'up' ? b.c - a.c : a.c - b.c).slice(0, 10).map(x => x.s);
+  else if (S.filter !== 'all') list = list.filter(s => s.s === S.filter);
+  h += `<div class="sec"><div class="sec-h"><h2>종목 ${STOCKS.length}</h2><small>${tickLabel(k)} 가격</small></div>
+    <div class="chips" role="group" aria-label="종목 분류">${chips.map(([v, l]) => `<button type="button" data-filter="${v}" aria-pressed="${S.filter === v}">${l}</button>`).join('')}</div><div class="slist">`;
+  h += list.map(stockRow).join('');
+  h += `</div></div><p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>`;
+  el.innerHTML = h;
+}
+
+/* ───────── wallet ───────── */
+function renderWallet() {
+  const el = $('#tab-wallet');
+  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 지갑이 없어요.' : '참가하면 1,000만원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
+  const k = S.tick, m = S.me;
+  let inv = 0; Object.entries(m.hold || {}).forEach(([s, q]) => inv += q * px(s, k));
+  let h = `<div class="cards2"><div class="card stat"><div class="lab">💵 현금</div><div class="v num">${won(m.cash)}</div></div><div class="card stat"><div class="lab">📦 주식</div><div class="v num">${won(inv)}</div></div></div>`;
+  const hs = Object.entries(m.hold || {}).filter(([s]) => SM[s]);
+  h += `<div class="sec"><div class="sec-h"><h2>보유 종목</h2><small>평균단가 대비</small></div><div class="slist">`;
+  if (!hs.length) h += `<div class="empty">아직 산 종목이 없어요. 종목 탭에서 골라보세요.</div>`;
+  hs.forEach(([s, q]) => { const st = SM[s], p = px(s, k), avg = (m.cost || {})[s] || p, pl = (p - avg) * q, r = p / avg - 1;
+    h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${q.toLocaleString()}주 · 평단 ${Math.round(avg).toLocaleString()}원</small></span><span class="r num"><b>${won(q * p)}</b><br><small class="${cls(pl)}">${signWon(pl)} (${pctTxt(r)})</small></span></button>`; });
+  h += `</div></div>`;
+  const ss = Object.entries(m.shorts || {}).filter(([s]) => SM[s]);
+  if (ss.length) {
+    h += `<div class="sec"><div class="sec-h"><h2>🎯 공매도</h2><small>내리면 이득</small></div><div class="slist">`;
+    ss.forEach(([s, o]) => { const st = SM[s], p = px(s, k), v = Math.max(0, o.q * (2 * o.e - p)), pl = v - o.q * o.e;
+      h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${o.q.toLocaleString()}주 · 진입 ${Math.round(o.e).toLocaleString()}원</small></span><span class="r num"><b>${won(v)}</b><br><small class="${cls(pl)}">${signWon(pl)}</small></span></button>`; });
+    h += `</div></div>`;
+  }
+  h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div></div>`;
+  h += `<p class="hint">수익률은 시드 1,000만원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
+  el.innerHTML = h;
+}
+
+/* ───────── feed ───────── */
+function feedText(f) {
+  const st = f.sym && SM[f.sym]; const nm = esc(nameOf(f.uid)); const size = f.amt < 1.5e6 ? '살짝' : f.amt < 4e6 ? '꽤' : '왕창';
+  if ((f.kind === 'buy' || f.kind === 'sell' || f.kind === 'short') && !st) return null;
+  if (f.kind === 'casino' && typeof f.amt !== 'number') return null;
+  switch (f.kind) {
+    case 'join': return ['', '👋', `<b>${nm}</b>님이 참가했어요`];
+    case 'buy': return ['up', '🛒', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 샀어요`];
+    case 'sell': return ['down', '💸', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 팔았어요`];
+    case 'short': return ['gold', '🎯', `누군가 ${esc(st.n)}에 공매도를 걸었어요`];
+    case 'casino': return [f.amt > 0 ? 'up' : 'down', f.amt > 0 ? '🎰' : '💥', f.amt > 0 ? `<b>${nm}</b>님이 ${esc(f.game)}에서 ${f.mult}배! <b>+${won(f.amt)}</b>` : `<b>${nm}</b>님이 ${esc(f.game)}에서 <b>${won(-f.amt)}</b> 날렸어요`];
+    case 'spy': return ['gold', '🕵️', `누군가 <b>${esc(nameOf(f.target))}</b>님의 지갑을 엿봤어요`];
+    default: return null;
+  }
+}
+function timeAgo(ts) { const s = Math.floor((now() - ts) / 1000); if (s < 60) return '방금'; if (s < 3600) return Math.floor(s / 60) + '분 전'; if (s < 86400) return Math.floor(s / 3600) + '시간 전'; return Math.floor(s / 86400) + '일 전'; }
+function renderFeed() {
+  const el = $('#tab-feed');
+  const items = S.feed.filter(f => f.season === S.season.sid).map(f => [f, feedText(f)]).filter(x => x[1]);
+  let h = `<div class="sec"><div class="sec-h"><h2>소식</h2><small>금액은 대충만 보여요</small></div><div class="slist">`;
+  if (!items.length) h += `<div class="empty">아직 조용해요.</div>`;
+  items.slice(0, 40).forEach(([f, [c, ic, tx]]) => { h += `<div class="fitem"><span class="ic ${c}">${ic}</span><span>${tx}</span><time>${timeAgo(f.ts)}</time></div>`; });
+  h += `</div></div><div class="sec"><div class="sec-h"><h2>뉴스 팩트체크</h2><small>출처별로 얼마나 맞았나</small></div><div class="slist">`;
+  if (!S.tick) h += `<div class="empty">첫 라운드가 끝나면 결과가 쌓여요.</div>`;
+  for (let k = S.tick; k >= 1; k--) {
+    S.SE.news[k].forEach(n => {
+      const c = n.sym ? chg(n.sym, k - 1, k) : null;
+      h += `<div class="fitem"><span class="ic">📰</span><span>${esc(newsTitle(n))}<br><small>${n.src} · R${k}${c != null ? ` · <span class="num ${cls(c)}">${pctTxt(c)}</span>` : ''}</small></span><span class="verdict ${n.truth ? 't' : 'f'}">${n.truth ? '사실' : '가짜'}</span></div>`;
+    });
+    const sh = S.SE.shocks[k];
+    if (sh) { const c = chg(sh.sym, k - 1, k); h += `<div class="fitem"><span class="ic gold">⚡</span><span>큰손의 정체는 ${esc(SM[sh.sym].n)}<br><small>R${k} · <span class="num ${cls(c)}">${pctTxt(c)}</span></small></span><span class="verdict g">긴급</span></div>`; }
+  }
+  h += `</div></div>`; el.innerHTML = h;
+  if (items.length) { S.feedSeen = items[0][0].ts; LS.set('feedSeen', S.feedSeen); }
+  $('#feedDot').hidden = true;
+}
+function renderAll() {
+  renderHeader(); renderClock();
+  if (!(S.tab === 'casino' && C.busy)) ({ home: renderHome, market: renderMarket, casino: renderCasino, wallet: renderWallet, feed: renderFeed })[S.tab]();
+  const latest = S.feed.find(f => f.season === S.season.sid && f.uid !== S.uid);
+  $('#feedDot').hidden = S.tab === 'feed' || !latest || latest.ts <= S.feedSeen;
+  if (S.sheet && (S.sheet.type === 'stock' || S.sheet.type === 'quick')) updateTradeEst();
+  if (S.detail) { if (S.liveOnly) updateDetailLive(); else renderDetail(); }
+}
+function goTab(name) {
+  S.tab = name; document.querySelectorAll('.nav [data-tab]').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
+  ['home', 'market', 'casino', 'wallet', 'feed'].forEach(n => $('#tab-' + n).hidden = n !== name); renderAll(); window.scrollTo({ top: 0 });
+}
+
+/* ───────── chart ───────── */
+function drawChart(cv, arr, o = {}) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+  cv.width = w * dpr; cv.height = h * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const cs = getComputedStyle(document.documentElement); const tok = n => cs.getPropertyValue(n).trim();
+  const padT = 8, padB = o.padB ?? 22, padX = 6;
+  const base = o.base ?? arr[0];
+  const L = o.live; const all = L ? [...arr, L.v] : arr;
+  const lo = Math.min(...all, base), hi = Math.max(...all, base), span = hi - lo || 1;
+  const X = i => padX + (w - padX * 2) * i / NT, Y = v => padT + (h - padT - padB) * (1 - (v - lo) / span);
+  const col = all[all.length - 1] >= base ? tok('--up') : tok('--down');
+  g.strokeStyle = tok('--faint'); g.lineWidth = 1.5; g.setLineDash([4, 5]); g.beginPath(); g.moveTo(padX, Y(base)); g.lineTo(w - padX, Y(base)); g.stroke(); g.setLineDash([]);
+  g.beginPath(); arr.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); if (L) g.lineTo(X(L.x), Y(L.v));
+  g.strokeStyle = col; g.lineWidth = 2.4; g.lineJoin = 'round'; g.lineCap = 'round'; g.stroke();
+  const li = arr.length - 1; const ex = L ? X(L.x) : X(li), ey = L ? Y(L.v) : Y(arr[li]); g.beginPath(); g.arc(ex, ey, 5, 0, 7); g.fillStyle = col; g.fill(); g.lineWidth = 2.5; g.strokeStyle = tok('--bg'); g.stroke();
+  if (padB > 10) { g.fillStyle = tok('--faint'); g.font = '12px ' + tok('--f-game'); g.textAlign = 'center'; DOW.forEach((d, i) => g.fillText(d, X(i * 3 + 1.5), h - 5)); }
+}
+
+/* ───────── sheets ───────── */
+function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('#sheetWrap'); w.classList.toggle('center', type === 'quick'); w.hidden = false; renderSheet(); setTimeout(() => { const q = $('#qty'); if (type === 'quick' && q) q.focus(); }, 60); }
+function closeSheet() { const t = S.sheet && S.sheet.type; S.sheet = null; $('#sheetWrap').hidden = true; if (t === 'reveal') maybeJoin(); }
+function renderSheet() {
+  const b = $('#sheetBody'); const sh = S.sheet; if (!sh) return;
+  ({ stock: renderStockSheet, quick: renderQuickSheet, player: renderPlayerSheet, join: renderJoinSheet, help: renderHelp, reveal: renderReveal })[sh.type](b, sh);
+}
+function openDetail(sym) { S.chatJump = true; S.detail = sym; const d = $('#detail'); d.hidden = false; document.body.classList.add('noscroll'); renderDetail(); d.scrollTop = 0; }
+function closeDetail() { S.detail = null; $('#detail').hidden = true; document.body.classList.remove('noscroll'); }
+const VOL_TXT = v => v < .027 ? '낮음' : v < .045 ? '보통' : '높음';
+function detailPos(sym, p) {
+  const q = (S.me && S.me.hold && S.me.hold[sym]) || 0, avg = S.me && S.me.cost && S.me.cost[sym];
+  const sh = S.me && S.me.shorts && S.me.shorts[sym]; let h = '';
+  if (q) { const pl = (p - avg) * q; h += `<div class="r"><span>보유 ${q.toLocaleString()}주 · 평단 ${won(avg)}</span><b class="num ${cls(pl)}">${signWon(pl)} (${pctTxt(p / avg - 1)})</b></div>`; }
+  if (sh) { const v = Math.max(0, sh.q * (2 * sh.e - p)), pl = v - sh.q * sh.e; h += `<div class="r"><span>공매도 ${sh.q.toLocaleString()}주 · 진입 ${won(sh.e)}</span><b class="num ${cls(pl)}">${signWon(pl)}</b></div>`; }
+  return h ? `<div class="card mypos">${h}</div>` : '';
+}
+function detailStats(sym, p) {
+  const hist = [...S.SE.prices[sym].slice(0, S.tick + 1), p]; const hi = Math.max(...hist), lo = Math.min(...hist);
+  const holders = activePlayers().filter(x => (x.hold || {})[sym] > 0);
+  return `<div>이번 주 최고<b class="num up">${won(hi)}</b></div><div>이번 주 최저<b class="num down">${won(lo)}</b></div><div>월요일 시가<b class="num">${won(SM[sym].p0)}</b></div><div>친구 주주<b>${holders.length}명</b></div>`;
+}
+/* ── per-stock community ── */
+const talkFor = sym => S.talk.filter(t => t.sym === sym).sort((a, b) => b.ts - a.ts);
+function voteTally(sym) {
+  let up = 0, dn = 0, mine = null;
+  activePlayers().forEach(p => { const v = p.votes && p.votes[sym]; if (!v || v.k !== S.tick || v.sid !== S.season.sid) return; if (v.d === 'up') up++; else dn++; if (p.id === S.uid) mine = v.d; });
+  return { up, dn, mine };
+}
+function talkHTML(sym) {
+  const s = SM[sym]; const vt = voteTally(sym); const tot = vt.up + vt.dn; const upPct = tot ? Math.round(vt.up / tot * 100) : 50;
+  const canWrite = S.me && !S.readOnly;
+  let h = `<div class="card vote"><div class="vq"><b>다음 라운드, ${esc(s.n)} 오를까?</b><small>${tot ? `${tot}명 참여` : '첫 투표를 해보세요'} · ${tickLabel(S.tick + 1)}에 결과</small></div>
+    <div class="vbar"><i style="width:${upPct}%"></i></div>
+    <div class="vbtns"><button type="button" class="vb up${vt.mine === 'up' ? ' on' : ''}" data-vote="up" ${canWrite && !seasonOver() ? '' : 'disabled'}>오른다 ${tot ? upPct + '%' : ''}</button><button type="button" class="vb down${vt.mine === 'down' ? ' on' : ''}" data-vote="down" ${canWrite && !seasonOver() ? '' : 'disabled'}>내린다 ${tot ? (100 - upPct) + '%' : ''}</button></div></div>`;
+  const msgs = talkFor(sym).slice(0, 150).reverse();
+  h += `<div class="chat" id="chatBox">`;
+  if (!msgs.length) h += `<div class="chat-empty">아직 조용해요. 첫 마디를 던져보세요.</div>`;
+  let prevUid = null, prevTs = 0;
+  msgs.forEach(t => {
+    const au = S.players[t.uid] || {}; const mine = t.uid === S.uid;
+    const holder = au.season === S.season.sid && (au.hold || {})[sym] > 0;
+    const cont = false; const nm = au.name || t.name || '누군가';
+    if (!prevTs || t.ts - prevTs > 60 * 60e3) h += `<div class="chat-day">${chatTime(t.ts, true)}</div>`;
+    h += `<div class="msg${mine ? ' me' : ''}">${mine ? '' : ava({ id: t.uid, name: nm, bot: au.bot })}
+      <div class="mb"><div class="mn">${mine ? `나 · ${esc(nm)}` : esc(nm)}${holder ? '<span class="tag hold">주주</span>' : ''}</div>
+      <div class="mrow"><span class="bubble">${esc(t.text)}</span><time>${chatTime(t.ts)}</time></div></div></div>`;
+    prevUid = t.uid; prevTs = t.ts;
+  });
+  h += `</div>`;
+  h += canWrite ? `<div class="composer"><input id="talkInput" maxlength="140" placeholder="메시지 보내기" autocomplete="off" enterkeyhint="send" value="${esc((S.drafts || {})[sym] || '')}"><button type="button" id="talkSend" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button></div>`
+    : `<p class="hint">${S.readOnly ? '관전 중에는 채팅할 수 없어요.' : '참가하면 채팅할 수 있어요.'}</p>`;
+  return h;
+}
+function chatTime(ts, long) {
+  const d = new Date(ts + KST); const hh = d.getUTCHours(), mm = String(d.getUTCMinutes()).padStart(2, '0');
+  const t = `${hh < 12 ? '오전' : '오후'} ${hh % 12 || 12}:${mm}`;
+  if (!long) return t;
+  const today = kstDay(now()) === kstDay(ts); return today ? `오늘 ${t}` : `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${DOW[(d.getUTCDay() + 6) % 7]}요일 ${t}`;
+}
+function renderDetail() {
+  const sym = S.detail; if (!sym) return; const s = SM[sym]; const d = $('#detail'); const k = S.tick;
+  const p = px(sym, k), c = nowChg(sym), cw = p / s.p0 - 1;
+  const q = (S.me && S.me.hold && S.me.hold[sym]) || 0, sh = S.me && S.me.shorts && S.me.shorts[sym];
+  const off = !S.me || S.readOnly || seasonOver();
+  const ae = document.activeElement, keep = ae && ae.id === 'talkInput' ? { v: ae.value, s: ae.selectionStart } : null;
+  const st = d.scrollTop; const cb0 = $('#chatBox'); const atBottom = !cb0 || cb0.scrollHeight - cb0.scrollTop - cb0.clientHeight < 40; const cst = cb0 ? cb0.scrollTop : 0;
+  d.innerHTML = `<div class="in">
+    <div class="dtop"><button class="back" type="button" id="detailBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>${esc(s.n)}</b></div>
+    <div class="dhead">${badge(s)}<div><h1>${esc(s.n)}</h1><small>${SECTORS[s.s].n} · 변동성 ${VOL_TXT(s.vol)}</small></div></div>
+    <div class="dprice"><div class="p num"><span id="dPrice">${won(p)}</span><span class="livedot" title="실시간"></span></div><div class="c num" id="dChg"><span class="${cls(c)}">직전 라운드 대비 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
+    <div><canvas class="dchart" id="detailChart" aria-label="${esc(s.n)} 이번 주 가격 차트"></canvas></div>
+    <div id="dPos">${detailPos(sym, p)}</div>
+    <div class="sec"><div class="sec-h"><h2>${esc(s.n)} 채팅</h2><small>${talkFor(sym).length}개의 메시지</small></div><div id="dTalk" class="sec">${talkHTML(sym)}</div></div>
+    <div class="stats" id="dStats">${detailStats(sym, p)}</div>
+    <p class="hint">가격은 게임용 가상 데이터예요. 2초마다 바뀌어요.</p>
+  </div>
+  <div class="dbar"><div class="in">
+    <button class="cta buy" type="button" data-quick="buy" data-sym="${sym}" ${off ? 'disabled' : ''}>매수</button>
+    <button class="cta sell" type="button" data-quick="sell" data-sym="${sym}" ${off || !q ? 'disabled' : ''}>매도</button>
+    <button class="cta short" type="button" data-quick="${sh ? 'cover' : 'short'}" data-sym="${sym}" ${off ? 'disabled' : ''}>${sh ? '상환' : '공매도'}</button>
+  </div></div>`;
+  d.scrollTop = st;
+  const cb = $('#chatBox'); if (cb) cb.scrollTop = atBottom || S.chatJump ? cb.scrollHeight : cst; S.chatJump = false;
+  if (keep) { const i = $('#talkInput'); if (i) { i.value = keep.v; i.focus(); try { i.setSelectionRange(keep.s, keep.s); } catch {} } }
+  requestAnimationFrame(drawDetailChart);
+}
+function drawDetailChart() { const cv = $('#detailChart'); const sym = S.detail; if (cv && sym) drawChart(cv, S.SE.prices[sym].slice(0, S.tick + 1), { live: S.tick < NT ? { x: liveX(), v: px(sym, S.tick) } : null }); }
+// live tick: touch only price parts so typing in the 토론방 is never interrupted
+function updateDetailLive() {
+  const sym = S.detail; if (!sym) return; const s = SM[sym]; const p = px(sym, S.tick), c = nowChg(sym), cw = p / s.p0 - 1;
+  const el = $('#dPrice'); if (el) el.textContent = won(p);
+  const ch = $('#dChg'); if (ch) ch.innerHTML = `<span class="${cls(c)}">직전 라운드 대비 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span>`;
+  const ps = $('#dPos'); if (ps) ps.innerHTML = detailPos(sym, p);
+  const stt = $('#dStats'); if (stt) stt.innerHTML = detailStats(sym, p);
+  drawDetailChart();
+}
+async function castVote(d) {
+  if (!S.me || S.readOnly || S.saving || seasonOver()) return; const sym = S.detail;
+  const before = S.me; const me = JSON.parse(JSON.stringify(before)); me.votes = me.votes || {};
+  const cur = me.votes[sym]; if (cur && cur.k === S.tick && cur.sid === S.season.sid && cur.d === d) return;
+  me.votes[sym] = { k: S.tick, sid: S.season.sid, d };
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false;
+  if (ok) { toast(d === 'up' ? '오른다에 투표했어요' : '내린다에 투표했어요'); renderAll(); }
+}
+async function postTalk() {
+  const i = $('#talkInput'); if (!i || !S.me || S.readOnly) return; const text = i.value.trim().slice(0, 140); if (!text) return;
+  const sym = S.detail; const item = { sym, uid: S.uid, name: S.me.name, text, ts: Date.now(), season: S.season.sid, likes: {} };
+  i.value = ''; if (S.drafts) delete S.drafts[sym]; S.chatJump = true;
+  if (S.mode === 'demo') { S.talk.unshift({ id: 't' + Date.now(), ...item }); LS.set('demoTalk', S.talk.filter(t => !t.bot)); renderAll(); return; }
+  try { await S.db.collection('talk').add(item); } catch (e) { toast('메시지를 보내지 못했어요. 잠시 후 다시 해주세요.'); i.value = text; }
+}
+async function toggleLike(id) {
+  const t = S.talk.find(x => x.id === id); if (!t || !S.me || S.readOnly) return; const on = !(t.likes || {})[S.uid];
+  if (S.mode === 'demo') { t.likes = { ...(t.likes || {}), [S.uid]: on }; LS.set('demoTalk', S.talk.filter(x => !x.bot)); renderAll(); return; }
+  try { await S.db.doc('talk/' + id).update({ likes: { [S.uid]: on } }); } catch { toast('좋아요를 누르지 못했어요.'); }
+}
+async function deleteTalk(id) {
+  const t = S.talk.find(x => x.id === id); if (!t || t.uid !== S.uid) return;
+  if (S.mode === 'demo') { S.talk = S.talk.filter(x => x.id !== id); LS.set('demoTalk', S.talk.filter(x => !x.bot)); renderAll(); return; }
+  try { await S.db.doc('talk/' + id).delete(); } catch { toast('삭제하지 못했어요.'); }
+}
+function renderQuickSheet(b, sh) {
+  const s = SM[sh.sym], p = px(s.id, S.tick), c = nowChg(s.id);
+  const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0;
+  b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>현재가 <b class="num" id="livePrice">${won(p)}</b> <span class="num ${cls(c)}" id="livePct">${pctTxt(c)}</span> · 보유 ${my.toLocaleString()}주</small></div></div>
+    <div class="seg">${[['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['cover', '상환']].map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m}">${l}</button>`).join('')}</div>
+    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="numeric" min="0" value="${sh.q || ''}" placeholder="몇 주?" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
+    <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-frac="${f}">${l}</button>`).join('')}</div>
+    <div class="est" id="est"></div>
+    <button class="cta" id="doTrade" type="button">매수하기</button>
+    <p class="hint" id="tradeHint"></p>`;
+  updateTradeEst();
+}
+function renderStockSheet(b, sh) {
+  const s = SM[sh.sym], k = S.tick, p = px(s.id, k), c = nowChg(s.id), cw = p / s.p0 - 1;
+  const holders = activePlayers().filter(x => (x.hold || {})[s.id] > 0);
+  let top = null, tv = 0; holders.forEach(x => { if (x.hold[s.id] > tv) { tv = x.hold[s.id]; top = x; } });
+  const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0, myS = S.me && S.me.shorts && S.me.shorts[s.id];
+  const canTrade = S.me && !S.readOnly && !seasonOver();
+  b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>${SECTORS[s.s].n}</small></div></div>
+    <div class="bigp"><div class="p num" id="livePrice">${won(p)}</div><div class="c num"><span class="${cls(c)}" id="livePct">직전 라운드 대비 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
+    <canvas class="chart" id="bigChart" aria-label="이번 주 가격 차트"></canvas>
+    <div class="info"><div>친구 주주<b>${holders.length}명</b></div><div>👑 최대 주주<b>${top ? esc(top.name) : '없음'}</b></div>
+      <div>내 보유<b class="num">${my ? my.toLocaleString() + '주' : '-'}</b></div><div>내 공매도<b class="num">${myS ? myS.q.toLocaleString() + '주' : '-'}</b></div></div>
+    ${canTrade ? `
+    <div class="seg">${[['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['cover', '상환']].map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m}">${l}</button>`).join('')}</div>
+    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="numeric" min="0" value="${sh.q || ''}" placeholder="수량" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
+    <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '풀매수']].map(([f, l]) => `<button type="button" data-frac="${f}">${l}</button>`).join('')}</div>
+    <div class="est" id="est"></div>
+    <button class="cta" id="doTrade" type="button">매수하기</button>
+    <p class="hint" id="tradeHint"></p>` : `<p class="hint">${seasonOver() ? '이번 시즌 거래가 끝났어요. 월요일 0시에 새 시즌이 열려요.' : S.readOnly ? '관전 중이라 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}`;
+  requestAnimationFrame(drawBig);
+  updateTradeEst();
+}
+function drawBig() { const cv = $('#bigChart'); const sh = S.sheet; if (!cv || !sh || !sh.sym) return; drawChart(cv, S.SE.prices[sh.sym].slice(0, S.tick + 1), { live: S.tick < NT ? { x: liveX(), v: px(sh.sym, S.tick) } : null }); }
+function maxQty(m, sym) {
+  const p = px(sym, S.tick), me = S.me; if (!me) return 0;
+  if (m === 'buy' || m === 'short') return Math.max(0, Math.floor(me.cash / (p * (1 + FEE))));
+  if (m === 'sell') return (me.hold || {})[sym] || 0;
+  return ((me.shorts || {})[sym] || {}).q || 0;
+}
+function updateTradeEst() {
+  const sh = S.sheet; const est = $('#est'); if (!sh || (sh.type !== 'stock' && sh.type !== 'quick') || !est) return;
+  const q = Math.max(0, Math.floor(+$('#qty').value || 0)); sh.q = q; const p = px(sh.sym, S.tick), mx = maxQty(sh.m, sh.sym);
+  const amt = q * p, fee = Math.ceil(amt * FEE);
+  let line = '';
+  if (sh.m === 'buy') line = `<span>필요 금액 <b class="num">${won(amt + fee)}</b></span>`;
+  if (sh.m === 'sell') line = `<span>받을 금액 <b class="num">${won(Math.max(0, amt - fee))}</b></span>`;
+  if (sh.m === 'short') line = `<span>증거금 <b class="num">${won(amt + fee)}</b></span>`;
+  if (sh.m === 'cover') { const o = (S.me.shorts || {})[sh.sym]; const v = o ? Math.max(0, q * (2 * o.e - p)) : 0; line = `<span>돌려받을 금액 <b class="num">${won(Math.max(0, v - fee))}</b></span>`; }
+  est.innerHTML = line + `<span class="num">최대 ${mx.toLocaleString()}주</span>`;
+  const btn = $('#doTrade');
+  btn.textContent = S.saving ? '처리 중…' : { buy: '매수하기', sell: '매도하기', short: '🎯 공매도 걸기', cover: '공매도 상환하기' }[sh.m];
+  btn.className = 'cta ' + sh.m;
+  btn.disabled = S.saving || !q || q > mx;
+  $('#tradeHint').textContent = { buy: '지금 보이는 가격으로 바로 체결돼요. 가격은 2초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 손실은 증거금까지만. 누가 걸었는지는 비밀이에요.', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
+}
+async function doTrade() {
+  const sh = S.sheet; const q = sh.q, sym = sh.sym, m = sh.m, p = px(sym, S.tick);
+  if (!q || q > maxQty(m, sym) || S.saving || seasonOver()) return;
+  const before = S.me; const me = JSON.parse(JSON.stringify(before)); me.hold ||= {}; me.cost ||= {}; me.shorts ||= {};
+  const amt = q * p, fee = Math.ceil(amt * FEE);
+  if (m === 'buy') { const h0 = me.hold[sym] || 0; me.cost[sym] = ((me.cost[sym] || 0) * h0 + amt) / (h0 + q); me.hold[sym] = h0 + q; me.cash -= amt + fee; }
+  if (m === 'sell') { me.hold[sym] -= q; me.cash += amt - fee; if (!me.hold[sym]) { delete me.hold[sym]; delete me.cost[sym]; } }
+  if (m === 'short') { const o = me.shorts[sym] || { q: 0, e: 0 }; me.shorts[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q) }; me.cash -= amt + fee; }
+  if (m === 'cover') { const o = me.shorts[sym]; me.cash += Math.max(0, q * (2 * o.e - p) - fee); o.q -= q; if (!o.q) delete me.shorts[sym]; }
+  me.cash = Math.round(me.cash);
+  S.saving = true; updateTradeEst();
+  const ok = await saveMe(me, before);
+  S.saving = false;
+  if (ok) {
+    if (m !== 'cover') addFeed({ kind: m, sym, amt });
+    toast({ buy: `🛒 ${SM[sym].n} ${q.toLocaleString()}주 매수!`, sell: `💸 ${SM[sym].n} ${q.toLocaleString()}주 매도!`, short: `🎯 ${SM[sym].n} 공매도 진입`, cover: '공매도 상환 완료' }[m]);
+    sh.q = 0; if (sh.type === 'quick') closeSheet(); renderAll(); if (S.sheet) renderSheet();
+  } else updateTradeEst();
+}
+function renderPlayerSheet(b, sh) {
+  const p0 = S.players[sh.id]; if (!p0) { closeSheet(); return; }
+  const p = { id: sh.id, ...p0 };
+  const k = S.tick, w = worth(p, k), rk = ranking(k).findIndex(x => x.id === sh.id) + 1, roi = roiOf(p, w);
+  const isMe = sh.id === S.uid, full = isMe || spiedOn(sh.id);
+  const spyUsed = S.me && S.me.spy && S.me.spy.day === kstDay(now());
+  let hold = '';
+  if (full) {
+    const hs = Object.entries(p.hold || {}).filter(([s]) => SM[s]), ss = Object.entries(p.shorts || {}).filter(([s]) => SM[s]);
+    hold = `<div class="slist">${hs.map(([s, q]) => `<div class="pos">${badge(SM[s])}<span class="sname"><b>${esc(SM[s].n)}</b><small class="dim num">${q.toLocaleString()}주</small></span><span class="r num"><b>${won(q * px(s, k))}</b></span></div>`).join('')}
+      ${ss.map(([s, o]) => `<div class="pos">${badge(SM[s])}<span class="sname"><b>${esc(SM[s].n)}</b><small class="dim num">🎯 공매도 ${o.q.toLocaleString()}주</small></span><span class="r num"><b>${won(Math.max(0, o.q * (2 * o.e - px(s, k))))}</b></span></div>`).join('')}
+      <div class="pos"><span class="logo-b" style="background:var(--mint)">₩</span><span class="sname"><b>현금</b></span><span class="r num"><b>${won(p.cash)}</b></span></div></div>`;
+  } else {
+    const t = topHolding(p, k), l = lockedCount(p);
+    hold = `<div class="slist">${t ? `<div class="pos">${badge(SM[t])}<span class="sname"><b>${esc(SM[t].n)}</b><small class="dim">대표 종목 · 수량 비공개</small></span><span class="r dim">공개</span></div>` : ''}
+      ${Array.from({ length: l }, () => `<div class="pos"><span class="logo-b" style="background:var(--line);color:var(--dim)">🔒</span><span class="sname"><b class="dim">비공개 포지션</b></span><span class="r dim">???</span></div>`).join('')}
+      ${!t && !l ? '<div class="empty">아직 현금만 들고 있어요.</div>' : ''}</div>`;
+  }
+  b.innerHTML = `<div class="shead">${ava(p, true, rk === 1)}<div><h3>${esc(p.name)}</h3><small>${rk}위 · ${won(w)} · <span class="${cls(roi)}">${pctTxt(roi)}</span></small></div></div>
+    ${hold}
+    ${!isMe && S.me ? `${full ? '<p class="hint">오늘 엿본 지갑이에요. 내일이 되면 다시 가려져요.</p>' : `<button class="cta violet" type="button" id="spyBtn" ${spyUsed || S.readOnly ? 'disabled' : ''}>🕵️ 지갑 엿보기 ${spyUsed ? '(오늘 사용함)' : '· 하루 1회'}</button>
+      <p class="hint">엿보면 소식 탭에 "누군가 엿봤다"고 떠요. 누가 봤는지는 안 나와요.</p>`}
+      <button class="cta soft" type="button" id="rivalBtn">${S.rival === sh.id ? '라이벌 해제' : '⚔️ 라이벌로 지정'}</button>` : ''}`;
+}
+async function doSpy(id) {
+  if (!S.me || S.saving) return; const before = S.me; const me = JSON.parse(JSON.stringify(before)); me.spy = { day: kstDay(now()), target: id };
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false;
+  if (ok) { addFeed({ kind: 'spy', target: id }); toast('🕵️ 지갑을 열어봤어요'); renderAll(); renderSheet(); }
+}
+function renderJoinSheet(b) {
+  const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '');
+  b.innerHTML = `<div class="rv-head"><span class="k">NEW SEASON</span><h3>이번 주 1등은 누구?</h3></div>
+    <p class="hint" style="text-align:center">1,000만원으로 시작해요. 일요일 밤 10시 마지막 라운드가 끝났을 때 총자산 1등이 우승이에요. 12시간마다 200만원 지원금이 자동으로 들어와요.</p>
+    <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
+    <button class="cta" type="button" id="joinBtn">1,000만원 받고 참가하기</button>`;
+}
+async function doJoin() {
+  const nick = ($('#nick').value || '').trim().slice(0, 10); if (!nick) { toast('닉네임을 적어주세요'); return; }
+  LS.set('nick', nick);
+  const me = { name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, bonusN: 0, joined: Date.now(), hold: {}, cost: {}, shorts: {}, spy: null, casino: 0, ts: Date.now() };
+  S.saving = true; const ok = await saveMe(me, S.me); S.saving = false;
+  if (ok) { LS.set('seen:' + S.season.sid, S.tick); addFeed({ kind: 'join' }); closeSheet(); toast('참가 완료!'); renderAll(); autoCredit(); }
+}
+function renderHelp(b) {
+  b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
+  <ul class="rules">
+    <li><span>1</span><span>하루 3라운드, 일주일 21라운드. <b>12시 점심장 · 18시 퇴근장 · 22시 야간장</b>에 가격이 바뀌고 그 사이엔 멈춰요.</span></li>
+    <li><span>2</span><span>다음 라운드 뉴스가 미리 떠요. <b>공시 &gt; 기사 &gt; 찌라시</b> 순으로 믿을 만해요. 가짜뉴스면 오히려 반대로 가요.</span></li>
+    <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
+    <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
+    <li><span>5</span><span><b>공매도</b>는 내릴 때 돈을 벌어요. 누가 걸었는지는 비밀.</span></li>
+    <li><span>6</span><span>친구 지갑은 <b>대표 종목 하나</b>만 보여요. 하루 한 번 🕵️ <b>엿보기</b>로 한 명의 지갑을 다 볼 수 있어요.</span></li>
+    <li><span>7</span><span><b>12시간마다 200만원</b> 지원금이 자동으로 들어와요(0시, 12시). 앱을 안 열어도 쌓여요.</span></li>
+    <li><span>8</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 한 판 최대 200만원.</span></li>
+    <li><span>9</span><span>일요일 22시 마지막 라운드 결과로 이번 주 1등이 정해져요.</span></li>
+  </ul>
+  <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>`;
+}
+function renderReveal(b, sh) {
+  const { from, to } = sh; const n = to - from; const I = S.SE.index; const ic = I[to] / I[from] - 1;
+  let h = `<div class="rv-head"><span class="k">${n > 1 ? `라운드 ${n}개 지나감` : `ROUND ${to} 종료`}</span><h3>${tickLabel(to)} 결과</h3></div>`;
+  h += `<div class="info"><div>MPL 종합지수<b class="num ${cls(ic)}">${I[to].toFixed(1)} ${pctTxt(ic)}</b></div><div>분위기<b>${moodOf(ic)[1]}</b></div></div>`;
+  if (S.me) {
+    const w0 = worth(S.me, from), w1 = worth(S.me, to), d = w1 - w0;
+    const r0 = ranking(from), r1 = ranking(to); const i0 = r0.findIndex(p => p.id === S.uid), i1 = r1.findIndex(p => p.id === S.uid);
+    h += `<div class="card rv-me"><div class="dim" style="font-size:13px;font-weight:700">내 자산 변화</div><div class="v num ${cls(d)}" id="rvCount">${signWon(0)}</div><div class="rv-rank">${i0 + 1}위 → ${i1 + 1}위 ${i1 < i0 ? `<span class="up">▲${i0 - i1}</span>` : i1 > i0 ? `<span class="down">▼${i1 - i0}</span>` : '<span class="dim">유지</span>'}</div></div>`;
+    r1.slice(0, i1).filter(p => r0.findIndex(x => x.id === p.id) > i0).forEach(p => h += `<div class="overtake bad">😤 ${esc(p.name)}님이 나를 추월했어요</div>`);
+    r1.slice(i1 + 1).filter(p => r0.findIndex(x => x.id === p.id) < i0).forEach(p => h += `<div class="overtake good">😎 ${esc(p.name)}님을 제쳤어요</div>`);
+    sh.countTo = d;
+  }
+  const mine = S.me ? new Set([...Object.keys(S.me.hold || {}), ...Object.keys(S.me.shorts || {})]) : new Set();
+  const moves = STOCKS.map(s => ({ s, c: chg(s.id, from, to) })).sort((a, b) => b.c - a.c);
+  const pickList = [...moves.filter(x => mine.has(x.s.id)), ...moves.slice(0, 3), ...moves.slice(-3)].filter((x, i, a) => a.findIndex(y => y.s.id === x.s.id) === i);
+  h += `<div class="sec"><div class="sec-h"><h2>${mine.size ? '내 종목 · 급등락' : '급등 · 급락'}</h2></div><div class="slist">`;
+  pickList.forEach(({ s, c }, i) => {
+    h += `<div class="rv-row" style="animation-delay:${.1 + i * .06}s">${badge(s)}<span class="sname"><b>${esc(s.n)}${mine.has(s.id) ? ' <small class="mine" style="display:inline">· 보유</small>' : ''}</b><small class="dim num">${px(s.id, from).toLocaleString()} → ${px(s.id, to).toLocaleString()}</small></span><span class="chg num ${cls(c)}">${pctTxt(c)}</span></div>`;
+  });
+  h += `</div></div><button class="cta" type="button" id="revealOk">확인</button>`;
+  b.innerHTML = h;
+  const el = $('#rvCount'); if (el && sh.countTo != null) { const target = sh.countTo, t0 = performance.now();
+    const step = t => { const f = Math.min(1, (t - t0) / 900), e = 1 - Math.pow(1 - f, 3); el.textContent = signWon(target * e); if (f < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step); }
+}
+function maybeReveal() {
+  if (S.sheet || !S.me) return false;
+  const key = 'seen:' + S.season.sid; const seen = LS.get(key, null);
+  if (seen == null) { LS.set(key, S.tick); return false; }
+  if (S.tick > seen) { LS.set(key, S.tick); openSheet('reveal', { from: seen, to: S.tick }); return true; }
+  return false;
+}
+function maybeJoin() {
+  if (S.me || S.readOnly || S.joinShown || S.sheet || S.mode === 'loading') return;
+  if (S.mode === 'live' && !S.loaded) return;
+  if (seasonOver()) return;
+  S.joinShown = true; openSheet('join');
+}
+
+/* ───────── persistence ───────── */
+let saveChain = Promise.resolve();
+function saveMe(me, before) {
+  S.me = me; S.players[S.uid] = me;
+  const run = async () => {
+    if (S.mode === 'demo') { LS.set('demo2:' + S.season.sid, me); return true; }
+    try { await S.db.doc('players/' + S.uid).set(me); return true; }
+    catch (e) {
+      S.me = before || null; if (before) S.players[S.uid] = before; else delete S.players[S.uid];
+      if (e && e.code === 'invalid_argument') { S.readOnly = true; toast('관전 모드예요. 방장에게 편집자 초대를 받아야 거래할 수 있어요.'); }
+      else if (e && e.code === 'quota_exceeded') toast('저장 공간이 가득 찼어요. 방장에게 알려주세요.');
+      else toast('저장하지 못했어요. 잠시 후 다시 해주세요.');
+      renderAll(); return false;
+    }
+  };
+  const p = saveChain.then(run); saveChain = p.catch(() => {}); return p;
+}
+function addFeed(f) {
+  const item = { ...f, uid: S.uid, season: S.season.sid, ts: Date.now() };
+  if (S.mode === 'demo') { S.feed.unshift(item); LS.set('demoFeed2:' + S.season.sid, S.feed.filter(x => !x.bot)); return; }
+  S.db.collection('feed').add(item).catch(() => {});
+}
+
+/* ───────── demo mode ───────── */
+function makeBots() {
+  const R = rng('bots2:' + S.season.sid); const names = ['존버왕', '단타의신', '물타기장인']; const out = {};
+  names.forEach((n, i) => {
+    const p = { name: n, bot: true, season: S.season.sid, cash: CASH0, hold: {}, cost: {}, shorts: {} };
+    const order = STOCKS.map(s => ({ s, r: R() })).sort((a, b) => a.r - b.r).map(x => x.s).slice(0, 2 + Math.floor(R() * 3));
+    order.forEach(s => { const q = Math.floor(CASH0 * (.15 + R() * .2) / s.p0); if (!q) return; p.hold[s.id] = q; p.cost[s.id] = s.p0; p.cash -= q * s.p0; });
+    if (R() < .6) { const s = STOCKS[Math.floor(R() * STOCKS.length)]; const q = Math.floor(CASH0 * .1 / s.p0); if (!p.hold[s.id] && q && p.cash > q * s.p0) { p.shorts[s.id] = { q, e: s.p0 }; p.cash -= q * s.p0; } }
+    out['bot' + i] = p;
+  });
+  return out;
+}
+function loadDemo() {
+  S.uid = 'me'; S.players = makeBots();
+  const me = LS.get('demo2:' + S.season.sid, null); if (me && me.season === S.season.sid) { S.players.me = me; S.me = me; } else S.me = null;
+  const bf = Object.entries(S.players).filter(([id]) => id !== 'me').flatMap(([id, p], i) => [
+    { kind: 'join', uid: id, season: S.season.sid, ts: S.season.start + (i + 1) * 7 * 60e3, bot: true },
+    ...Object.entries(p.hold).map(([s, q], j) => ({ kind: 'buy', uid: id, sym: s, amt: q * SM[s].p0, season: S.season.sid, ts: S.season.start + (i + 1) * 9 * 60e3 + j * 60e3, bot: true })),
+    ...Object.keys(p.shorts).map(s => ({ kind: 'short', uid: id, sym: s, season: S.season.sid, ts: S.season.start + (i + 2) * 11 * 60e3, bot: true })),
+  ]);
+  S.feed = [...LS.get('demoFeed2:' + S.season.sid, []), ...bf].sort((a, b) => b.ts - a.ts);
+  const TR = rng('talk:' + S.season.sid); const LINES = ['이거 다음 라운드 간다', '물렸다… 존버합니다', '찌라시 믿고 들어갔다가 망함ㅋㅋ', '공매도 각 아님?', '외국인 들어온다던데', '여기서 더 사는 건 욕심인가', '오늘 점심장에 손절함', '평단 낮추는 중', '이 가격이면 줍줍', '큰손 이벤트 여기 아니냐'];
+  const botTalk = []; let c0 = 0;
+  STOCKS.forEach(st => { if (TR() < .45) { const n = 1 + Math.floor(TR() * 3); for (let i = 0; i < n; i++) { const bi = Math.floor(TR() * 3); botTalk.push({ id: 'bt' + (c0++), bot: true, sym: st.id, uid: 'bot' + bi, text: pick(TR, LINES), ts: now() - Math.floor(TR() * 36e5 * 20), season: S.season.sid, likes: TR() < .5 ? { ['bot' + ((bi + 1) % 3)]: true } : {} }); } } });
+  Object.values(S.players).forEach(p => { if (!p.bot) return; p.votes = {}; STOCKS.forEach(st => { if (TR() < .5) p.votes[st.id] = { k: S.tick, sid: S.season.sid, d: TR() < .55 ? 'up' : 'down' }; }); });
+  S.talk = [...LS.get('demoTalk', []), ...botTalk];
+}
+function startDemo() { S.mode = 'demo'; S.loaded = true; loadDemo(); renderAll(); if (!maybeReveal()) maybeJoin(); autoCredit(); }
+
+/* ───────── live mode ───────── */
+async function boot() {
+  syncTime(); S.lastLive = liveStep(now()); S.bet = LS.get('bet', 500000); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
+  let db = null, user = null;
+  try { if (window.claude && window.claude.use) [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch {}
+  const uid = user ? await user.id() : null;
+  if (!db || !uid) { startDemo(); return; }
+  S.mode = 'live'; S.db = db; S.uid = uid;
+  try { if ((await user.can('data.write')) === false) S.readOnly = true; } catch {}
+  renderAll();
+  const timer = setTimeout(() => { if (!S.loaded) toast('시장 서버가 느려요. 조금만 기다려 주세요.'); }, 10000);
+  db.collection('players').onSnapshot(snap => {
+    const next = {}; snap.docs.forEach(d => next[d.id] = d.data());
+    if (S.saving && S.me) next[S.uid] = S.me;
+    S.players = next;
+    const mine = next[S.uid]; S.me = mine && mine.season === S.season.sid ? mine : null;
+    if (!snap.metadata.fromCache && !S.loaded) { S.loaded = true; clearTimeout(timer); }
+    renderAll(); if (S.sheet && S.sheet.type === 'player') renderSheet();
+    if (S.loaded && !maybeReveal()) maybeJoin();
+    autoCredit();
+  }, () => { clearTimeout(timer); S.loaded = true; toast('순위를 불러오지 못했어요.'); renderAll(); });
+  db.collection('talk').orderBy('ts', 'desc').limit(300).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.detail) renderDetail(); if (S.tab === 'home' || S.tab === 'market') renderAll(); }, () => {});
+  db.collection('feed').orderBy('ts', 'desc').limit(60).onSnapshot(snap => { S.feed = snap.docs.map(d => d.data()); renderAll(); }, () => {});
+}
+
+/* ───────── events ───────── */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.tab) { goTab(t.dataset.tab); return; }
+  if (t.dataset.tabGo) { goTab(t.dataset.tabGo); return; }
+  if (t.dataset.bet) { S.bet = +t.dataset.bet; LS.set('bet', S.bet); renderCasino(); return; }
+  if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
+  if (t.dataset.filter) { S.filter = t.dataset.filter; renderMarket(); return; }
+  if (t.dataset.vote) { castVote(t.dataset.vote); return; }
+  if (t.dataset.like) { toggleLike(t.dataset.like); return; }
+  if (t.dataset.del) { deleteTalk(t.dataset.del); return; }
+  if (t.dataset.quick) {
+    if (!S.me) { if (S.readOnly) toast('관전 중이라 거래할 수 없어요'); else openSheet('join'); return; }
+    openSheet('quick', { sym: t.dataset.sym, m: t.dataset.quick, q: 0 }); return;
+  }
+  if (t.dataset.stock) { if (S.sheet) closeSheet(); openDetail(t.dataset.stock); return; }
+  if (t.hasAttribute('data-player')) { openSheet('player', { id: t.dataset.player }); return; }
+  if (t.hasAttribute('data-join')) { openSheet('join'); return; }
+  if (t.dataset.m) { S.sheet.m = t.dataset.m; S.sheet.q = 0; renderSheet(); return; }
+  if (t.dataset.step) { const i = $('#qty'); i.value = Math.max(0, (Math.floor(+i.value) || 0) + +t.dataset.step); updateTradeEst(); return; }
+  if (t.dataset.frac) { const mx = maxQty(S.sheet.m, S.sheet.sym); $('#qty').value = Math.floor(mx * +t.dataset.frac); updateTradeEst(); return; }
+  switch (t.id) {
+    case 'helpBtn': openSheet('help'); break;
+    case 'detailBack': closeDetail(); break;
+    case 'talkSend': postTalk(); break;
+    case 'spinBtn': playCasino('wheel'); break;
+    case 'sheetX': case 'revealOk': closeSheet(); break;
+    case 'doTrade': doTrade(); break;
+    case 'joinBtn': doJoin(); break;
+    case 'spyBtn': doSpy(S.sheet.id); break;
+    case 'rivalBtn': S.rival = S.rival === S.sheet.id ? null : S.sheet.id; LS.set('rival', S.rival); toast(S.rival ? '⚔️ 라이벌 지정! 홈 화면에 줄다리기가 떠요' : '라이벌을 해제했어요'); renderAll(); renderSheet(); break;
+  }
+});
+$('#scrim').addEventListener('click', closeSheet);
+document.addEventListener('input', e => { if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (S.detail) closeDetail(); } if (e.key === 'Enter' && e.target.id === 'nick') doJoin(); if (e.key === 'Enter' && e.target.id === 'talkInput' && !e.isComposing) postTalk(); });
+window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (S.tab === 'home') renderHome(); drawBig(); }, 150); });
+
+setInterval(() => {
+  let changed = syncTime();
+  const sl = slotOf(now()); if (sl !== S.slot) { S.slot = sl; changed = true; }
+  autoCredit();
+  const ls = liveStep(now());
+  if (!changed && ls !== S.lastLive && S.tick < NT) {
+    const old = {}; STOCKS.forEach(x => old[x.id] = px(x.id, S.tick));
+    S.lastLive = ls; LV.flash = {};
+    STOCKS.forEach(x => { const v = px(x.id, S.tick); if (old[x.id] && v !== old[x.id]) LV.flash[x.id] = v > old[x.id] ? 'u' : 'd'; });
+    S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
+    const sh = S.sheet;
+    if (sh && sh.sym && (sh.type === 'stock' || sh.type === 'quick')) {
+      const lp = $('#livePrice'), pc = $('#livePct'); const v = px(sh.sym, S.tick), c = nowChg(sh.sym);
+      if (lp) lp.textContent = won(v);
+      if (pc) { pc.className = 'num ' + cls(c); pc.textContent = (sh.type === 'stock' ? '직전 라운드 대비 ' : '') + pctTxt(c); }
+      if (sh.type === 'stock') drawBig();
+    }
+    return;
+  }
+  if (changed) { renderAll(); if (S.sheet && S.sheet.type !== 'reveal') renderSheet(); maybeReveal(); }
+  else renderClock();
+}, 1000);
+window.__gaemi = { S };
+boot();
+})();
+</script>
