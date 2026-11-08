@@ -130,6 +130,9 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .shopgame .si-ic{font-size:28px}.shopgame .si-t{flex:1}.shopgame .si-t b{display:block;font-size:17px;font-weight:800}.shopgame .si-t small{color:var(--dim);font-weight:600;font-size:12.5px}.shopgame .si-go{font-size:24px;color:var(--violet);font-weight:800}
 .back-link{font-weight:800;color:var(--violet);font-size:14px;padding:4px 0;margin-bottom:10px}
 .minimap{margin-top:12px}.minimap svg{width:100%;height:auto;display:block}
+.lvtag{font-size:13px;font-weight:800;color:#fff;background:var(--violet);border-radius:8px;padding:2px 7px;vertical-align:3px}
+.lvitem{margin-bottom:12px;background:var(--gold-bg)}
+.lrow .who small.lv{color:var(--violet);font-weight:800}
 .shopitem{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .shopitem .si-ic{font-size:26px}
 .shopitem .si-t{flex:1;min-width:0}
@@ -1670,16 +1673,11 @@ function renderHome() {
       shown.forEach(([p, i]) => {
         const roi = roiOf(p, p.w), w0 = worthPrev(p, k), r2 = w0 > 0 ? (p.w - w0) / w0 : 0, d = (prevIdx[p.id] ?? i) - i;
         const mv = k && d ? `<span class="mv ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span>` : '';
-        let info;
-        info = esc(posSummary(p));
-        const own = myEstates(p).filter(b => !estOf(b.id).destroyed).sort((a, b) => estVal(b.id, k) - estVal(a.id, k));
-        if (own.length) info = `🏢 <b class="brag">${esc(own[0].n.replace(/ \(한 채\)$/, ''))}${own.length > 1 ? ` 외 ${own.length - 1}` : ''}</b> 건물주 · ` + info;
         const allCashP = isAllCash(p);
-        const canAtk = p.id !== S.uid && myPositions(p).length > 0;
         const wc = winChg(p, p.w);
         const subRight = p.id === S.uid && allCashP ? `<small class="up">자산을 구매하세요!</small>` : `<small class="${cls(wc)}">${pctTxt(wc)}</small>`;
         h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}${okPhoto(p.banner) ? ' bn' : ''}" type="button" data-player="${esc(p.id)}"${okPhoto(p.banner) ? ` style="--bn:url(${p.banner})"` : ''}><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
-          <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${canAtk ? '<span class="tag atk">💥공격</span>' : ''}${mv}<small>${info}</small></span>
+          <span class="who"><b>${esc(p.name)}</b>${p.bot ? '<span class="tag bot">봇</span>' : ''}${mv}<small class="lv">LV.${lvOf(p)}</small></span>
           <span class="r num"><b>${man(p.w)}</b>${subRight}</span></button>`;
       });
       h += `</div><p class="hint">전체 ${cur.length}명 · ${S.rankPage + 1}/${rPages}쪽. %는 20분마다 0으로 초기화돼요. 이름을 누르면 지갑 전체를 볼 수 있어요.</p>`;
@@ -2326,7 +2324,7 @@ function renderWallet() {
   if (S.wsub === 'profile') {
   h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div><div>받은 월세<b class="num up">${won(m.rentTotal || 0)}</b></div><div>낸 유지비·세금<b class="num down">${won(m.taxTotal || 0)}</b></div></div>`;
   h += `<div class="sec"><div class="sec-h"><h2>프로필</h2></div>
-    <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)}</b><small>사진은 모두에게 보여요</small></span></div>
+    <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)} <span class="lvtag">LV.${lvOf(m)}</span></b><small>사진은 모두에게 보여요 · 레벨은 상점에서 올려요</small></span></div>
     <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button><button type="button" id="bannerBtn">🖼️ 순위 배경 바꾸기</button><button type="button" id="bannerDel" ${m.banner ? '' : 'disabled'}>배경 지우기</button>
 </div></div>`;
   h += `<p class="hint">수익률은 시드 10억원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
@@ -2392,6 +2390,16 @@ async function postBoard() {
   if (S.mode === 'demo') { S.talk.unshift({ id: 't' + Date.now(), ...item }); LS.set('demoTalk', S.talk.filter(t => !t.bot)); renderBoard(); return; }
   try { await S.db.collection('talk').add(item); } catch (e) { toast('건의를 보내지 못했어요. 잠시 후 다시 해주세요.'); i.value = text; }
 }
+// ⭐ 레벨: 상점에서 현금으로 올려요. LV.1에서 시작, 첫 레벨업 1억, 올릴 때마다 가격 2배
+const lvOf = p => Math.max(1, Math.floor((p && p.lv) || 1));
+const lvCost = lv => 1e8 * Math.pow(2, lv - 1);
+async function levelUp() {
+  if (!S.me || S.saving || S.readOnly) return;
+  const lv = lvOf(S.me), cost = lvCost(lv); if (S.me.cash < cost) { toast(`현금이 ${won(cost - S.me.cash)} 부족해요`); return; }
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - cost); me.lv = lv + 1;
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false;
+  if (ok) { toast(`⭐ LV.${lv + 1} 달성!`); confetti(); buzz(60); renderAll(); }
+}
 // 🛍️ 상점
 function renderShop() {
   const el = $('#tab-shop');
@@ -2399,7 +2407,9 @@ function renderShop() {
     if (!el.querySelector('#tab-casino')) el.innerHTML = `<button type="button" class="back-link" id="shopBack">← 상점으로</button><section class="sec" id="tab-casino" style="gap:18px"></section>`;
     if (!C.busy) renderCasino(); return;
   }
-  el.innerHTML = `<button type="button" class="card shopgame" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>게임하러 가기</b><small>홀짝 · 룰렛 · 한 판 최대 10억</small></span><span class="si-go">›</span></button><div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
+  const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv);
+  el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 가격이 2배가 돼요</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
+    <button type="button" class="card shopgame" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>게임하러 가기</b><small>홀짝 · 룰렛 · 한 판 최대 10억</small></span><span class="si-go">›</span></button><div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
     <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
 }
 // 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
@@ -2715,7 +2725,7 @@ function renderPlayerSheet(b, sh) {
   }).join('');
   const hold = `<div class="slist">${rows || '<div class="empty">보유 중인 포지션이 없어요 (100% 현금)</div>'}
     <div class="pos"><span class="logo-b" style="background:var(--mint)">₩</span><span class="sname"><b>현금</b></span><span class="r num"><b>${won(p.cash)}</b></span></div></div>`;
-  b.innerHTML = `<div class="shead">${ava(p, true, rk === 1)}<div><h3>${esc(p.name)}</h3><small>${rk}위 · ${won(w)} · <span class="${cls(roi)}">${pctTxt(roi)}</span></small></div></div>
+  b.innerHTML = `<div class="shead">${ava(p, true, rk === 1)}<div><h3>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></h3><small>${rk}위 · ${won(w)} · <span class="${cls(roi)}">${pctTxt(roi)}</span></small></div></div>
     ${canAtk && list.length ? `<p class="hint" style="margin:-4px 0">💥 <b>포지션 공격</b>: 상대 원금의 15%를 써서 주가를 45초 동안 반대 방향으로 12% 폭격해요! 상대 레버리지를 청산시키면 <b>공격 비용을 돌려받아요</b>. 충격 중인 종목은 아무도 새로 진입할 수 없고, 공격한 사람은 그 종목 포지션을 정리할 수 없어요.</p>` : ''}
     ${hold}
     ${!isMe && S.me ? `<button class="cta soft" type="button" id="rivalBtn">${S.rival === sh.id ? '라이벌 해제' : '⚔️ 라이벌로 지정'}</button>` : ''}`;
@@ -3030,6 +3040,7 @@ document.addEventListener('click', e => {
     case 'boardBtn': openBoard(); break;
     case 'sheetX2': closeSheet(); break;
     case 'posOpen': openSheet('pos'); break;
+    case 'lvUp': levelUp(); break;
     case 'shopGame': S.shopView = 'game'; renderShop(); window.scrollTo(0, 0); break;
     case 'shopBack': S.shopView = null; renderShop(); break;
     case 'boardBack': closeBoard(); break;
