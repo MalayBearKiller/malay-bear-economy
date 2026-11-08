@@ -330,7 +330,9 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .seoul:not(.zoomed) .pin .plbg{display:none}
 .seoul:not(.deep) .pin .plbg{height:17px}
 .seoul:not(.zoomed) .pin .flag,.seoul:not(.zoomed) .pin .pi{display:none}
-.seoul:not(.zoomed) .pin.owned circle:not(.hit){r:6px}
+.seoul:not(.zoomed) .pin.owned circle:not(.hit){r:3px;stroke-width:1px}
+/* 확대 단계별로 비싼 건물부터: 조금 확대 = 1조 이상, 4배 = 1000억 이상, 8배 = 전부 (내가 산 건물·남이 산 건물은 늘 보여요) */
+.seoul.zoomed:not(.z2) .pin.t2:not(.owned),.seoul.zoomed:not(.z3) .pin.t3:not(.owned){display:none}
 .seoul:not(.zoomed) .gn{font-size:11px}
 .seoul:not(.zoomed) .gc{display:none}
 .mapctl{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:12px;display:flex;flex-direction:column;gap:6px}
@@ -1579,7 +1581,7 @@ function renderHome() {
     h = `<div class="card mycard"><div class="mc-row"><div><small>총자산</small><b class="num">${won(myW)}</b></div><div><small>현금</small><b class="num">${won(me.cash)}</b></div></div><p class="mc-rest">${rest}</p></div>`;
   }
 
-  h = rescueCard() + posHUD() + h;
+  h = rescueCard() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">10억원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
@@ -1634,7 +1636,8 @@ function renderHome() {
 function renderInvest() {
   const el = $('#tab-invest'); const k = S.tick; if (!S.inv) S.inv = 'coin';
   const subs = [['stock', '주식'], ['coin', '코인'], ['estate', '부동산'], ['fx', '환율']];
-  if (!el.querySelector('#invSeg')) el.innerHTML = `<div class="seg invseg" id="invSeg" role="group" aria-label="투자 메뉴"></div><div id="invBody" class="sec" style="gap:18px"></div>`;
+  if (!el.querySelector('#invHud')) el.innerHTML = `<div id="invHud"></div><div class="seg invseg" id="invSeg" role="group" aria-label="투자 메뉴"></div><div id="invBody" class="sec" style="gap:18px"></div>`;
+  const hud = posHUD(); $('#invHud').innerHTML = hud; $('#invHud').style.marginBottom = hud ? '16px' : '0';
   $('#invSeg').innerHTML = subs.map(([v, l]) => `<button type="button" data-inv="${v}" aria-pressed="${S.inv === v}">${l}</button>`).join('');
   const body = $('#invBody');
   if (body.dataset.sub !== S.inv) { body.innerHTML = ''; body.dataset.sub = S.inv; }
@@ -1835,7 +1838,8 @@ function pinsSVG() {
     const [x, y] = mapXY(b); const e = estOf(b.id); const broken = e && e.destroyed; const owned = !!e;
     const col = broken ? '#ffe1e1' : owned ? ownerColor(e.owner) : '#fff';
     const flag = owned ? `<g class="flag" transform="translate(0,-34)"><rect x="-${(nameOf(e.owner).length * 7 + 30) / 2}" y="-15" width="${nameOf(e.owner).length * 7 + 30}" height="24" rx="12" fill="${broken ? 'var(--up)' : ownerColor(e.owner)}" stroke="var(--ink)" stroke-width="1.5"/><text y="2" class="fn">${e.owner === S.uid ? '👑 ' : ''}${esc(e.owner === S.uid ? '내 건물' : nameOf(e.owner))}</text></g>` : '';
-    return `<g class="pin${owned ? ' owned' : ''}${broken ? ' broken' : ''}" data-estate="${b.id}" data-x="${x}" data-y="${y}" role="button" tabindex="0" aria-label="${esc(b.n)}">
+    const tv = e && e.destroyed ? e.destroyed.value : estVal(b.id, S.tick), tier = tv >= 1e12 ? 't1' : tv >= 1e11 ? 't2' : 't3';
+    return `<g class="pin ${tier}${owned ? ' owned' : ''}${broken ? ' broken' : ''}" data-estate="${b.id}" data-x="${x}" data-y="${y}" role="button" tabindex="0" aria-label="${esc(b.n)}">
       <circle r="22" class="hit"/><circle r="15" fill="${col}" stroke="${broken ? 'var(--up)' : 'var(--ink)'}" stroke-width="2" ${broken ? 'stroke-dasharray="4 3"' : ''}/>
       <text class="pi" y="6">${broken ? '💥' : ICON[b.t]}</text>${flag}
       <rect class="plbg" x="${-(b.n.replace(/ \(한 채\)$/, '').length * 12.5 + 14) / 2}" y="19" width="${b.n.replace(/ \(한 채\)$/, '').length * 12.5 + 14}" height="31" rx="8"/><text class="pl" y="31">${esc(b.n.replace(/ \(한 채\)$/, ''))}</text><text class="pv" y="45">${man(e && e.destroyed ? e.destroyed.value : estVal(b.id, S.tick))}</text></g>`;
@@ -1877,7 +1881,7 @@ function applyMapView() {
   const svg = $('#seoulMap'); if (!svg) return; const v = S.mapV;
   svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
   const cw = svg.clientWidth || 343; const u = v.w / cw; const zoom = MAP.w0 / v.w;
-  svg.classList.toggle('zoomed', zoom >= ZOOM_PINS); svg.classList.toggle('deep', zoom >= 4);
+  svg.classList.toggle('zoomed', zoom >= ZOOM_PINS); svg.classList.toggle('deep', zoom >= 4); svg.classList.toggle('z2', zoom >= 4); svg.classList.toggle('z3', zoom >= 8);
   svg.querySelectorAll('.pin').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u})`));
   svg.querySelectorAll('.gl').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u * (zoom >= ZOOM_PINS ? 1.1 : 1)})`));
   svg.querySelectorAll('.stamp').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u})`));
@@ -1885,7 +1889,7 @@ function applyMapView() {
 }
 const mapAR = () => { const svg = $('#seoulMap'); return svg && svg.clientWidth ? svg.clientHeight / svg.clientWidth : 1.39; };
 function clampView(v) {
-  const w = Math.max(MAP.w0 / 12, Math.min(MAP.w0, v.w)), h = w * mapAR();
+  const w = Math.max(MAP.w0 / 40, Math.min(MAP.w0, v.w)), h = w * mapAR();
   const ymin = Math.min(MAP.y0 - h * .2, MAP.y0 + MAP.h0 / 2 - h / 2), ymax = Math.max(MAP.y0 + MAP.h0 - h * .8, MAP.y0 + MAP.h0 / 2 - h / 2);
   return { w, h, x: Math.max(MAP.x0 - w * .2, Math.min(MAP.x0 + MAP.w0 - w * .8, v.x)), y: Math.max(ymin, Math.min(ymax, v.y)) };
 }
