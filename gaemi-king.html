@@ -669,22 +669,26 @@ function buildSeason(sid) {
   const shocks = {};
   const k1 = 3 + Math.floor(R() * 5), k2 = 9 + Math.floor(R() * 5), k3 = 15 + Math.floor(R() * 6);
   [k1, k2, k3].forEach(k => { shocks[k] = { sym: STOCKS[Math.floor(R() * STOCKS.length)].id, mag: (.3 + R() * .25) * (R() < .5 ? 1 : -1) }; });
-  // 급변: sudden ±6~20% steps that stay. After one hits, the same stock is far more likely to jump again (chain explosions).
+  // 급변: calm, then BANG. Each minute a stock may jump ±8~25% (mostly ~15%) in one tick and stay there.
+  // Right after a jump the same stock is very likely to jump again (bursts). Direction leans back toward
+  // the Monday price when a stock has run far, so prices swing hard but don't fly off to 0 or infinity.
   const jumps = {}, jmin = {};
   STOCKS.forEach(s => {
-    const J = rng('jump2:' + sid + ':' + s.id); const ev = []; let hot = 0, lastDir = 1; const WIN = 5 * 60e3, NW = 7 * 24 * 12;
-    for (let w = 0; w < NW; w++) {
+    const J = rng('jump3:' + sid + ':' + s.id); const ev = []; let hot = 0, lastDir = 1, acc = 0;
+    const JM = new Float64Array(MIN + 1);
+    for (let mm = 0; mm < MIN; mm++) {
+      JM[mm] = acc;
       const r = J(), r2 = J(), r3 = J(), r4 = J();
-      if (r < (hot > 0 ? .3 : .01)) {
-        const dir = hot > 0 && r2 < .65 ? lastDir : (r2 < .5 ? 1 : -1);
-        const size = (.06 + r3 * r3 * .14) * Math.sqrt(s.sens);
-        const j = dir * Math.log(1 + size); ev.push({ t: w * WIN + Math.floor(r4 * WIN), j, d: Math.exp(j) - 1 }); lastDir = dir; hot = 1;
+      if (r < (hot > 0 ? .3 : .035)) {
+        const dev = walk[s.id][mm] + acc;                       // how far from the Monday price (log)
+        const pUp = 1 / (1 + Math.exp(3 * dev));                 // far up → likely down, far down → likely up
+        const dir = hot > 0 && r2 < .6 ? lastDir : (r2 < pUp ? 1 : -1);
+        const size = .08 + .17 * Math.pow(r3, 1.6);              // 8~25%, mostly around 12~16%
+        const j = dir * Math.log(1 + size);
+        ev.push({ t: mm * 60e3 + Math.floor(r4 * 60e3), j, d: Math.exp(j) - 1 }); acc += j; lastDir = dir; hot = 2;
       } else hot = Math.max(0, hot - 1);
     }
-    jumps[s.id] = ev;
-    const JM = new Float64Array(MIN + 1); let acc = 0, i = 0;
-    for (let mm = 0; mm <= MIN; mm++) { while (i < ev.length && ev[i].t <= mm * 60e3) acc += ev[i++].j; JM[mm] = acc; }
-    jmin[s.id] = JM;
+    JM[MIN] = acc; jumps[s.id] = ev; jmin[s.id] = JM;
   });
   const prices = {}; STOCKS.forEach(s => prices[s.id] = [s.p0]);
   for (let k = 1; k <= NT; k++) {
@@ -1205,6 +1209,8 @@ function jumpAlerts() {
   STOCKS.forEach(x => { for (const e of S.SE.jumps[x.id]) { if (e.t > rel) break; if (e.t > S.lastJumpRel && (!best || Math.abs(e.d) > Math.abs(best.e.d))) best = { x, e }; } });
   S.lastJumpRel = rel;
   if (!best) return;
+  const mine0 = S.me && ((S.me.hold || {})[best.x.id] || (S.me.lev || {})[best.x.id] || (S.me.shorts || {})[best.x.id]);
+  if (Math.abs(best.e.d) < .12 && !mine0) return;
   const mine = S.me && ((S.me.hold || {})[best.x.id] || (S.me.lev || {})[best.x.id] || (S.me.shorts || {})[best.x.id]);
   toast(`⚡ ${best.x.n} ${pctTxt(best.e.d)} ${best.e.d > 0 ? '폭등!' : '폭락!'}${mine ? ' (내 종목)' : ''}`);
   if (mine) { best.e.d > 0 ? confetti() : boom(); buzz(60); }
@@ -1691,7 +1697,7 @@ async function doJoin() {
 function renderHelp(b) {
   b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
   <ul class="rules">
-    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, 가끔 한 번에 ±6~20%씩 <b>팍</b> 터져요. 한 번 터진 종목은 연속으로 터지기 쉬워요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
+    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, 잔잔하다가 한 번에 ±8~25%씩 <b>팍</b> 터져요(30종목 중 어딘가에서 40초에 한 번꼴). 한 번 터진 종목은 연달아 터지기 쉬워요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
     <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
     <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
