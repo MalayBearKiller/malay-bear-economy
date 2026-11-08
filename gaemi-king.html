@@ -67,9 +67,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .sectors{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .sectors div{background:var(--bg);border-radius:12px;padding:7px 4px;text-align:center;font-size:11.5px;font-weight:600;color:var(--dim);min-width:0}
 .sectors b{display:block;font-size:13.5px;font-weight:800}
-.idxmini{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;padding-top:30px}
-.bangcd{position:absolute;left:16px;top:8px;font-size:11.5px;font-weight:800;color:var(--violet)}
-.bangcd.soon{color:var(--up);animation:blink .5s infinite}
+.idxmini{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px}
 .idxmini .lab{font-size:13px;font-weight:800;color:var(--dim);margin-right:8px}
 .idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
 .idxmini > .num{font-size:17px;font-weight:900}
@@ -882,7 +880,6 @@ function renderHeader() {
 function renderClock() {
   const t = now();
   const bc = $('#bonusCd'); if (bc) bc.textContent = hms(nextSlotAt(t) - t);
-  const bg = $('#bangCd'); if (bg) { const left = BANG_MS - ((t - S.season.start) % BANG_MS); bg.textContent = mmss(left); bg.parentElement.classList.toggle('soon', left <= 5000); }
   const rc = $('#rentCd'); if (rc) rc.textContent = mmss(rentHour(t) * H + H + S.season.start - t);
   if (!$('#nextLab')) return;
   if (seasonOver()) { $('#nextLab').textContent = '시즌 끝! 새 시즌까지'; $('#nextName').textContent = '월요일 0시'; $('#countdown').textContent = hms(S.season.start + 7 * D - t); return; }
@@ -900,7 +897,7 @@ function renderHome() {
   const ranked = STOCKS.map(x => ({ s: x, c: nowChg(x.id) })).sort((p, q) => q.c - p.c);
   const best = ranked[0], worst = ranked[ranked.length - 1];
   const mover = (r, lab) => `<button class="mover ${cls(r.c)}" type="button" data-stock="${r.s.id}"><small>${lab}</small><span class="mn">${badge(r.s)}<b>${esc(r.s.n)}</b></span><span class="mc num">${pctTxt(r.c)}</span></button>`;
-  let h = `<div class="card idxmini"><span class="bangcd">⚡ 급변 <b class="num" id="bangCd">00:30</b></span><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
+  let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
     <div class="movers">${mover(best, '🚀 2시간 최고')}${mover(worst, '📉 2시간 최저')}</div>`;
 
   h = bonusCard() + h;
@@ -1696,7 +1693,7 @@ async function doJoin() {
 function renderHelp(b) {
   b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
   <ul class="rules">
-    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, <b>30초마다 종목 3개</b>가 한 번에 ±15~30%씩 팍 움직여요. 홈의 ⚡ 카운트다운을 보세요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
+    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, <b>30초마다 종목 3개</b>가 한 번에 ±15~30%씩 움직여요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
     <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
     <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
@@ -1938,7 +1935,7 @@ setInterval(() => {
     const w0 = S.me ? worth(S.me, S.tick) : 0;
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
     if (S.me) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
-    holdingAlerts(); checkLiquidation(); jumpAlerts();
+    holdingAlerts(); checkLiquidation();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
     if (sh && sh.sym && (sh.type === 'stock' || sh.type === 'quick')) {
