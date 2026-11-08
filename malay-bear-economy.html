@@ -164,6 +164,12 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .lrow.isme{background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--violet)}
 /* 순위 배경: 프로필에서 고른 사진을 옅게 깔아요 */
 .lrow.bn{position:relative;isolation:isolate;overflow:hidden}
+.profhero{display:flex;gap:14px;align-items:center;padding:18px 16px;border-radius:20px;background:var(--paper);margin:6px 0 14px;position:relative;isolation:isolate;overflow:hidden}
+.profhero h2{margin:0;font-size:22px;font-weight:900}
+.profhero small{color:var(--dim);font-weight:700;font-size:13px}
+.profhero.bn::before{content:'';position:absolute;inset:0;background:var(--bn) center/cover no-repeat;opacity:.3;z-index:-1}
+#profile .seg{margin-bottom:12px}
+#profile.bnpage{background-image:linear-gradient(rgba(255,255,255,.86),rgba(255,255,255,.86)),var(--bn);background-size:cover;background-position:center;background-attachment:fixed}
 .lrow.bn::before{content:'';position:absolute;inset:0;background:var(--bn) center/cover no-repeat;opacity:.28;z-index:-1}
 .lrow .rk{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--dim)}
 .lrow .rk.r1{background:var(--gold);color:#fff} .lrow .rk.r2{background:#a7adbb;color:#fff} .lrow .rk.r3{background:#cf8d5a;color:#fff}
@@ -613,6 +619,7 @@ body.noscroll{overflow:hidden}
 </section>
 <section class="detail" id="detail" hidden aria-label="종목 상세"></section>
 <section class="detail" id="board" hidden aria-label="건의와 소식"></section>
+<section class="detail" id="profile" hidden aria-label="프로필"></section>
 <div class="toast" id="toast" hidden></div>
 <input type="file" id="photoIn" accept="image/*" hidden>
 <div class="liqbar" id="liqBar" hidden></div>
@@ -2445,6 +2452,7 @@ function renderAll() {
   const latest = S.feed.find(f => f.uid !== S.uid && brag(f));
   $('#feedDot').hidden = S.board === 'feed' || !latest || latest.ts <= S.feedSeen;
   if (S.board && !S.liveOnly) renderBoard();
+  if (S.profile) renderProfile();
   if (S.sheet && (S.sheet.type === 'stock' || S.sheet.type === 'quick')) updateTradeEst();
   if (S.detail) { if (S.liveOnly) updateDetailLive(); else renderDetail(); }
 }
@@ -2722,6 +2730,44 @@ async function doTrade() {
   } else updateTradeEst();
 }
 const atkCostOf = principal => Math.max(50_000_000, Math.round(principal * .15 / 10000) * 10000);
+// 👤 프로필 화면: 순위에서 사람을 누르면 열려요. 이름·레벨·사진 + 주식/코인/부동산/정보 탭으로 염탐
+function openProfile(id) { if (!S.players[id]) return; S.profile = id; S.ptab = S.ptab || 'coin'; $('#profile').hidden = false; document.body.classList.add('noscroll'); renderProfile(); $('#profile').scrollTop = 0; }
+function closeProfile() { S.profile = null; $('#profile').hidden = true; document.body.classList.remove('noscroll'); }
+function renderProfile() {
+  const d = $('#profile'); const id = S.profile; if (!id || !d) return;
+  const p0 = S.players[id]; if (!p0) { closeProfile(); return; }
+  const p = { id, ...p0 }, k = S.tick, w = worth(p, k), rk = ranking(k).findIndex(x => x.id === id) + 1, roi = roiOf(p, w);
+  const isMe = id === S.uid, canAtk = !isMe && S.me && !S.readOnly && !seasonOver();
+  if (!['stock', 'coin', 'estate', 'info'].includes(S.ptab)) S.ptab = 'coin';
+  const bn = okPhoto(p.banner) ? ` style="--bn:url(${p.banner})"` : '';
+  const pos = myPositions(p).filter(x => S.ptab === 'coin' ? !isEq(x.sym) : isEq(x.sym)).sort((a, b) => (a.kind === 'spot') - (b.kind === 'spot') || b.value - a.value);
+  let body = '';
+  if (S.ptab === 'coin' || S.ptab === 'stock') {
+    body = pos.map(x => { const st = SM[x.sym], dir = (x.kind === 'spot' || (x.kind === 'lev' && !x.label.includes('숏'))) ? -1 : 1, cost = atkCostOf(x.principal);
+      const q = x.kind === 'spot' ? (p.hold || {})[x.sym] : x.kind === 'lev' ? ((p.lev || {})[x.sym] || {}).q : ((p.shorts || {})[x.sym] || {}).q;
+      const btn = canAtk && !isEq(x.sym) ? `<button type="button" class="atk-btn" data-atk="${esc(id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼12%' : '▲12%'}<small>${man(cost)}원</small></button>` : '';
+      return `<div class="pos${btn ? ' has-atk' : ''}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="postag ${x.kind === 'spot' ? 'spot' : dir > 0 ? 'short' : 'long'}">${x.label}</span></b>
+        <small class="dim num">${QT(x.sym, q || 0)} · 원금 ${man(x.principal)}${x.dist != null ? ` · 청산 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
+        <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span>${btn}</div>`; }).join('') || `<div class="empty">${S.ptab === 'coin' ? '코인' : '주식·달러'} 포지션이 없어요.</div>`;
+    if (canAtk && S.ptab === 'coin' && pos.length) body = `<p class="hint" style="margin:0 0 8px">💥 코인 포지션 공격: 상대 원금의 15%로 45초 동안 가격을 12% 반대로 밀어요. 레버리지를 청산시키면 비용을 돌려받아요.</p>` + body;
+  } else if (S.ptab === 'estate') {
+    const est = myEstates(p);
+    body = est.map(b => { const e = estOf(b.id), v = e.destroyed ? e.destroyed.value : estVal(b.id, k);
+      return `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : ownerColor(id)}">${e.destroyed ? '💥' : ICON[b.t]}</span><span class="sname"><b>${esc(b.n)}</b><small>${esc(b.gu)}${e.destroyed ? ' · <span class="up">파괴됨</span>' : ''}</small></span><span class="sprice"><div class="p num">${man(v)}원</div></span></button>`; }).join('') || '<div class="empty">건물이 없어요.</div>';
+    if (est.length && canAtk) body = `<p class="hint" style="margin:0 0 8px">건물을 누르면 💣 소형·🚀 대형 공격이나 🏴 강제 매입을 할 수 있어요.</p>` + body;
+  } else {
+    body = `<div class="info"><div>현금<b class="num">${won(p.cash || 0)}</b></div><div>누적 수익률<b class="num ${cls(roi)}">${pctTxt(roi)}</b></div><div>받은 지원금<b class="num">${won(BONUS * earnedOf(p))}</b></div><div>게임 손익<b class="num ${cls(p.casino || 0)}">${signWon(p.casino || 0)}</b></div><div>받은 월세<b class="num up">${won(p.rentTotal || 0)}</b></div><div>건물<b class="num">${myEstates(p).length}채</b></div></div>`;
+  }
+  const st0 = d.scrollTop;
+  d.innerHTML = `<div class="in"><div class="dtop"><button class="back" type="button" id="profBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>프로필</b></div>
+    <div class="profhero${bn ? ' bn' : ''}"${bn}>${ava(p, true, rk === 1)}<div><h2>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></h2><small>${rk}위 · 총자산 <b class="num">${won(w)}</b></small></div></div>
+    <div class="seg">${[['stock', '주식'], ['coin', '코인'], ['estate', '부동산'], ['info', '정보']].map(([v, l]) => `<button type="button" data-ptab="${v}" aria-pressed="${S.ptab === v}">${l}</button>`).join('')}</div>
+    <div class="slist">${body}</div>
+    ${!isMe && S.me ? `<button class="cta soft" type="button" id="profRival">${S.rival === id ? '라이벌 해제' : '⚔️ 라이벌로 지정'}</button>` : ''}
+  </div>`;
+  d.classList.toggle('bnpage', !!bn); if (bn) d.style.setProperty('--bn', `url(${p.banner})`); else d.style.removeProperty('--bn');
+  d.scrollTop = st0;
+}
 function renderPlayerSheet(b, sh) {
   const p0 = S.players[sh.id]; if (!p0) { closeSheet(); return; }
   const p = { id: sh.id, ...p0 };
@@ -3038,7 +3084,8 @@ document.addEventListener('click', e => {
     openSheet('quick', { sym: t.dataset.sym, m: t.dataset.quick, q: 0, x: 25 }); return;
   }
   if (t.dataset.stock) { if (S.sheet) closeSheet(); openDetail(t.dataset.stock); return; }
-  if (t.hasAttribute('data-player')) { openSheet('player', { id: t.dataset.player }); return; }
+  if (t.hasAttribute('data-player')) { if (S.sheet) closeSheet(); openProfile(t.dataset.player); return; }
+  if (t.dataset.ptab) { S.ptab = t.dataset.ptab; renderProfile(); return; }
   if (t.hasAttribute('data-join')) { openSheet('join'); return; }
   if (t.dataset.atk) { const [uid, kind, sym] = t.dataset.atk.split(':'); attackPosition(uid, kind, sym); return; }
   if (t.dataset.closepos) { const [kind, sym] = t.dataset.closepos.split(':'); closePositions(x => x.kind === kind && x.sym === sym); return; }
@@ -3056,6 +3103,8 @@ document.addEventListener('click', e => {
     case 'shopGame': case 'gameBtn': S.shopView = 'game'; goTab('shop'); break;
     case 'shopBack': S.shopView = null; renderShop(); break;
     case 'boardBack': closeBoard(); break;
+    case 'profBack': closeProfile(); break;
+    case 'profRival': S.rival = S.rival === S.profile ? null : S.profile; LS.set('rival', S.rival); toast(S.rival ? '⚔️ 라이벌 지정!' : '라이벌을 해제했어요'); renderProfile(); renderAll(); break;
     case 'boardSend': postBoard(); break;
     case 'photoBtn': pickPhoto('photo'); break;
     case 'bannerBtn': pickPhoto('banner'); break;
