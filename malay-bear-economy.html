@@ -1533,7 +1533,6 @@ function jumpAlerts() {
   if (k === S.lastBang) return; S.lastBang = k;
   const list = S.SE.bangs[k]; if (!list) return;
   const own = id => S.me && ((S.me.hold || {})[id] || (S.me.lev || {})[id] || (S.me.shorts || {})[id]);
-  toast('⚡ ' + list.slice(0, 7).map(x => `${x.rug ? '💀' : x.trap ? '🪤' : x.mega ? '🔥' : x.whip ? '🌪️' : ''}${SM[x.id].n} ${pctTxt(x.d)}`).join(' · '));
   const mineHit = list.find(x => own(x.id));
   if (mineHit) { const lv = (S.me.lev || {})[mineHit.id], sh = (S.me.shorts || {})[mineHit.id]; const good = (mineHit.d > 0) === !(sh || (lv && (lv.d || 1) < 0)); good ? confetti() : boom(); buzz(60); }
 }
