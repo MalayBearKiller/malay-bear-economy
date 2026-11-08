@@ -23,6 +23,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // 부동산: 누구나 사고, 남의 건물을 파괴·강제 매입할 수 있어서 로그인한 사람은 모두 쓸 수 있어요.
+    // (나중에 데이터베이스를 정리할 때 서버 함수로 옮기면 더 안전해져요.)
+    match /estates/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.resource.data.season is string;
+    }
+
     // 종목 채팅: 본인 이름으로만 보내고, 삭제는 본인 메시지만.
     // 수정은 좋아요(likes) 필드만 바꿀 수 있어요.
     match /talk/{id} {

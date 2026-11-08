@@ -121,8 +121,8 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .tb:disabled{opacity:.3;cursor:default}
 .sprice .p{border-radius:6px;padding:0 3px;margin-right:-3px}
 .sprice .p.fu{animation:fu .9s} .sprice .p.fd{animation:fd .9s}
-@keyframes fu{0%{background:var(--up-bg);color:var(--up)}}
-@keyframes fd{0%{background:var(--down-bg);color:var(--down)}}
+@keyframes fu{0%{background:var(--up);color:#fff;transform:scale(1.08)}}
+@keyframes fd{0%{background:var(--down);color:#fff;transform:scale(1.08)}}
 .livedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-left:8px;vertical-align:middle;animation:blink 1.6s infinite}
 @keyframes blink{50%{opacity:.2}}
 .seg.two{grid-template-columns:1fr 1fr}
@@ -160,7 +160,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 
 /* bottom nav */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:6px var(--gut-r) calc(6px + env(safe-area-inset-bottom,0px)) var(--gut-l);background:rgba(255,255,255,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
-.nav-in{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav-in{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr)}
 .nav button{padding:6px 4px 4px;font-size:11.5px;font-weight:700;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
 .nav button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .nav button[aria-selected="true"]{color:var(--ink)}
@@ -198,6 +198,33 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .wheel span i{position:absolute;transform:translate(-50%,-50%);font-style:normal;font-weight:800;font-size:13.5px;color:var(--ink);white-space:nowrap}
 .pointer{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:20px solid var(--ink);z-index:2}
 .hub{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 3px var(--paper2)}
+
+.assetseg{grid-template-columns:repeat(3,1fr);margin-bottom:14px}
+.estsum{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px}
+.estsum b{display:block;font-size:17px;font-weight:800}
+.mapwrap{overflow-x:auto;overscroll-behavior-x:contain;margin-inline:calc(-1 * var(--gut-l)) calc(-1 * var(--gut-r));padding:0 var(--gut-r) 0 var(--gut-l);scrollbar-width:none}
+.mapwrap::-webkit-scrollbar{display:none}
+.seoul{width:980px;height:auto;display:block;max-width:none}
+.seoul .dn{font-size:22px;font-weight:800;fill:var(--faint);opacity:.55;text-anchor:middle}
+.seoul .rv{font-size:20px;font-weight:800;fill:#7aa8e8;text-anchor:middle;letter-spacing:.3em}
+.pin{cursor:pointer}
+.pin .hit{fill:transparent}
+.pin .pi{text-anchor:middle}
+.pin .pl{font-size:12.5px;font-weight:800;fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:var(--paper);stroke-width:4px}
+.pin.mine .pl{fill:var(--violet)}
+.pin.broken .pl{fill:var(--up)}
+.pin:active{opacity:.6}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;font-weight:700;color:var(--dim)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;box-shadow:0 0 0 1.5px var(--ink)}
+.legend i.lb{background:#ffe1e1;box-shadow:0 0 0 1.5px var(--up)}
+.est-row{padding:8px 0;width:100%}
+canvas.fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:80}
+body.shake{animation:shake .45s}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}}
+.fab.pu{animation:pu .7s} .fab.pd{animation:pd .7s}
+@keyframes pu{0%{background:#16b27e;transform:scale(1.03)}}
+@keyframes pd{0%{background:#f2414f;transform:scale(.98)}}
+.sprice .p.fu,.sprice .p.fd{font-weight:900}
 
 /* floating total-asset bar */
 .fab{position:fixed;z-index:25;left:0;right:0;margin-inline:auto;width:calc(100% - var(--gut-l) - var(--gut-r));max-width:520px;
@@ -368,8 +395,10 @@ body.noscroll{overflow:hidden}
 <main class="wrap" style="padding-top:18px">
   <section class="tab sec" id="tab-home" style="gap:22px"></section>
   <section class="tab sec" id="tab-market" style="gap:22px" hidden></section>
-  <section class="tab sec" id="tab-casino" style="gap:18px" hidden></section>
+  <div class="seg assetseg" id="assetSeg" hidden role="group" aria-label="자산 메뉴"><button type="button" data-sub="wallet" aria-pressed="true">내 자산</button><button type="button" data-sub="estate" aria-pressed="false">부동산</button><button type="button" data-sub="casino" aria-pressed="false">게임</button></div>
   <section class="tab sec" id="tab-wallet" style="gap:22px" hidden></section>
+  <section class="tab sec" id="tab-estate" style="gap:16px" hidden></section>
+  <section class="tab sec" id="tab-casino" style="gap:18px" hidden></section>
   <section class="tab sec" id="tab-feed" style="gap:22px" hidden></section>
 </main>
 
@@ -377,13 +406,12 @@ body.noscroll{overflow:hidden}
   <div class="nav-in" role="tablist">
     <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>홈</button>
     <button type="button" role="tab" data-tab="market" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8 3 3"/><path d="M3 21h18"/></svg>종목</button>
-    <button type="button" role="tab" data-tab="casino" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="15" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="9" cy="15" r="1.2"/></svg>게임</button>
-    <button type="button" role="tab" data-tab="wallet" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M16 13h2M3 10h18"/></svg>내 지갑</button>
+    <button type="button" role="tab" data-tab="assets" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg>자산</button>
     <button type="button" role="tab" data-tab="feed" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>소식<i class="dot" id="feedDot" hidden></i></button>
   </div>
 </nav>
 
-<button class="fab" id="fab" type="button" data-tab-go="wallet" aria-label="내 총자산, 내 지갑 열기" hidden></button>
+<button class="fab" id="fab" type="button" data-tab-go="assets" aria-label="내 총자산, 자산 열기" hidden></button>
 
 <div class="sheet-wrap" id="sheetWrap" hidden>
   <div class="scrim" id="scrim"></div>
@@ -471,6 +499,36 @@ const NEWS = {
   bio:  { u: ['신약 임상 결과 기대감', '해외 허가 획득 임박설', '대형 위탁생산 계약'], d: ['임상 일정 지연 공지', '경쟁 약품 출시', '허가 심사 보완 요구'] },
 };
 const SECTOR_NEWS = { u: '업종 전반에 외국인 매수세 유입', d: '업종 전반에 차익 실현 매물 출회' };
+// Seoul buildings: value in 원 (game money), vol = how jumpy the price is
+const ESTATES = [
+  { id: 'LWT', n: '롯데월드타워', a: '잠실', lat: 37.5126, lon: 127.1025, v0: 80e6, vol: .03 },
+  { id: 'COEX', n: '코엑스', a: '삼성동', lat: 37.5126, lon: 127.0590, v0: 52e6, vol: .03 },
+  { id: 'B63', n: '63빌딩', a: '여의도', lat: 37.5198, lon: 126.9402, v0: 45e6, vol: .03 },
+  { id: 'TPL', n: '타워팰리스', a: '도곡', lat: 37.4880, lon: 127.0530, v0: 42e6, vol: .03 },
+  { id: 'IFC', n: '여의도 IFC', a: '여의도', lat: 37.5251, lon: 126.9256, v0: 40e6, vol: .035 },
+  { id: 'NST', n: 'N서울타워', a: '남산', lat: 37.549, lon: 126.982, v0: 38e6, vol: .025 },
+  { id: 'APG', n: '압구정 현대아파트', a: '압구정', lat: 37.524, lon: 127.036, v0: 36e6, vol: .035 },
+  { id: 'HNH', n: '한남더힐', a: '한남', lat: 37.531, lon: 127.01, v0: 34e6, vol: .03 },
+  { id: 'BNP', n: '반포 아파트', a: '반포', lat: 37.5050, lon: 126.9950, v0: 33e6, vol: .035 },
+  { id: 'GBT', n: '강남역 빌딩', a: '강남', lat: 37.4979, lon: 127.0276, v0: 30e6, vol: .04 },
+  { id: 'GHM', n: '광화문 오피스', a: '광화문', lat: 37.584, lon: 126.968, v0: 28e6, vol: .025 },
+  { id: 'DDP', n: '동대문 DDP', a: '동대문', lat: 37.577, lon: 127.018, v0: 26e6, vol: .035 },
+  { id: 'MYD', n: '명동 상가', a: '명동', lat: 37.567, lon: 126.992, v0: 22e6, vol: .04 },
+  { id: 'MKD', n: '목동 아파트', a: '목동', lat: 37.5300, lon: 126.8750, v0: 20e6, vol: .03 },
+  { id: 'SEO', n: '서울역 빌딩', a: '서울역', lat: 37.556, lon: 126.952, v0: 18e6, vol: .035 },
+  { id: 'DMC', n: '상암 DMC', a: '상암', lat: 37.5790, lon: 126.8900, v0: 16e6, vol: .045 },
+  { id: 'MKG', n: '마곡 연구단지', a: '마곡', lat: 37.5600, lon: 126.8300, v0: 14e6, vol: .05 },
+  { id: 'SSC', n: '성수 카페거리', a: '성수', lat: 37.548, lon: 127.052, v0: 12e6, vol: .06 },
+  { id: 'HDC', n: '홍대 상가', a: '홍대', lat: 37.5563, lon: 126.9236, v0: 9e6, vol: .06 },
+  { id: 'ITW', n: '이태원 펍거리', a: '이태원', lat: 37.536, lon: 126.984, v0: 8e6, vol: .07 },
+  { id: 'KDE', n: '건대 상권', a: '건대', lat: 37.5404, lon: 127.0700, v0: 7e6, vol: .07 },
+  { id: 'NOW', n: '노원 아파트', a: '노원', lat: 37.64, lon: 127.062, v0: 6e6, vol: .05 },
+  { id: 'GSN', n: '가산 디지털단지', a: '가산', lat: 37.4800, lon: 126.8820, v0: 5e6, vol: .06 },
+  { id: 'SLB', n: '신림 원룸촌', a: '신림', lat: 37.4842, lon: 126.9297, v0: 3e6, vol: .08 },
+];
+const EM = Object.fromEntries(ESTATES.map(e => [e.id, e]));
+const RENT = .02; // per 12h, of current value
+const mapXY = e => [Math.round((e.lon - 126.80) / .38 * 1000), Math.round((37.70 - e.lat) / .27 * 640)];
 const AVA_COLORS = ['#ffd23f', '#9be7c4', '#c7b8ff', '#ffb3c7', '#a8d8ff', '#ffcf9e', '#d9f27c'];
 
 /* ───────── deterministic RNG ───────── */
@@ -490,7 +548,7 @@ function buildSeason(sid) {
     const W = rng('walk3:' + sid + ':' + s.id); const L = new Float64Array(MIN + 1); const sd = s.vol * .12;
     for (let m = 1; m <= MIN; m++) {
       let z = gauss(W) * sd;
-      if (W() < .015) z += (W() < .5 ? 1 : -1) * (.015 + W() * .045) * s.sens;
+      if (W() < .03) z += (W() < .5 ? 1 : -1) * (.015 + W() * .05) * s.sens;
       L[m] = L[m - 1] + z;
     }
     walk[s.id] = L;
@@ -535,7 +593,17 @@ function buildSeason(sid) {
   // MPL 종합지수: equal-weight average of price relatives, Monday open = 1,000
   const index = []; for (let k = 0; k <= NT; k++) index.push(1000 * STOCKS.reduce((a, s) => a + prices[s.id][k] / s.p0, 0) / STOCKS.length);
   const secIndex = {}; Object.keys(SECTORS).forEach(sec => { const list = STOCKS.filter(s => s.s === sec); secIndex[sec] = []; for (let k = 0; k <= NT; k++) secIndex[sec].push(list.reduce((a, s) => a + prices[s.id][k] / s.p0, 0) / list.length); });
-  return { sid, news, shocks, prices, index, secIndex, walk };
+  const ewalk = {};
+  ESTATES.forEach(e => {
+    const W = rng('estate1:' + sid + ':' + e.id); const L = new Float64Array(MIN + 1); const sd = e.vol * .06;
+    for (let m = 1; m <= MIN; m++) {
+      let z = gauss(W) * sd;
+      if (W() < .004) z += (W() < .5 ? 1 : -1) * (.03 + W() * .08);
+      L[m] = L[m - 1] * .9995 + z;
+    }
+    ewalk[e.id] = L;
+  });
+  return { sid, news, shocks, prices, index, secIndex, walk, ewalk };
 }
 
 /* ───────── time ───────── */
@@ -556,7 +624,7 @@ const kstDay = t => isoDay(Math.floor((t + KST) / D));
 /* ───────── state ───────── */
 const S = {
   mode: 'loading', db: null, uid: null, readOnly: false, loaded: false,
-  players: {}, feed: [], talk: [], drafts: {}, me: null, season: null, SE: null, tick: 0,
+  players: {}, feed: [], talk: [], estates: {}, sub: 'wallet', alertBase: {}, drafts: {}, me: null, season: null, SE: null, tick: 0,
   tab: 'home', filter: 'all', sheet: null, saving: false, joinShown: false, rival: null, feedSeen: 0,
 };
 const LS = {
@@ -599,10 +667,26 @@ const nowChg = sym => px(sym, S.tick) / (S.tick ? S.SE.prices[sym][S.tick - 1] :
 const badge = s => `<span class="logo-b" style="background:${SECTORS[s.s].c}">${esc(s.a)}</span>`;
 const avaColor = id => AVA_COLORS[seedOf(String(id)) % AVA_COLORS.length];
 const ava = (p, lg, crown) => `<span class="ava${lg ? ' lg' : ''}" style="background:${p.bot ? '#e4e2ee' : avaColor(p.id)}">${crown ? '<span class="crown">👑</span>' : ''}${esc(p.bot ? '🤖' : (p.name || '?').slice(0, 1))}</span>`;
+const tOf = k => isLive(k) ? now() : tickTime(S.season.start, Math.max(0, Math.min(k, NT)));
+const EV = { step: -1, map: {} };
+function estAt(bid, t) {
+  const L = S.SE.ewalk[bid]; const rel = Math.max(0, t - S.season.start); const MIN = L.length - 1;
+  const m = Math.min(MIN - 1, Math.floor(rel / 60e3)); const f = Math.min(1, (rel - m * 60e3) / 60e3);
+  return Math.max(10000, Math.round(EM[bid].v0 * Math.exp(L[m] + f * (L[m + 1] - L[m])) / 10000) * 10000);
+}
+function estVal(bid, k) {
+  if (!isLive(k)) return estAt(bid, tOf(k));
+  const st = liveStep(now()); if (EV.step !== st) { EV.step = st; EV.map = {}; }
+  return EV.map[bid] ?? (EV.map[bid] = estAt(bid, now()));
+}
+const estOf = bid => { const e = S.estates[bid]; return e && e.season === S.season.sid && e.owner ? e : null; };
+const myEstates = p => ESTATES.filter(b => { const e = estOf(b.id); return e && e.owner === p.id; });
 function worth(p, k) {
   if (!p) return 0; let v = (p.cash || 0) + BONUS * pendingOf(p);
   for (const [s, q] of Object.entries(p.hold || {})) v += q * px(s, k);
   for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += Math.max(0, o.q * (2 * o.e - px(s, k)));
+  const pid = p.id || (p === S.me || p === S.players[S.uid] ? S.uid : null);
+  for (const b of ESTATES) { const e = estOf(b.id); if (e && pid && e.owner === pid && !e.destroyed) v += estVal(b.id, k); }
   return Math.round(v);
 }
 function activePlayers() { return Object.entries(S.players).filter(([, p]) => p && p.season === S.season.sid).map(([id, p]) => ({ id, ...p })); }
@@ -731,12 +815,135 @@ function bonusCard() {
 let crediting = false;
 async function autoCredit() {
   if (!S.me || S.readOnly || S.saving || crediting || (S.mode === 'live' && !S.loaded)) return;
-  const due = pendingOf(S.me); if (!due) return;
+  const due = pendingOf(S.me);
+  if (!due) { creditRent(); return; }
   crediting = true;
   const before = S.me; const me = JSON.parse(JSON.stringify(before));
   const n = earnedOf(before); me.cash += BONUS * due; me.bonusN = n; me.inflow = CASH0 + BONUS * n;
   const ok = await saveMe(me, before); crediting = false;
   if (ok) { toast(due > 1 ? `지원금 ${due}번 밀린 거 ${man(BONUS * due)}원이 들어왔어요` : '지원금 200만원이 들어왔어요'); renderAll(); }
+}
+
+async function creditRent() {
+  const me0 = S.me; const n = earnedOf(me0); const paid = me0.rentN ?? n; if (n <= paid) return;
+  const mine = myEstates({ id: S.uid }).filter(b => !estOf(b.id).destroyed);
+  const before = me0; const me = JSON.parse(JSON.stringify(before)); me.rentN = n;
+  const amt = Math.round(mine.reduce((a, b) => a + estVal(b.id, S.tick) * RENT, 0) * (n - paid));
+  me.cash += amt; me.rentTotal = (me.rentTotal || 0) + amt;
+  crediting = true; const ok = await saveMe(me, before); crediting = false;
+  if (ok && amt) { toast(`🏢 임대료 ${won(amt)}이 들어왔어요`); confetti(); renderAll(); }
+}
+
+/* ───────── real estate ───────── */
+async function saveEstate(bid, doc) {
+  if (S.mode === 'demo') { S.estates[bid] = doc; LS.set('demoEst:' + S.season.sid, Object.fromEntries(Object.entries(S.estates).filter(([, e]) => !e.bot))); return true; }
+  try { await S.db.doc('estates/' + bid).set(doc); S.estates[bid] = doc; return true; } catch { toast('부동산 정보를 저장하지 못했어요.'); return false; }
+}
+function estState(bid) {
+  const e = estOf(bid); if (!e) return 'free';
+  if (e.owner === S.uid) return e.destroyed ? 'mineBroken' : 'mine';
+  return e.destroyed ? 'otherBroken' : 'other';
+}
+function estPrice(bid, action) {
+  const e = estOf(bid), v = estVal(bid, S.tick);
+  return { buy: v, sell: v, destroy: Math.round(v * .5), restore: e && e.destroyed ? Math.round(e.destroyed.value * .5) : 0, force: e && e.destroyed ? e.destroyed.value * 2 : 0 }[action];
+}
+function renderEstate() {
+  const el = $('#tab-estate'); const k = S.tick;
+  const pins = ESTATES.map(b => {
+    const [x, y] = mapXY(b); const st = estState(b.id); const e = estOf(b.id);
+    const r = 9 + Math.sqrt(b.v0 / 3e6) * 2.4;
+    const col = st === 'free' ? '#ffffff' : st.startsWith('mine') ? 'var(--violet)' : avaColor(e.owner);
+    const broken = st.endsWith('Broken');
+    return `<g class="pin${broken ? ' broken' : ''}${st.startsWith('mine') ? ' mine' : ''}" data-estate="${b.id}" transform="translate(${x},${y})" role="button" tabindex="0" aria-label="${esc(b.n)}">
+      <circle r="${r + 7}" class="hit"/><circle r="${r}" fill="${broken ? '#ffe1e1' : col}" stroke="${broken ? 'var(--up)' : 'var(--ink)'}" stroke-width="2.5" ${broken ? 'stroke-dasharray="4 3"' : ''}/>
+      <text class="pi" y="${r * .38}" font-size="${r * 1.05}">${broken ? '💥' : '🏢'}</text>
+      <text class="pl" y="${r + 16}">${esc(b.n.length > 6 ? b.n.slice(0, 6) + '…' : b.n)}</text></g>`;
+  }).join('');
+  const river = [[126.80, 37.585], [126.85, 37.575], [126.89, 37.556], [126.93, 37.536], [126.965, 37.519], [127.00, 37.515], [127.04, 37.527], [127.07, 37.535], [127.10, 37.528], [127.13, 37.538], [127.18, 37.545]].map(([lo, la]) => mapXY({ lon: lo, lat: la }).join(',')).join(' ');
+  const dist = [['강서', 126.84, 37.555], ['마포', 126.91, 37.565], ['종로', 126.98, 37.59], ['성북', 127.03, 37.605], ['노원', 127.08, 37.625], ['영등포', 126.90, 37.515], ['용산', 126.975, 37.535], ['성동', 127.04, 37.555], ['광진', 127.085, 37.548], ['구로', 126.86, 37.49], ['관악', 126.95, 37.47], ['서초', 127.01, 37.475], ['강남', 127.055, 37.495], ['송파', 127.11, 37.50]];
+  const mineList = myEstates({ id: S.uid });
+  let h = `<div class="card estsum"><div><span class="dim" style="font-size:13px;font-weight:700">내 부동산</span><b class="num">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0))}</b></div>
+    <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">12시간 임대료</span><b class="num up">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k) * RENT), 0))}</b></div></div>
+    <div class="mapwrap"><svg class="seoul" viewBox="0 120 1000 440" role="img" aria-label="서울 부동산 지도">
+      <rect y="120" width="1000" height="440" rx="28" fill="var(--paper)"/>
+      <polyline points="${river}" fill="none" stroke="#cfe3ff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="${mapXY({ lon: 126.975, lat: 37.51 })[0]}" y="${mapXY({ lon: 126.975, lat: 37.51 })[1] + 14}" class="rv">한강</text>
+      ${dist.map(([n, lo, la]) => { const [x, y] = mapXY({ lon: lo, lat: la }); return `<text x="${x}" y="${y}" class="dn">${n}</text>`; }).join('')}
+      ${pins}</svg></div>
+    <div class="legend"><span><i style="background:#fff"></i>빈 건물</span><span><i style="background:var(--violet)"></i>내 건물</span><span><i style="background:#ffd23f"></i>친구 건물</span><span><i class="lb"></i>파괴됨</span></div>
+    <div class="sec"><div class="sec-h"><h2>건물 ${ESTATES.length}</h2><small>지도를 옆으로 밀어 보세요</small></div><div class="slist">`;
+  ESTATES.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).forEach(b => {
+    const st = estState(b.id), e = estOf(b.id), v = e && e.destroyed ? e.destroyed.value : estVal(b.id, k), c = estVal(b.id, k) / estAt(b.id, S.season.start) - 1;
+    const who = st === 'free' ? '매물' : st.startsWith('mine') ? '내 건물' : esc(nameOf(e.owner));
+    h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : st.startsWith('mine') ? 'var(--violet)' : st === 'free' ? '#9a98ad' : avaColor(e.owner)}">${st.endsWith('Broken') ? '💥' : '🏢'}</span>
+      <span class="sname"><b>${esc(b.n)}</b><small>${esc(b.a)} · ${who}${st.endsWith('Broken') ? ' · <span class="up">파괴됨</span>' : ''}</small></span>
+      <span class="sprice"><div class="p num">${man(v)}원</div><div class="c num ${e && e.destroyed ? 'flat' : cls(c)}">${e && e.destroyed ? '멈춤' : pctTxt(c)}</div></span></button>`;
+  });
+  h += `</div></div><p class="hint">건물 가격은 주식처럼 움직이고, 내 건물은 12시간마다 가치의 2%를 임대료로 줘요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
+  const mw = el.querySelector('.mapwrap'), sl = mw ? mw.scrollLeft : null;
+  el.innerHTML = h;
+  const mw2 = el.querySelector('.mapwrap'); if (mw2) mw2.scrollLeft = sl ?? 260;
+}
+function renderEstateSheet(b, sh) {
+  const bd = EM[sh.bid], k = S.tick, st = estState(bd.id), e = estOf(bd.id);
+  const v = estVal(bd.id, k), frozen = e && e.destroyed ? e.destroyed.value : null, c = v / estAt(bd.id, S.season.start) - 1;
+  const owner = !e ? '없음 (매물)' : e.owner === S.uid ? '나' : esc(nameOf(e.owner));
+  const can = S.me && !S.readOnly && !seasonOver();
+  const act = { free: ['buy', '매입하기', 'buy'], mine: ['sell', '매각하기', 'sell'], mineBroken: ['restore', '복구하기 (50%)', 'cover'], other: ['destroy', '💥 파괴하기 (50%)', 'short'], otherBroken: ['force', '강제 매입 (2배)', 'buy'] }[st];
+  const price = estPrice(bd.id, act[0]); const confirm = sh.confirm === act[0];
+  b.innerHTML = `<div class="shead"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : 'var(--violet)'}">${st.endsWith('Broken') ? '💥' : '🏢'}</span><div><h3>${esc(bd.n)}</h3><small>${esc(bd.a)} · 주인 ${owner}</small></div></div>
+    <div class="bigp"><div class="p num" id="estPrice">${won(frozen ?? v)}</div><div class="c num">${frozen ? '<span class="up">파괴되어 가치가 멈췄어요</span>' : `<span class="${cls(c)}">이번 주 ${pctTxt(c)}</span>`}</div></div>
+    <canvas class="chart" id="estChart" aria-label="${esc(bd.n)} 가격 차트"></canvas>
+    <div class="info"><div>12시간 임대료<b class="num">${won(v * RENT)}</b></div><div>${frozen ? '지금 시세' : '파괴 비용'}<b class="num">${won(frozen ? v : v * .5)}</b></div></div>
+    ${can ? `<button class="cta ${act[2]}" type="button" id="estAct" ${(S.me.cash < price && act[0] !== 'sell') || S.saving ? 'disabled' : ''}>${confirm ? `한 번 더 누르면 ${won(price)} 결제` : `${act[1]} · ${won(price)}`}</button>
+      ${S.me.cash < price && act[0] !== 'sell' ? `<p class="hint">현금이 ${won(price - S.me.cash)} 부족해요.</p>` : ''}` : `<p class="hint">${seasonOver() ? '시즌이 끝나서 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}
+    <p class="hint">${{ free: '사면 12시간마다 가치의 2%가 임대료로 들어와요.', mine: '친구가 50%를 내면 파괴할 수 있어요. 파괴되면 가치가 멈추고 임대료도 끊겨요.', mineBroken: '복구하지 않으면 누군가 2배 가격으로 강제 매입할 수 있어요.', other: '파괴하면 가치가 멈추고 주인의 총자산에서 빠져요. 파괴한 사람은 익명이에요.', otherBroken: '강제 매입하면 건물이 바로 복구되고 내 것이 돼요. 낸 돈은 시장으로 사라져요.' }[st]}</p>`;
+  requestAnimationFrame(() => { const cv = $('#estChart'); if (!cv) return; const arr = []; for (let i = 0; i <= k; i++) arr.push(estAt(bd.id, tickTime(S.season.start, i))); drawChart(cv, arr, { live: frozen || k >= NT ? null : { x: liveX(), v } }); });
+}
+async function estAction() {
+  const sh = S.sheet; const bid = sh.bid; const st = estState(bid);
+  const action = { free: 'buy', mine: 'sell', mineBroken: 'restore', other: 'destroy', otherBroken: 'force' }[st];
+  if (sh.confirm !== action) { sh.confirm = action; renderSheet(); return; }
+  const price = estPrice(bid, action); if (!S.me || S.saving || S.me.cash < price && action !== 'sell') return;
+  const e = estOf(bid), before = S.me; const me = JSON.parse(JSON.stringify(before));
+  let doc;
+  if (action === 'buy' || action === 'force') { me.cash -= price; if (me.rentN == null || !myEstates({ id: S.uid }).length) me.rentN = earnedOf(me); doc = { season: S.season.sid, owner: S.uid, paid: price, at: Date.now(), destroyed: null }; }
+  if (action === 'sell') { me.cash += price; doc = { season: S.season.sid, owner: null, paid: 0, at: Date.now(), destroyed: null }; }
+  if (action === 'destroy') { me.cash -= price; doc = { ...e, destroyed: { value: estVal(bid, S.tick), at: Date.now(), by: S.uid } }; }
+  if (action === 'restore') { me.cash -= price; doc = { ...e, destroyed: null }; }
+  me.cash = Math.round(me.cash);
+  S.saving = true; const ok = await saveMe(me, before); const ok2 = ok && await saveEstate(bid, doc); S.saving = false;
+  if (ok && ok2) {
+    addFeed({ kind: 'est_' + action, est: bid, amt: price });
+    toast({ buy: `🏢 ${EM[bid].n} 매입 완료!`, sell: `${EM[bid].n}을 팔았어요`, destroy: `💥 ${EM[bid].n} 파괴!`, restore: `🔧 ${EM[bid].n} 복구 완료`, force: `🏴 ${EM[bid].n} 강제 매입!` }[action]);
+    if (action === 'destroy') boom(); else if (action !== 'sell') confetti();
+    buzz();
+  }
+  sh.confirm = null; renderAll(); renderSheet();
+}
+
+/* ───────── excitement ───────── */
+function confetti(colors) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = document.createElement('canvas'); cv.className = 'fx'; document.body.appendChild(cv);
+  const dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const cols = colors || ['#6a4cf5', '#f2414f', '#ffd23f', '#16b27e', '#2f78ee'];
+  const P = Array.from({ length: 90 }, () => ({ x: W / 2 + (Math.random() - .5) * 80, y: H * .45, vx: (Math.random() - .5) * 12, vy: -Math.random() * 13 - 4, s: 5 + Math.random() * 6, r: Math.random() * 6, c: cols[Math.floor(Math.random() * cols.length)] }));
+  const t0 = performance.now();
+  const step = t => { const dt = t - t0; g.clearRect(0, 0, W, H); P.forEach(p => { p.vy += .45; p.x += p.vx; p.y += p.vy; p.r += .2; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.globalAlpha = Math.max(0, 1 - dt / 1500); g.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); g.restore(); }); if (dt < 1500) requestAnimationFrame(step); else cv.remove(); };
+  requestAnimationFrame(step);
+}
+const boom = () => { confetti(['#f2414f', '#ff9f1c', '#ffd23f', '#3a3346']); document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); };
+const buzz = (ms = 40) => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch {} };
+function holdingAlerts() {
+  if (!S.me) return;
+  for (const sym of Object.keys(S.me.hold || {})) {
+    if (!SM[sym]) continue; const v = px(sym, S.tick); const b = S.alertBase[sym];
+    if (!b) { S.alertBase[sym] = v; continue; }
+    const c = v / b - 1;
+    if (Math.abs(c) >= .04) { S.alertBase[sym] = v; toast(c > 0 ? `🚀 ${SM[sym].n} ${pctTxt(c)} 급등 중!` : `📉 ${SM[sym].n} ${pctTxt(c)} 급락 중…`); if (c > 0) buzz(30); return; }
+  }
 }
 
 /* ───────── casino ───────── */
@@ -781,6 +988,7 @@ async function playCasino(game, choice) {
     await sleep(2900); label = '룰렛';
   }
   const payout = Math.floor(bet * mult), net = payout - bet;
+  if (mult >= 2) { confetti(); buzz(80); } else if (mult === 0) buzz(20);
   const before = S.me; const me = JSON.parse(JSON.stringify(before));
   me.cash = Math.round(me.cash + net); me.casino = (me.casino || 0) + net;
   const ok = await saveMe(me, before);
@@ -835,7 +1043,11 @@ function renderWallet() {
       h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${o.q.toLocaleString()}주 · 진입 ${Math.round(o.e).toLocaleString()}원</small></span><span class="r num"><b>${won(v)}</b><br><small class="${cls(pl)}">${signWon(pl)}</small></span></button>`; });
     h += `</div></div>`;
   }
-  h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div></div>`;
+  const est = myEstates({ id: S.uid });
+  if (est.length) { h += `<div class="sec"><div class="sec-h"><h2>🏢 부동산</h2><small>12시간마다 임대료</small></div><div class="slist">`;
+    est.forEach(b => { const e = estOf(b.id), v = estVal(b.id, k); h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : 'var(--violet)'}">${e.destroyed ? '💥' : '🏢'}</span><span class="sname"><b>${esc(b.n)}</b><small>${e.destroyed ? '<span class="up">파괴됨 · 복구 필요</span>' : '임대료 ' + won(v * RENT)}</small></span><span class="sprice"><div class="p num">${won(e.destroyed ? 0 : v)}</div></span></button>`; });
+    h += `</div></div>`; }
+  h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div><div>받은 임대료<b class="num up">${won(m.rentTotal || 0)}</b></div></div>`;
   h += `<p class="hint">수익률은 시드 1,000만원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
   el.innerHTML = h;
 }
@@ -851,6 +1063,11 @@ function feedText(f) {
     case 'sell': return ['down', '💸', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 팔았어요`];
     case 'short': return ['gold', '🎯', `누군가 ${esc(st.n)}에 공매도를 걸었어요`];
     case 'casino': return [f.amt > 0 ? 'up' : 'down', f.amt > 0 ? '🎰' : '💥', f.amt > 0 ? `<b>${nm}</b>님이 ${esc(f.game)}에서 ${f.mult}배! <b>+${won(f.amt)}</b>` : `<b>${nm}</b>님이 ${esc(f.game)}에서 <b>${won(-f.amt)}</b> 날렸어요`];
+    case 'est_buy': return EM[f.est] ? ['up', '🏢', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) ${man(f.amt)}원에 샀어요`] : null;
+    case 'est_sell': return EM[f.est] ? ['down', '🏢', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 팔았어요`] : null;
+    case 'est_destroy': return EM[f.est] ? ['up', '💥', `누군가 <b>${esc(EM[f.est].n)}</b>을(를) 파괴했어요!`] : null;
+    case 'est_restore': return EM[f.est] ? ['gold', '🔧', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 복구했어요`] : null;
+    case 'est_force': return EM[f.est] ? ['up', '🏴', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 강제 매입했어요!`] : null;
     case 'spy': return ['gold', '🕵️', `누군가 <b>${esc(nameOf(f.target))}</b>님의 지갑을 엿봤어요`];
     default: return null;
   }
@@ -878,7 +1095,9 @@ function renderFeed() {
 }
 function renderAll() {
   renderHeader(); renderClock();
-  if (!(S.tab === 'casino' && C.busy)) ({ home: renderHome, market: renderMarket, casino: renderCasino, wallet: renderWallet, feed: renderFeed })[S.tab]();
+  if (S.tab === 'assets') { if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, estate: renderEstate, casino: renderCasino })[S.sub](); }
+  else ({ home: renderHome, market: renderMarket, feed: renderFeed })[S.tab]();
+  if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); }
   const latest = S.feed.find(f => f.season === S.season.sid && f.uid !== S.uid);
   $('#feedDot').hidden = S.tab === 'feed' || !latest || latest.ts <= S.feedSeen;
   if (S.sheet && (S.sheet.type === 'stock' || S.sheet.type === 'quick')) updateTradeEst();
@@ -886,7 +1105,10 @@ function renderAll() {
 }
 function goTab(name) {
   S.tab = name; document.querySelectorAll('.nav [data-tab]').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
-  ['home', 'market', 'casino', 'wallet', 'feed'].forEach(n => $('#tab-' + n).hidden = n !== name); renderAll(); window.scrollTo({ top: 0 });
+  ['home', 'market', 'feed'].forEach(n => $('#tab-' + n).hidden = n !== name);
+  $('#assetSeg').hidden = name !== 'assets'; ['wallet', 'estate', 'casino'].forEach(n => $('#tab-' + n).hidden = !(name === 'assets' && S.sub === n));
+  document.querySelectorAll('#assetSeg [data-sub]').forEach(x => x.setAttribute('aria-pressed', x.dataset.sub === S.sub));
+  renderAll(); window.scrollTo({ top: 0 });
 }
 
 /* ───────── chart ───────── */
@@ -912,7 +1134,7 @@ function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('
 function closeSheet() { const t = S.sheet && S.sheet.type; S.sheet = null; $('#sheetWrap').hidden = true; if (t === 'reveal') maybeJoin(); }
 function renderSheet() {
   const b = $('#sheetBody'); const sh = S.sheet; if (!sh) return;
-  ({ stock: renderStockSheet, quick: renderQuickSheet, player: renderPlayerSheet, join: renderJoinSheet, help: renderHelp, reveal: renderReveal })[sh.type](b, sh);
+  ({ estate: renderEstateSheet, stock: renderStockSheet, quick: renderQuickSheet, player: renderPlayerSheet, join: renderJoinSheet, help: renderHelp, reveal: renderReveal })[sh.type](b, sh);
 }
 function openDetail(sym) { S.chatJump = true; S.detail = sym; const d = $('#detail'); d.hidden = false; document.body.classList.add('noscroll'); renderDetail(); d.scrollTop = 0; }
 function closeDetail() { S.detail = null; $('#detail').hidden = true; document.body.classList.remove('noscroll'); }
@@ -1100,6 +1322,7 @@ async function doTrade() {
   S.saving = false;
   if (ok) {
     if (m !== 'cover') addFeed({ kind: m, sym, amt });
+    if (m === 'sell' && before.cost && before.cost[sym] && p / before.cost[sym] - 1 >= .1) { confetti(); buzz(60); }
     toast({ buy: `🛒 ${SM[sym].n} ${q.toLocaleString()}주 매수!`, sell: `💸 ${SM[sym].n} ${q.toLocaleString()}주 매도!`, short: `🎯 ${SM[sym].n} 공매도 진입`, cover: '공매도 상환 완료' }[m]);
     sh.q = 0; if (sh.type === 'quick') closeSheet(); renderAll(); if (S.sheet) renderSheet();
   } else updateTradeEst();
@@ -1158,8 +1381,9 @@ function renderHelp(b) {
     <li><span>5</span><span><b>공매도</b>는 내릴 때 돈을 벌어요. 누가 걸었는지는 비밀.</span></li>
     <li><span>6</span><span>친구 지갑은 <b>대표 종목 하나</b>만 보여요. 하루 한 번 🕵️ <b>엿보기</b>로 한 명의 지갑을 다 볼 수 있어요.</span></li>
     <li><span>7</span><span><b>12시간마다 200만원</b> 지원금이 자동으로 들어와요(0시, 12시). 앱을 안 열어도 쌓여요.</span></li>
-    <li><span>8</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 한 판 최대 200만원.</span></li>
-    <li><span>9</span><span>일요일 22시 마지막 라운드 결과로 이번 주 1등이 정해져요.</span></li>
+    <li><span>8</span><span><b>부동산</b>: 서울 건물을 사면 12시간마다 가치의 2%가 임대료로 들어와요. 남의 건물은 50%를 내고 파괴, 파괴된 건물은 2배로 강제 매입할 수 있어요.</span></li>
+    <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 한 판 최대 200만원.</span></li>
+    <li><span>10</span><span>일요일 22시 마지막 라운드 결과로 이번 주 1등이 정해져요.</span></li>
   </ul>
   <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>${S.fb && S.mode === 'live' ? '<button class="cta soft" type="button" id="logoutBtn">로그아웃</button>' : ''}`;
 }
@@ -1251,6 +1475,9 @@ function loadDemo() {
   STOCKS.forEach(st => { if (TR() < .45) { const n = 1 + Math.floor(TR() * 3); for (let i = 0; i < n; i++) { const bi = Math.floor(TR() * 3); botTalk.push({ id: 'bt' + (c0++), bot: true, sym: st.id, uid: 'bot' + bi, text: pick(TR, LINES), ts: now() - Math.floor(TR() * 36e5 * 20), season: S.season.sid, likes: TR() < .5 ? { ['bot' + ((bi + 1) % 3)]: true } : {} }); } } });
   Object.values(S.players).forEach(p => { if (!p.bot) return; p.votes = {}; STOCKS.forEach(st => { if (TR() < .5) p.votes[st.id] = { k: S.tick, sid: S.season.sid, d: TR() < .55 ? 'up' : 'down' }; }); });
   S.talk = [...LS.get('demoTalk', []), ...botTalk];
+  const ER = rng('est:' + S.season.sid); const bots = ['bot0', 'bot1', 'bot2']; const est = {};
+  ESTATES.forEach(b => { if (ER() < .3) est[b.id] = { season: S.season.sid, owner: bots[Math.floor(ER() * 3)], paid: b.v0, at: S.season.start, destroyed: ER() < .25 ? { value: Math.round(b.v0 * (.9 + ER() * .2) / 10000) * 10000, at: S.season.start, by: 'bot0' } : null, bot: true }; });
+  S.estates = { ...est, ...LS.get('demoEst:' + S.season.sid, {}) };
 }
 function startDemo() { S.mode = 'demo'; S.loaded = true; loadDemo(); renderAll(); if (!maybeReveal()) maybeJoin(); autoCredit(); }
 
@@ -1310,6 +1537,7 @@ function startLive(db, uid) {
     autoCredit();
   }, () => { clearTimeout(timer); S.loaded = true; toast('순위를 불러오지 못했어요.'); renderAll(); });
   db.collection('talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.detail) renderDetail(); if (S.tab === 'home' || S.tab === 'market') renderAll(); }, () => {});
+  db.collection('estates').onSnapshot(snap => { const n = {}; snap.docs.forEach(d => n[d.id] = d.data()); S.estates = n; renderAll(); if (S.sheet && S.sheet.type === 'estate') renderSheet(); }, () => {});
   db.collection('feed').orderBy('ts', 'desc').limit(40).onSnapshot(snap => { S.feed = snap.docs.map(d => d.data()); renderAll(); }, () => {});
 }
 async function boot() {
@@ -1326,9 +1554,11 @@ async function boot() {
 
 /* ───────── events ───────── */
 document.addEventListener('click', e => {
+  const pin = e.target.closest('[data-estate]'); if (pin) { openSheet('estate', { bid: pin.dataset.estate }); return; }
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
-  if (t.dataset.tabGo) { goTab(t.dataset.tabGo); return; }
+  if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
+  if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
   if (t.dataset.bet) { S.bet = +t.dataset.bet; LS.set('bet', S.bet); renderCasino(); return; }
   if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
   if (t.dataset.filter) { S.filter = t.dataset.filter; renderMarket(); return; }
@@ -1347,6 +1577,7 @@ document.addEventListener('click', e => {
   if (t.dataset.frac) { const mx = maxQty(S.sheet.m, S.sheet.sym); $('#qty').value = Math.floor(mx * +t.dataset.frac); updateTradeEst(); return; }
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
+    case 'estAct': estAction(); break;
     case 'googleBtn': t.disabled = true; S.fb.signIn().catch(() => toast('로그인하지 못했어요. 다시 시도해 주세요.')).finally(() => { t.disabled = false; }); break;
     case 'demoBtn': $('#login').hidden = true; document.body.classList.remove('noscroll'); startDemo(); break;
     case 'logoutBtn': S.fb.signOut().then(() => location.reload()); break;
@@ -1374,7 +1605,10 @@ setInterval(() => {
     const old = {}; STOCKS.forEach(x => old[x.id] = px(x.id, S.tick));
     S.lastLive = ls; LV.flash = {};
     STOCKS.forEach(x => { const v = px(x.id, S.tick); if (old[x.id] && v !== old[x.id]) LV.flash[x.id] = v > old[x.id] ? 'u' : 'd'; });
+    const w0 = S.me ? worth(S.me, S.tick) : 0;
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
+    if (S.me) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
+    holdingAlerts();
     const sh = S.sheet;
     if (sh && sh.sym && (sh.type === 'stock' || sh.type === 'quick')) {
       const lp = $('#livePrice'), pc = $('#livePct'); const v = px(sh.sym, S.tick), c = nowChg(sh.sym);
