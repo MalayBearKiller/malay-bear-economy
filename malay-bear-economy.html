@@ -1697,9 +1697,8 @@ function renderInvest() {
   }
   if (S.inv === 'stock') {
     const heldE = EQ.filter(x => exitMode(x.id));
-    if (S.eqSec == null) S.eqSec = heldE.length ? 'mine' : Object.keys(SECTORS)[0];
-    if (S.eqSec === 'mine' ? !heldE.length : !SECTORS[S.eqSec]) S.eqSec = Object.keys(SECTORS)[0];
-    const secsE = [...(heldE.length ? [['mine', `보유 ${heldE.length}`]] : []), ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
+    if (!SECTORS[S.eqSec]) S.eqSec = Object.keys(SECTORS)[0];
+    const secsE = Object.entries(SECTORS).map(([k2, v]) => [k2, v.n]);
     const he = `<div class="sec"><div class="sec-h"><h2>주식</h2>${posBtn || '<small>가격 높은 순</small>'}</div>
       <div class="chips" role="group" aria-label="주식 분류">${secsE.map(([k2, l]) => `<button type="button" data-eqsec="${k2}" aria-pressed="${S.eqSec === k2}">${l}</button>`).join('')}</div>
       <div class="slist">${byPrice(S.eqSec === 'mine' ? heldE : EQ.filter(x => x.s === S.eqSec)).map(stockRow).join('')}</div></div>
@@ -1709,9 +1708,8 @@ function renderInvest() {
   }
   let h = '';
   const held = STOCKS.filter(x => exitMode(x.id));
-  if (S.homeSec == null) S.homeSec = held.length ? 'mine' : Object.keys(COIN_CATS)[0];
-  if (S.homeSec === 'mine' ? !held.length : !COIN_CATS[S.homeSec]) S.homeSec = Object.keys(COIN_CATS)[0];
-  const secs = [...(held.length ? [['mine', `보유 ${held.length}`]] : []), ...Object.entries(COIN_CATS).map(([k2, v]) => [k2, v.n])];
+  if (!COIN_CATS[S.homeSec]) S.homeSec = Object.keys(COIN_CATS)[0];
+  const secs = Object.entries(COIN_CATS).map(([k2, v]) => [k2, v.n]);
   h += `<div class="sec"><div class="sec-h"><h2>코인</h2>${posBtn || '<small>가격 높은 순</small>'}</div>
     <div class="chips" role="group" aria-label="종목 분류">${secs.map(([k2, l]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${l}</button>`).join('')}</div>
     <div class="slist">${byPrice(S.homeSec === 'mine' ? held : STOCKS.filter(x => x.cc === S.homeSec)).map(stockRow).join('')}</div></div>`;
