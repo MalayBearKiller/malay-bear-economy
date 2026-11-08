@@ -2080,9 +2080,9 @@ function renderCasino() {
   const mx = S.me.cash;
   const bets = [['0.1', '10%'], ['0.25', '25%'], ['0.5', '50%'], ['1', '🔥올인']];
   let h = `<div class="card bal"><span class="dim" style="font-weight:700;font-size:13px">현금</span><b class="num">${won(S.me.cash)}</b></div>
-    <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>내 총자산 기준</small></div>
+    <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>내 총자산 기준 · 한 판 최대 10억</small></div>
     <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${String(S.betPct) === v}">${l}</button>`).join('')}</div>
-    <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b>${bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부 올인!)</span>' : ''}</p></div>
+    <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b>${bet >= BET_CAP ? ' <span class="dim">(한 판 최대)</span>' : bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부 올인!)</span>' : ''}</p></div>
     <div class="card game"><div><h3>홀짝</h3><p class="desc">맞히면 1.95배. 50% 확률.</p></div>
       <div class="coin" id="coin">${C.coinFace}</div>
       <p class="res" id="coinMsg">${C.coinMsg}</p>
@@ -2099,7 +2099,7 @@ function renderCasino() {
 function betAmount() {
   if (!S.me) return 0;
   const raw = worth(S.me, S.tick) * (+S.betPct || .1);
-  return Math.max(0, Math.min(Math.floor(S.me.cash / 10000) * 10000, Math.round(raw / 10000) * 10000));
+  return Math.max(0, Math.min(BET_CAP, Math.floor(S.me.cash / 10000) * 10000, Math.round(raw / 10000) * 10000)); // 한 판 최대 10억
 }
 function updateBetLabels() {
   const b = betAmount(), ok = b >= MINBET && !C.busy;
@@ -2107,6 +2107,7 @@ function updateBetLabels() {
   const sp = $('#spinBtn'); if (sp) { sp.textContent = `${won(b)} 걸고 돌리기`; sp.disabled = !ok; }
   document.querySelectorAll('[data-coin]').forEach(x => x.disabled = !ok);
 }
+const BET_CAP = 1_000_000_000;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function playCasino(game, choice) {
   if (!S.me || S.saving || C.busy || seasonOver()) { if (seasonOver()) toast('시즌이 끝나서 게임도 닫혔어요'); return; }
