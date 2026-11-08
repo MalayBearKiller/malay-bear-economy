@@ -125,6 +125,10 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .fxcard small{color:var(--dim);font-weight:700;margin-left:auto}
 .posbtn{background:var(--violet);color:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:800}
 .estbtns{display:flex;flex-direction:column;gap:8px}
+.shopgame{display:flex;align-items:center;gap:12px;padding:16px;width:100%;text-align:left;margin-bottom:14px;background:var(--violet-bg)}
+.shopgame .si-ic{font-size:28px}.shopgame .si-t{flex:1}.shopgame .si-t b{display:block;font-size:17px;font-weight:800}.shopgame .si-t small{color:var(--dim);font-weight:600;font-size:12.5px}.shopgame .si-go{font-size:24px;color:var(--violet);font-weight:800}
+.back-link{font-weight:800;color:var(--violet);font-size:14px;padding:4px 0;margin-bottom:10px}
+.minimap{margin-top:12px}.minimap svg{width:100%;height:auto;display:block}
 .shopitem{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .shopitem .si-ic{font-size:26px}
 .shopitem .si-t{flex:1;min-width:0}
@@ -568,7 +572,6 @@ body.noscroll{overflow:hidden}
   <section class="tab sec" id="tab-wallet" style="gap:22px" hidden></section>
   <section class="tab" id="tab-invest" hidden></section>
   <section class="tab sec" id="tab-shop" style="gap:18px" hidden></section>
-  <section class="tab sec" id="tab-casino" style="gap:18px" hidden></section>
 </main>
 
 <nav class="nav" aria-label="메뉴">
@@ -2009,9 +2012,15 @@ function updateMap() {
   applyMapView();
 }
 // 투자 > 부동산: 내 부동산 요약 + 건물 목록(10개씩)
+// 움직이지 않는 작은 지도: 구마다 1등 땅주인 색으로만 칠해요 (내 땅은 보라)
+function miniMapSVG() {
+  const top = topOwners();
+  return `<svg viewBox="0 30 866 715" role="img" aria-label="구별 땅주인 현황">${DISTRICTS.map(d => { const u = top[d.n];
+    return `<path d="${d.d}" fill="${!u ? '#eceaf4' : u === S.uid ? '#6a4cf5' : ownerColor(u)}" fill-opacity="${u ? (u === S.uid ? .85 : .6) : 1}" stroke="#fff" stroke-width="2"/>`; }).join('')}</svg>`;
+}
 function renderEstList(host) {
   const k = S.tick;
-  if (!host.querySelector('#estList')) host.innerHTML = `<div class="card estsum" id="estSum"></div>
+  if (!host.querySelector('#estList')) host.innerHTML = `<div class="card estsum" id="estSum"></div><div class="card minimap" id="miniMap"></div>
       <div class="sec"><div class="sec-h"><h2>건물 <span id="estCount"></span></h2><span class="rpager" id="estPager"></span></div><div class="slist" id="estList"></div></div>
       <p class="hint">건물 값은 주식처럼 움직이지만 정해진 최저가 아래로는 안 내려가요. 내 건물은 1시간마다 가치의 0.1%를 월세로 주고, 유지비 0.02%와 재산세 0.02%가 빠져요. 부동산 합계가 10억을 넘으면 넘는 부분에 종부세 0.03%가 더 붙어요. 살 때 취득세 4%, 팔 때 차익의 22%를 양도세로 내요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
   const mineList = myEstates({ id: S.uid });
@@ -2019,6 +2028,7 @@ function renderEstList(host) {
     <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">시간당 순수익 · <span class="num" id="rentCd">${mmss((rentHour(now()) + 1) * H - now())}</span></span><b class="num ${cls(rentPerHour())}">${signWon(rentPerHour())}</b></div>
     ${mineList.length ? (() => { const hb = estHourly(); return `<div class="costline">월세 <b class="up">+${won(hb.rent)}</b> · 유지비 <b class="down">-${won(hb.maint)}</b> · 재산세${hb.jtax ? '·종부세' : ''} <b class="down">-${won(hb.tax)}</b></div>`; })() : ''}`;
   let h = '';
+  const mm = $('#miniMap'); if (mm && (!S.liveOnly || !mm.firstChild)) mm.innerHTML = miniMapSVG();
   const EST = shownEst(), EPG = 10, ePages = Math.ceil(EST.length / EPG); $('#estCount').textContent = EST.length; S.estPage = Math.max(0, Math.min(S.estPage || 0, ePages - 1));
   $('#estPager').innerHTML = `<button type="button" data-estpg="-1" aria-label="이전 건물" ${S.estPage ? '' : 'disabled'}>◀</button><small class="num">비싼 순 ${S.estPage * EPG + 1}~${Math.min(EST.length, (S.estPage + 1) * EPG)}</small><button type="button" data-estpg="1" aria-label="다음 건물" ${S.estPage < ePages - 1 ? '' : 'disabled'}>▶</button>`;
   EST.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).slice(S.estPage * EPG, (S.estPage + 1) * EPG).forEach(b => {
@@ -2272,36 +2282,42 @@ function renderWallet() {
   const cashV = m.cash + BONUS * pendingOf(m);
   const parts = [['💵 현금', cashV, '#16b27e'], ['🇺🇸 달러', usdV, '#0f9d58'], ['📈 주식', eqV, '#2b2745'], ['🪙 코인', inv, '#6a4cf5'], ['🚀 레버리지', levV, '#f2414f'], ['🎯 공매도', shV, '#2f78ee'], ['🏢 부동산', estV, '#ff9f1c']];
   const tot = parts.reduce((a, x) => a + Math.max(0, x[1]), 0) || 1;
-  let h = `<div class="card wsum"><div class="ws-top"><div><small>총자산</small><b class="num">${won(W)}</b></div>${rk ? `<span class="ws-rk">${rk}위</span>` : ''}</div>
-    <div class="ws-bar">${parts.filter(x => x[1] > 0).map(x => `<i style="width:${(x[1] / tot * 100).toFixed(2)}%;background:${x[2]}"></i>`).join('')}</div>
-    <div class="ws-rows">${parts.filter((x, i) => i === 0 || x[1] > 0).map(x => `<div><span><i style="background:${x[2]}"></i>${x[0]}</span><b class="num">${won(x[1])}</b><small class="num">${(x[1] / tot * 100).toFixed(1)}%</small></div>`).join('')}</div></div>`;
-  const hs = Object.entries(m.hold || {}).filter(([s]) => SM[s]);
-  h += `<div class="sec"><div class="sec-h"><h2>보유 종목</h2><small>평균단가 대비</small></div><div class="slist">`;
-  if (!hs.length) h += `<div class="empty">아직 산 종목이 없어요. 종목 탭에서 골라보세요.</div>`;
+  if (!['stock', 'coin', 'estate', 'profile'].includes(S.wsub)) S.wsub = 'stock';
+  const inSub = x => S.wsub === 'coin' ? !isEq(x) : isEq(x);
+  let h = `<div class="card wsum"><div class="ws-top"><div><small>총자산</small><b class="num">${won(W)}</b></div>${rk ? `<span class="ws-rk">${rk}위</span>` : ''}</div></div>
+    <div class="seg" role="group" aria-label="내 자산 보기">${[['stock', '주식'], ['coin', '코인'], ['estate', '부동산'], ['profile', '내 프로필']].map(([v, l]) => `<button type="button" data-wsub="${v}" aria-pressed="${S.wsub === v}">${l}</button>`).join('')}</div>`;
+  if (S.wsub === 'stock' || S.wsub === 'coin') {
+  const hs = Object.entries(m.hold || {}).filter(([s]) => SM[s] && inSub(s));
+  h += `<div class="sec"><div class="sec-h"><h2>${S.wsub === 'coin' ? '보유 코인' : '보유 주식·달러'}</h2><small>평균단가 대비</small></div><div class="slist">`;
+  if (!hs.length) h += `<div class="empty">아직 산 게 없어요. 투자 탭에서 골라보세요.</div>`;
   hs.forEach(([s, q]) => { const st = SM[s], p = px(s, k), avg = (m.cost || {})[s] || p, pl = (p - avg) * q, r = p / avg - 1;
     h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${QT(s, q)} · 평단 ${PW(s, avg)}</small></span><span class="r num"><b>${won(q * p)}</b><br><small class="${cls(pl)}">${signWon(pl)} (${pctTxt(r)})</small></span></button>`; });
   h += `</div></div>`;
-  const ss = Object.entries(m.shorts || {}).filter(([s]) => SM[s]);
+  const ss = Object.entries(m.shorts || {}).filter(([s]) => SM[s] && inSub(s));
   if (ss.length) {
     h += `<div class="sec"><div class="sec-h"><h2>🎯 공매도</h2><small>내리면 이득</small></div><div class="slist">`;
     ss.forEach(([s, o]) => { const st = SM[s], p = px(s, k), v = Math.max(0, o.q * (2 * o.e - p)), pl = v - o.q * o.e;
       h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${QT(s, o.q)} · 진입 ${PW(s, o.e)}</small></span><span class="r num"><b>${won(v)}</b><br><small class="${cls(pl)}">${signWon(pl)}</small></span></button>`; });
     h += `</div></div>`;
   }
-  const lv = Object.entries(m.lev || {}).filter(([s]) => SM[s]);
+  const lv = Object.entries(m.lev || {}).filter(([s]) => SM[s] && inSub(s));
   if (lv.length) { h += `<div class="sec"><div class="sec-h"><h2>🚀 레버리지</h2><small>진입가 대비 약 1/배수 떨어지면 청산 💀</small></div><div class="slist">`;
     lv.forEach(([s, o]) => { const st = SM[s], pr = px(s, k), r = levROE(o, pr, s); h += `<button class="pos" type="button" data-quick="levclose" data-sym="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="tag rv">${o.x}배 ${levSide(o)}</span></b><small class="dim num">${QT(s, o.q)} · 진입 ${PW(s, o.e)}</small></span><span class="r num"><b>${won(levVal(o, pr, s))}</b><br><small class="${cls(r)}" style="font-size:15px;font-weight:900">${pctTxt(r)}</small></span></button>`; });
     h += `</div></div>`; }
+  }
   const est = myEstates({ id: S.uid });
-  if (est.length) { h += `<div class="sec"><div class="sec-h"><h2>🏢 부동산</h2><small>시간당 순수익 ${signWon(rentPerHour())}</small></div><div class="slist">`;
+  if (S.wsub === 'estate' && !est.length) h += `<div class="empty">아직 건물이 없어요. 투자 > 부동산에서 사보세요.</div>`;
+  if (S.wsub === 'estate' && est.length) { h += `<div class="sec"><div class="sec-h"><h2>🏢 부동산</h2><small>시간당 순수익 ${signWon(rentPerHour())}</small></div><div class="slist">`;
     est.forEach(b => { const e = estOf(b.id), v = estVal(b.id, k); h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : 'var(--violet)'}">${e.destroyed ? '💥' : ICON[b.t]}</span><span class="sname"><b>${esc(b.n)}</b><small>${e.destroyed ? '<span class="up">파괴됨 · 복구 필요</span>' : '시간당 월세 +' + won(v * RENT)}</small></span><span class="sprice"><div class="p num">${won(e.destroyed ? 0 : v)}</div></span></button>`; });
     h += `</div></div>`; }
+  if (S.wsub === 'profile') {
   h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div><div>받은 월세<b class="num up">${won(m.rentTotal || 0)}</b></div><div>낸 유지비·세금<b class="num down">${won(m.taxTotal || 0)}</b></div></div>`;
   h += `<div class="sec"><div class="sec-h"><h2>프로필</h2></div>
     <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)}</b><small>사진은 모두에게 보여요</small></span></div>
     <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button>
 </div></div>`;
   h += `<p class="hint">수익률은 시드 10억원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
+  }
   el.innerHTML = h;
 }
 
@@ -2366,7 +2382,11 @@ async function postBoard() {
 // 🛍️ 상점
 function renderShop() {
   const el = $('#tab-shop');
-  el.innerHTML = `<div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
+  if (S.shopView === 'game') {
+    if (!el.querySelector('#tab-casino')) el.innerHTML = `<button type="button" class="back-link" id="shopBack">← 상점으로</button><section class="sec" id="tab-casino" style="gap:18px"></section>`;
+    if (!C.busy) renderCasino(); return;
+  }
+  el.innerHTML = `<button type="button" class="card shopgame" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>게임하러 가기</b><small>홀짝 · 룰렛 · 한 판 최대 10억</small></span><span class="si-go">›</span></button><div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
     <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
 }
 // 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
@@ -2385,7 +2405,7 @@ function renderFeed() {
 let chipsTouchAt = 0;
 function renderAll() {
   renderHeader(); renderClock();
-  if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, casino: renderCasino })[S.sub](); }
+  if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) renderWallet(); }
   else if (!(S.liveOnly && (S.tab === 'home' || S.tab === 'market' || S.tab === 'invest') && Date.now() - chipsTouchAt < 1500)) ({ home: renderHome, market: renderMarket, invest: renderInvest, shop: renderShop })[S.tab]();
   if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); drawEstChart(); }
   const latest = S.feed.find(f => f.uid !== S.uid && brag(f));
@@ -2396,9 +2416,9 @@ function renderAll() {
 }
 function goTab(name) {
   S.tab = name; document.querySelectorAll('.nav [data-tab]').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
-  if (S.sub === 'estate') S.sub = 'wallet';
+  S.sub = 'wallet';
   ['home', 'market', 'invest', 'shop'].forEach(n => $('#tab-' + n).hidden = n !== name);
-  $('#assetSeg').hidden = name !== 'assets'; ['wallet', 'casino'].forEach(n => $('#tab-' + n).hidden = !(name === 'assets' && S.sub === n));
+  $('#assetSeg').hidden = true; $('#tab-wallet').hidden = name !== 'assets';
   document.querySelectorAll('#assetSeg [data-sub]').forEach(x => x.setAttribute('aria-pressed', x.dataset.sub === S.sub));
   renderAll(); window.scrollTo({ top: 0 });
 }
@@ -2939,6 +2959,7 @@ document.addEventListener('click', e => {
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { if (t.dataset.sub === 'estate') { goTab('estate'); return; } S.sub = t.dataset.sub; goTab('assets'); return; }
+  if (t.dataset.wsub) { S.wsub = t.dataset.wsub; renderWallet(); return; }
   if (t.dataset.estact) { estAction(t.dataset.estact); return; }
   if (t.dataset.tbag) { teabag(t.dataset.tbag); return; }
   if (t.dataset.estpg) { S.estPage = (S.estPage || 0) + +t.dataset.estpg; renderInvest(); return; }
@@ -2972,6 +2993,8 @@ document.addEventListener('click', e => {
     case 'helpBtn': openSheet('help'); break;
     case 'boardBtn': openBoard(); break;
     case 'posOpen': openSheet('pos'); break;
+    case 'shopGame': S.shopView = 'game'; renderShop(); window.scrollTo(0, 0); break;
+    case 'shopBack': S.shopView = null; renderShop(); break;
     case 'boardBack': closeBoard(); break;
     case 'boardSend': postBoard(); break;
     case 'photoBtn': pickPhoto(); break;
