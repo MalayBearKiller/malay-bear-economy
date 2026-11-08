@@ -78,6 +78,18 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .idxmini .lab{font-size:13px;font-weight:800;color:var(--dim);margin-right:8px}
 .idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
 .idxmini > .num{font-size:17px;font-weight:900}
+.wsum{padding:16px}
+.ws-top{display:flex;justify-content:space-between;align-items:flex-start}
+.ws-top small{display:block;font-size:13px;font-weight:700;color:var(--dim)}
+.ws-top b{display:block;font-size:26px;font-weight:900;letter-spacing:-.03em}
+.ws-rk{background:var(--paper);border-radius:99px;padding:5px 12px;font-weight:800;font-size:14px}
+.ws-bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--paper);margin:14px 0 10px}
+.ws-bar i{display:block;height:100%}
+.ws-rows > div{display:grid;grid-template-columns:1fr auto 52px;gap:8px;align-items:center;padding:6px 0;font-size:14px}
+.ws-rows span{display:flex;align-items:center;gap:8px;font-weight:700}
+.ws-rows span i{width:8px;height:8px;border-radius:50%}
+.ws-rows b{font-weight:800}
+.ws-rows small{text-align:right;color:var(--dim);font-weight:700}
 .mycard{padding:14px 16px}
 .mycard .mc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mycard small{display:block;font-size:12.5px;font-weight:700;color:var(--dim)}
@@ -266,7 +278,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .pointer{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:20px solid var(--ink);z-index:2}
 .hub{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 3px var(--paper2)}
 
-.assetseg{grid-template-columns:repeat(3,1fr);margin-bottom:14px}
+.assetseg{grid-template-columns:repeat(2,1fr);margin-bottom:14px}
 .estsum{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 10px;padding:14px 16px}
 .costline{flex-basis:100%;font-size:12.5px;font-weight:600;color:var(--dim);padding-top:8px;border-top:1px solid var(--paper2)}
 .estsum b{display:block;font-size:17px;font-weight:800}
@@ -509,7 +521,7 @@ body.noscroll{overflow:hidden}
 <main class="wrap" style="padding-top:18px">
   <section class="tab sec" id="tab-home" style="gap:22px"></section>
   <section class="tab sec" id="tab-market" style="gap:22px" hidden></section>
-  <div class="seg assetseg" id="assetSeg" hidden role="group" aria-label="자산 메뉴"><button type="button" data-sub="wallet" aria-pressed="true">내 자산</button><button type="button" data-sub="estate" aria-pressed="false">부동산</button><button type="button" data-sub="casino" aria-pressed="false">게임</button></div>
+  <div class="seg assetseg" id="assetSeg" hidden role="group" aria-label="자산 메뉴"><button type="button" data-sub="wallet" aria-pressed="true">내 자산</button><button type="button" data-sub="casino" aria-pressed="false">게임</button></div>
   <section class="tab sec" id="tab-wallet" style="gap:22px" hidden></section>
   <section class="tab sec" id="tab-estate" style="gap:16px" hidden></section>
   <section class="tab sec" id="tab-casino" style="gap:18px" hidden></section>
@@ -518,8 +530,8 @@ body.noscroll{overflow:hidden}
 
 <nav class="nav" aria-label="메뉴">
   <div class="nav-in" role="tablist">
-    <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>홈</button>
-    <button type="button" role="tab" data-tab="market" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8 3 3"/><path d="M3 21h18"/></svg>종목</button>
+    <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8 3 3"/><path d="M3 21h18"/></svg>종목</button>
+    <button type="button" role="tab" data-tab="estate" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 21V7l6-3v17M10 21V10l10 3v8M3 21h18"/></svg>부동산</button>
     <button type="button" role="tab" data-tab="assets" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg>자산</button>
     <button type="button" role="tab" data-tab="feed" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>소식<i class="dot" id="feedDot" hidden></i></button>
   </div>
@@ -668,6 +680,7 @@ const ESTATES = [
   B('KKU', '건국대', '광진구', 'univ', 37.5420, 127.0790, 6e11, 4.5e11, .02),
   B('KHU', '경희대', '동대문구', 'univ', 37.5967, 127.0518, 6e11, 4.5e11, .02),
   B('CAU', '중앙대', '동작구', 'univ', 37.5050, 126.9571, 5e11, 4e11, .02),
+  B('KWU', '광운대', '노원구', 'univ', 37.6195, 127.0583, 3e11, 2.2e11, .02),
   B('GCD', '고척스카이돔', '구로구', 'stadium', 37.4982, 126.8671, 3e11, 2.4e11, .03),
   B('MDS', '목동 신시가지 (한 채)', '양천구', 'apt', 37.5300, 126.8750, 2e9, 1.4e9, .04),
   B('MGR', '마곡 R&D센터', '강서구', 'office', 37.5600, 126.8300, 2e11, 1.5e11, .035),
@@ -1205,7 +1218,7 @@ function renderHeader() {
 function renderClock() {
   const t = now();
   const bc = $('#bonusCd'); if (bc) bc.textContent = hms(nextSlotAt(t) - t);
-  const rc = $('#rentCd'); if (rc) rc.textContent = mmss(rentHour(t) * H + H + S.season.start - t);
+  const rc = $('#rentCd'); if (rc) rc.textContent = mmss((rentHour(t) + 1) * H - t);
   if (!$('#nextLab')) return;
   if (seasonOver()) { $('#nextLab').textContent = '시즌 끝! 새 시즌까지'; $('#nextName').textContent = '월요일 0시'; $('#countdown').textContent = hms(S.season.start + 7 * D - t); return; }
   $('#nextLab').textContent = '다음 장 마감까지';
@@ -1535,20 +1548,22 @@ function renderEstate() {
       <div class="mapbox"><svg id="seoulMap" class="seoul" viewBox="0 30 866 715" role="img" aria-label="서울 부동산 지도"><g id="gDist"></g><g id="gPins"></g></svg>
         <div class="mapctl"><button type="button" id="zoomIn" aria-label="확대">+</button><button type="button" id="zoomOut" aria-label="축소">−</button><button type="button" id="zoomReset" aria-label="서울 전체 보기">⤢</button></div>
         <div class="mapinfo" id="zoomInfo">구를 누르면 확대돼요</div></div>
-      <div class="sec"><div class="sec-h"><h2>건물 ${ESTATES.length}</h2><small>비싼 순</small></div><div class="slist" id="estList"></div></div>
+      <div class="sec"><div class="sec-h"><h2>건물 ${ESTATES.length}</h2><span class="rpager" id="estPager"></span></div><div class="slist" id="estList"></div></div>
       <p class="hint">건물 값은 주식처럼 움직이지만 정해진 최저가 아래로는 안 내려가요. 내 건물은 1시간마다 가치의 0.1%를 월세로 주고, 유지비 0.02%와 재산세 0.02%가 빠져요. 부동산 합계가 10억을 넘으면 넘는 부분에 종부세 0.03%가 더 붙어요. 살 때 취득세 4%, 팔 때 차익의 22%를 양도세로 내요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
     bindMap($('#seoulMap'));
   }
   if (!S.mapV) { const h = MAP.w * mapAR(); S.mapV = { x: MAP.x, y: MAP.y + MAP.h / 2 - h / 2, w: MAP.w, h }; }
   const mineList = myEstates({ id: S.uid });
   $('#estSum').innerHTML = `<div><span class="dim" style="font-size:13px;font-weight:700">내 부동산 ${mineList.length}곳</span><b class="num">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0))}</b></div>
-    <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">시간당 순수익 · <span class="num" id="rentCd">${mmss(rentHour(now()) * H + H + S.season.start - now())}</span></span><b class="num ${cls(rentPerHour())}">${signWon(rentPerHour())}</b></div>
+    <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">시간당 순수익 · <span class="num" id="rentCd">${mmss((rentHour(now()) + 1) * H - now())}</span></span><b class="num ${cls(rentPerHour())}">${signWon(rentPerHour())}</b></div>
     ${mineList.length ? (() => { const hb = estHourly(); return `<div class="costline">월세 <b class="up">+${won(hb.rent)}</b> · 유지비 <b class="down">-${won(hb.maint)}</b> · 재산세${hb.jtax ? '·종부세' : ''} <b class="down">-${won(hb.tax)}</b></div>`; })() : ''}`;
   if (!S.liveOnly || !$('#gDist').childElementCount) $('#gDist').innerHTML = districtSVG();
   $('#gPins').innerHTML = pinsSVG();
   applyMapView();
   let h = '';
-  ESTATES.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).forEach(b => {
+  const EPG = 10, ePages = Math.ceil(ESTATES.length / EPG); S.estPage = Math.max(0, Math.min(S.estPage || 0, ePages - 1));
+  $('#estPager').innerHTML = `<button type="button" data-estpg="-1" aria-label="이전 건물" ${S.estPage ? '' : 'disabled'}>◀</button><small class="num">비싼 순 ${S.estPage * EPG + 1}~${Math.min(ESTATES.length, (S.estPage + 1) * EPG)}</small><button type="button" data-estpg="1" aria-label="다음 건물" ${S.estPage < ePages - 1 ? '' : 'disabled'}>▶</button>`;
+  ESTATES.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).slice(S.estPage * EPG, (S.estPage + 1) * EPG).forEach(b => {
     const st = estState(b.id), e = estOf(b.id), v = e && e.destroyed ? e.destroyed.value : estVal(b.id, k), c = estVal(b.id, k) / estAt(b.id, S.season.start) - 1;
     const who = st === 'free' ? '<span class="dim">매물</span>' : `<b class="owner-tag" style="background:${e.destroyed ? 'var(--up)' : ownerColor(e.owner)}">${e.owner === S.uid ? '👑 내 건물' : esc(nameOf(e.owner))}</b>`;
     h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : st === 'free' ? '#9a98ad' : ownerColor(e.owner)}">${st.endsWith('Broken') ? '💥' : ICON[b.t]}</span>
@@ -1751,8 +1766,18 @@ function renderWallet() {
   const el = $('#tab-wallet');
   if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 지갑이 없어요.' : '참가하면 10억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
   const k = S.tick, m = S.me;
-  let inv = 0; Object.entries(m.hold || {}).forEach(([s, q]) => inv += q * px(s, k));
-  let h = `<div class="cards2"><div class="card stat"><div class="lab">💵 현금</div><div class="v num">${won(m.cash)}</div></div><div class="card stat"><div class="lab">📦 주식</div><div class="v num">${won(inv)}</div></div></div>`;
+  // 한눈에 보는 내 자산: 총자산, 순위, 자산 구성
+  const W = worth(m, k), rk = ranking(k).findIndex(p => p.id === S.uid) + 1;
+  let inv = 0; Object.entries(m.hold || {}).forEach(([s, q]) => { if (SM[s]) inv += q * px(s, k); });
+  let levV = 0; Object.entries(m.lev || {}).forEach(([s, o]) => { if (SM[s] && !lqDead(S.uid, 'lev', s, o)) levV += levVal(o, px(s, k), s); });
+  let shV = 0; Object.entries(m.shorts || {}).forEach(([s, o]) => { if (SM[s]) shV += Math.max(0, o.q * (2 * o.e - px(s, k))); });
+  const estV = myEstates({ id: S.uid }).reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0);
+  const cashV = m.cash + BONUS * pendingOf(m);
+  const parts = [['💵 현금', cashV, '#16b27e'], ['📦 주식', inv, '#6a4cf5'], ['🚀 레버리지', levV, '#f2414f'], ['🎯 공매도', shV, '#2f78ee'], ['🏢 부동산', estV, '#ff9f1c']];
+  const tot = parts.reduce((a, x) => a + Math.max(0, x[1]), 0) || 1;
+  let h = `<div class="card wsum"><div class="ws-top"><div><small>총자산</small><b class="num">${won(W)}</b></div>${rk ? `<span class="ws-rk">${rk}위</span>` : ''}</div>
+    <div class="ws-bar">${parts.filter(x => x[1] > 0).map(x => `<i style="width:${(x[1] / tot * 100).toFixed(2)}%;background:${x[2]}"></i>`).join('')}</div>
+    <div class="ws-rows">${parts.filter((x, i) => i === 0 || x[1] > 0).map(x => `<div><span><i style="background:${x[2]}"></i>${x[0]}</span><b class="num">${won(x[1])}</b><small class="num">${(x[1] / tot * 100).toFixed(1)}%</small></div>`).join('')}</div></div>`;
   const hs = Object.entries(m.hold || {}).filter(([s]) => SM[s]);
   h += `<div class="sec"><div class="sec-h"><h2>보유 종목</h2><small>평균단가 대비</small></div><div class="slist">`;
   if (!hs.length) h += `<div class="empty">아직 산 종목이 없어요. 종목 탭에서 골라보세요.</div>`;
@@ -1767,7 +1792,7 @@ function renderWallet() {
     h += `</div></div>`;
   }
   const lv = Object.entries(m.lev || {}).filter(([s]) => SM[s]);
-  if (lv.length) { h += `<div class="sec"><div class="sec-h"><h2>🚀 레버리지</h2><small>고점 대비 약 1/배수 꼬라박으면 즉시 청산 💀</small></div><div class="slist">`;
+  if (lv.length) { h += `<div class="sec"><div class="sec-h"><h2>🚀 레버리지</h2><small>진입가 대비 약 1/배수 떨어지면 청산 💀</small></div><div class="slist">`;
     lv.forEach(([s, o]) => { const st = SM[s], pr = px(s, k), r = levROE(o, pr, s); h += `<button class="pos" type="button" data-quick="levclose" data-sym="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="tag rv">${o.x}배 ${levSide(o)}</span></b><small class="dim num">${o.q.toLocaleString()}주 · 진입 ${won(o.e)}</small></span><span class="r num"><b>${won(levVal(o, pr, s))}</b><br><small class="${cls(r)}" style="font-size:15px;font-weight:900">${pctTxt(r)}</small></span></button>`; });
     h += `</div></div>`; }
   const est = myEstates({ id: S.uid });
@@ -1827,8 +1852,8 @@ function renderFeed() {
 }
 function renderAll() {
   renderHeader(); renderClock();
-  if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, estate: renderEstate, casino: renderCasino })[S.sub](); }
-  else ({ home: renderHome, market: renderMarket, feed: renderFeed })[S.tab]();
+  if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, casino: renderCasino })[S.sub](); }
+  else ({ home: renderHome, market: renderMarket, estate: renderEstate, feed: renderFeed })[S.tab]();
   if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); }
   const latest = S.feed.find(f => f.uid !== S.uid);
   $('#feedDot').hidden = S.tab === 'feed' || !latest || latest.ts <= S.feedSeen;
@@ -1837,8 +1862,9 @@ function renderAll() {
 }
 function goTab(name) {
   S.tab = name; document.querySelectorAll('.nav [data-tab]').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
-  ['home', 'market', 'feed'].forEach(n => $('#tab-' + n).hidden = n !== name);
-  $('#assetSeg').hidden = name !== 'assets'; ['wallet', 'estate', 'casino'].forEach(n => $('#tab-' + n).hidden = !(name === 'assets' && S.sub === n));
+  if (S.sub === 'estate') S.sub = 'wallet';
+  ['home', 'market', 'feed', 'estate'].forEach(n => $('#tab-' + n).hidden = n !== name);
+  $('#assetSeg').hidden = name !== 'assets'; ['wallet', 'casino'].forEach(n => $('#tab-' + n).hidden = !(name === 'assets' && S.sub === n));
   document.querySelectorAll('#assetSeg [data-sub]').forEach(x => x.setAttribute('aria-pressed', x.dataset.sub === S.sub));
   renderAll(); window.scrollTo({ top: 0 });
 }
@@ -2356,8 +2382,9 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
-  if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
+  if (t.dataset.sub) { if (t.dataset.sub === 'estate') { goTab('estate'); return; } S.sub = t.dataset.sub; goTab('assets'); return; }
   if (t.dataset.tbag) { teabag(t.dataset.tbag); return; }
+  if (t.dataset.estpg) { S.estPage = (S.estPage || 0) + +t.dataset.estpg; renderEstate(); return; }
   if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); return; }
   if (t.dataset.homesec) { S.homeSec = t.dataset.homesec; renderHome(); return; }
   if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
