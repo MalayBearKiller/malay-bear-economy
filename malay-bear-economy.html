@@ -921,7 +921,7 @@ function noteAtks(list) {
 }
 const atkLive = (sym, uid) => [...ATKS.values()].some(f => f.sym === sym && (!uid || f.uid === uid) && now() - (f.ts || 0) < ATK_DUR);
 function atkAt(sym, t) {
-  if (!ATKS.size || !S.season) return 0;
+  if (HALT_EVAL || !ATKS.size || !S.season) return 0;
   let v = 0;
   for (const f of ATKS.values()) {
     if (f.sym !== sym) continue;
@@ -945,18 +945,18 @@ function walkAt(sym, t) {
 function prevPx(sym) {
   const st = liveStep(now());
   if (LV.prev && LV.prev[sym] != null) return LV.prev[sym];
-  const t0 = tickTime(S.season.start, S.tick), t = (st - 1) * LIVE_MS;
-  const p = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, t) - walkAt(sym, t0))));
+  const t0 = tickTime(S.season.start, S.tick), t = (st - 1) * LIVE_MS, h = haltAt(sym, t);
+  const p = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, h.from || t) - walkAt(sym, t0) + h.c)));
   return LV.prev ? (LV.prev[sym] = p) : p;
 }
 function livePx(sym) {
   const st = liveStep(now());
   if (LV.step !== st) { LV.prev = LV.step === st - 1 ? LV.map : {}; LV.step = st; LV.map = {}; }
   if (LV.map[sym] == null) {
-    const t0 = tickTime(S.season.start, S.tick), t = st * LIVE_MS;
-    let p = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, t) - walkAt(sym, t0))));
+    const t0 = tickTime(S.season.start, S.tick), t = st * LIVE_MS, h = haltAt(sym, t);
+    let p = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, h.from || t) - walkAt(sym, t0) + h.c)));
     const pv = prevPx(sym);
-    if (p === pv) {
+    if (p === pv && !h.from) {
       const u = p >= 500000 ? 1000 : p >= 100000 ? 500 : p >= 50000 ? 100 : p >= 10000 ? 50 : p >= 1000 ? 5 : 1;
       p = Math.max(1, p + ((seedOf(S.season.sid + ':nd:' + sym + ':' + st) & 1) ? u : -u));
     }
@@ -972,9 +972,37 @@ const secNow = sec => { const l = STOCKS.filter(s => s.s === sec); return l.redu
 // price at any moment (round price × live walk since that round), for 24시간 변동률
 function priceAt(sym, t) {
   if (t <= S.season.start) return S.SE.prices[sym][0];
+  const h = haltAt(sym, t); if (h.from) t = h.from;
   const k = curTick(t, S.season.start), t0 = tickTime(S.season.start, k);
-  return S.SE.prices[sym][k] * Math.exp(walkAt(sym, t) - walkAt(sym, t0));
+  return S.SE.prices[sym][k] * Math.exp(walkAt(sym, t) - walkAt(sym, t0) + h.c);
 }
+// ⛔ 서킷브레이커: 아주 드물게 -40% 폭락하고 3분간 거래정지. 2시간 변동률이 플러스일 때만 터져요.
+// HALT_FROM 이후에만 생겨서 배포 전 가격은 하나도 안 바뀌어요. 폭락분은 다음 주로도 이어져요.
+const HALT_FROM = 1794154200000, HALT_MS = 3 * 60e3, HALT_J = Math.log(.6), HALT_WIN = 10 * 60e3;
+const HALTS = {}; let HALT_EVAL = 0;
+function haltList(sym) {
+  const key = S.season.sid + ':' + sym; if (HALTS[key]) return HALTS[key];
+  const t = [], n = Math.ceil(7 * D / HALT_WIN);
+  for (let w = 0; w < n; w++) {
+    const h = seedOf('halt1:' + S.season.sid + ':' + sym + ':' + w); if (h % 10000 >= 14) continue;
+    const te = S.season.start + w * HALT_WIN + ((h >>> 14) % 540) * 1000; if (te >= HALT_FROM) t.push(te);
+  }
+  return HALTS[key] = { t, ok: new Array(t.length).fill(null) };
+}
+function haltAt(sym, t) {
+  if (t < HALT_FROM || !S.season) return { c: 0, from: 0 };
+  const H = haltList(sym); let c = 0, from = 0;
+  for (let i = 0; i < H.t.length && H.t[i] <= t; i++) {
+    if (H.ok[i] == null) { // 터지기 직전 2시간 변동률이 플러스일 때만 (공격 효과는 빼고 계산)
+      const te = H.t[i]; HALT_EVAL++;
+      try { H.ok[i] = priceAt(sym, te - 1000) > priceAt(sym, dayStart(te)); } finally { HALT_EVAL--; }
+    }
+    if (H.ok[i]) { c += HALT_J; if (t < H.t[i] + HALT_MS) from = H.t[i]; }
+  }
+  return { c, from };
+}
+const haltLeft = sym => { const h = haltAt(sym, now()); return h.from ? h.from + HALT_MS - now() : 0; };
+const haltMsg = sym => `⛔ ${SM[sym].n} 거래정지 중이에요 · ${hms(haltLeft(sym)).replace(/^0?0:/, '')} 뒤 재개`;
 // 변동률은 매일 0시(한국 시간)에 초기화
 const PERIOD = 2 * H; // 변동률 초기화·지원금 주기
 const dayStart = t => Math.max(S.season.start, Math.floor((t + KST) / PERIOD) * PERIOD - KST);
@@ -1074,7 +1102,10 @@ function showLiqBar(html, btn) {
   clearTimeout(lbTimer); lbTimer = setTimeout(() => { b.hidden = true; }, 8000);
 }
 function feedAlerts() {
-  if (!S.feed || !S.season) return; const t = now();
+  if (!S.season) return; const t = now();
+  for (const x of STOCKS) { const h = haltAt(x.id, t); const key = 'halt:' + x.id + ':' + h.from;
+    if (h.from && t - h.from < 20e3 && !LB_SEEN.has(key)) { LB_SEEN.add(key); showLiqBar(`⛔ ${esc(x.n)} -40% 폭락! 3분간 거래정지`); buzz(60); return; } }
+  if (!S.feed) return;
   for (const f of S.feed.slice(0, 30)) {
     if (!f || t - (f.ts || 0) > 20e3) continue;
     const key = f.kind + ':' + f.ts + ':' + f.uid; if (LB_SEEN.has(key)) continue;
@@ -1257,7 +1288,8 @@ function posHUD() {
 async function closePositions(filter) {
   if (!S.me || S.saving || S.readOnly) return;
   const ready = x => x.kind === 'spot' || lqReady(S.uid, x.kind, x.sym, (x.kind === 'lev' ? S.me.lev : S.me.shorts)[x.sym]);
-  const all = myPositions().filter(filter), list = all.filter(x => !atkLive(x.sym, S.uid) && ready(x));
+  const all = myPositions().filter(filter), list = all.filter(x => !atkLive(x.sym, S.uid) && ready(x) && !(haltLeft(x.sym) > 0));
+  const halted = all.find(x => haltLeft(x.sym) > 0); if (halted) toast(haltMsg(halted.sym));
   if (all.some(x => !ready(x))) toast('⏳ 앱이 꺼져 있던 동안의 청산 여부를 확인하는 중인 포지션은 잠시 후 정리돼요');
   if (all.length > list.length) toast('💥 내가 공격한 종목은 충격이 끝날 때까지 정리할 수 없어요');
   if (!list.length) return;
@@ -1292,7 +1324,8 @@ function stockRow(s) {
   const lv = S.me && S.me.lev && S.me.lev[s.id];
   const pos = lv ? `<span class="postag ${(lv.d || 1) < 0 ? 'short' : 'long'}">${lv.x}배 ${levSide(lv)}</span>` : sq ? `<span class="postag short">공매도</span>` : '';
   const mp = myPositions().filter(x => x.sym === s.id); const rowPnl = mp.reduce((a, x) => a + x.pnl, 0), rowP = mp.reduce((a, x) => a + x.principal, 0);
-  const sub = pos + (q ? `<span class="mine">${q.toLocaleString()}주 보유</span>` : pos ? '' : SECTORS[s.s].n) + (mp.length ? ` <b class="rowpnl ${cls(rowPnl)}">${signWon(rowPnl)} (${pctTxt(rowP ? rowPnl / rowP : 0)})</b>` : '') + (tc ? ` · 💬${tc}` : '');
+  const hl = haltLeft(s.id) > 0;
+  const sub = (hl ? '<span class="postag short">⛔ 거래정지</span> ' : '') + pos + (q ? `<span class="mine">${q.toLocaleString()}주 보유</span>` : pos ? '' : SECTORS[s.s].n) + (mp.length ? ` <b class="rowpnl ${cls(rowPnl)}">${signWon(rowPnl)} (${pctTxt(rowP ? rowPnl / rowP : 0)})</b>` : '') + (tc ? ` · 💬${tc}` : '');
   const fl = LV.flash && LV.flash[s.id] ? ' f' + LV.flash[s.id] : '';
   const off = seasonOver() || S.readOnly;
   return `<div class="srow${fl ? ' row' + fl.trim() : ''}"><button class="srow-main" type="button" data-stock="${s.id}">${badge(s)}<span class="sname"><b class="${lv ? ((lv.d || 1) < 0 ? 'hot-short' : 'hot-long') : sq ? 'hot-short' : ''}">${esc(s.n)}</b><small>${sub}</small></span>
@@ -1985,6 +2018,7 @@ function updateTradeEst() {
 async function doTrade() {
   const sh = S.sheet; const q = sh.q, sym = sh.sym, m = sh.m, p = px(sym, S.tick);
   if (!q || q > maxQty(m, sym) || S.saving || seasonOver()) return;
+  if (haltLeft(sym) > 0) { toast(haltMsg(sym)); return; }
   if ((m === 'buy' || m === 'short' || m === 'lev') && atkLive(sym)) { toast('💥 공격 충격 중인 종목이에요. 45초 뒤에 진입할 수 있어요'); return; }
   { const o = m === 'levclose' ? (S.me.lev || {})[sym] : m === 'cover' ? (S.me.shorts || {})[sym] : null;
     if (o && !lqReady(S.uid, m === 'cover' ? 'short' : 'lev', sym, o)) { toast('⏳ 앱이 꺼져 있던 동안의 청산 여부를 확인하는 중이에요. 잠시 후 다시 눌러 주세요'); return; } }
@@ -2038,6 +2072,7 @@ function renderPlayerSheet(b, sh) {
 async function attackPosition(targetUid, kind, sym) {
   if (!S.me || S.saving || S.readOnly || targetUid === S.uid) return;
   const p = S.players[targetUid]; if (!p) return;
+  if (haltLeft(sym) > 0) { toast(haltMsg(sym)); return; }
   const x = myPositions(p).find(it => it.kind === kind && it.sym === sym);
   if (!x) { toast('이미 정리된 포지션이에요'); renderSheet(); return; }
   const cost = atkCostOf(x.principal);
