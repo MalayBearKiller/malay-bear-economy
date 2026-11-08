@@ -677,17 +677,17 @@ function buildSeason(sid) {
   const shocks = {};
   const k1 = 3 + Math.floor(R() * 5), k2 = 9 + Math.floor(R() * 5), k3 = 15 + Math.floor(R() * 6);
   [k1, k2, k3].forEach(k => { shocks[k] = { sym: STOCKS[Math.floor(R() * STOCKS.length)].id, mag: (.3 + R() * .25) * (R() < .5 ? 1 : -1) }; });
-  // 급변: every 30 seconds, 3 random stocks move ±15~30% at once and stay there.
+  // 급변: every 30 seconds, 7 random stocks move ±5~30% at once and stay there.
   // A stock that has already run far is more likely to reverse, so prices swing hard but stay in range.
   const BANG = 30e3, NB = Math.floor(7 * D / BANG);
   const JR = rng('bang1:' + sid); const jumps = {}, jcum = {}, jmin = {}, bangs = new Array(NB);
   const acc = {}; STOCKS.forEach(s => { jumps[s.id] = []; acc[s.id] = 0; });
   for (let k = 1; k < NB; k++) {
     const t = k * BANG, mm = Math.min(MIN, Math.floor(t / 60e3)); const picked = [];
-    while (picked.length < 3) { const i = Math.floor(JR() * STOCKS.length); if (!picked.includes(i)) picked.push(i); }
+    while (picked.length < 7) { const i = Math.floor(JR() * STOCKS.length); if (!picked.includes(i)) picked.push(i); }
     bangs[k] = picked.map(i => {
       const s = STOCKS[i], dev = walk[s.id][mm] + acc[s.id];
-      const dir = JR() < 1 / (1 + Math.exp(4 * dev)) ? 1 : -1, size = .15 + JR() * .15;
+      const dir = JR() < 1 / (1 + Math.exp(4 * dev)) ? 1 : -1, size = .05 + JR() * .25;
       const j = dir * Math.log(1 + size); jumps[s.id].push({ t, j, d: Math.exp(j) - 1 }); acc[s.id] += j;
       return { id: s.id, d: Math.exp(j) - 1 };
     });
@@ -1712,7 +1712,7 @@ async function doJoin() {
 function renderHelp(b) {
   b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
   <ul class="rules">
-    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, <b>30초마다 종목 3개</b>가 한 번에 ±15~30%씩 움직여요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
+    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, <b>30초마다 종목 7개</b>가 한 번에 ±5~30%씩 움직이고, 알림이 떠요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
     <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
     <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
@@ -1954,7 +1954,7 @@ setInterval(() => {
     const w0 = S.me ? worth(S.me, S.tick) : 0;
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
     if (S.me) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
-    holdingAlerts(); checkLiquidation();
+    holdingAlerts(); checkLiquidation(); jumpAlerts();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
     if (sh && sh.sym && (sh.type === 'stock' || sh.type === 'quick')) {
