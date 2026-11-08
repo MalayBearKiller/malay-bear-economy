@@ -141,6 +141,9 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .sname b.hot-long{color:var(--up);font-weight:900} .sname b.hot-short{color:var(--down);font-weight:900}
 .postag{display:inline-block;font-size:11.5px;font-weight:900;color:#fff;padding:1px 7px;border-radius:6px;margin-right:5px}
 .postag.long{background:var(--up)} .postag.short{background:var(--down)}
+.rescue{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--gold-bg);border:2px solid var(--gold)}
+.rescue .t{flex:1;min-width:0}.rescue .t b{display:block;font-size:15px;font-weight:900}.rescue .t small{font-size:12.5px;color:var(--dim);font-weight:600}
+.rescue button{flex:none;padding:11px 16px;border-radius:12px;background:var(--gold);color:var(--ink);font-weight:900}
 .hud{padding:14px;display:flex;flex-direction:column;gap:10px;border:2px solid var(--line)}
 .hud.up{border-color:var(--up);background:var(--up-bg)} .hud.down{border-color:var(--down);background:var(--down-bg)}
 .hud-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -1035,7 +1038,7 @@ function renderHome() {
   let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
     <div class="movers">${mover(best, '🚀 2시간 최고')}${mover(worst, '📉 2시간 최저')}</div>`;
 
-  h = posHUD() + bonusCard() + h;
+  h = rescueCard() + posHUD() + bonusCard() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">10억원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
@@ -1169,6 +1172,20 @@ function earnedOf(p) {
 }
 const paidOf = p => p.bonusN != null ? p.bonusN : Math.max(0, Math.round(((p.inflow || CASH0) - CASH0) / BONUS));
 const pendingOf = p => Math.max(0, earnedOf(p) - paidOf(p));
+// 파산 구제: 총자산이 500만원 이하로 떨어지면 5억을 다시 받을 수 있어요
+const RESCUE_AT = 5_000_000, RESCUE_AMT = 500_000_000;
+const canRescue = () => S.me && !S.readOnly && worth(S.me, S.tick) <= RESCUE_AT;
+function rescueCard() {
+  if (!canRescue()) return '';
+  return `<div class="card rescue"><span class="t"><b>💸 파산 구제금 5억</b><small>총자산이 500만원 이하예요. 5억을 받고 다시 시작하세요.</small></span><button type="button" id="rescueBtn" ${S.saving ? 'disabled' : ''}>5억 받기</button></div>`;
+}
+async function claimRescue() {
+  if (!canRescue() || S.saving) return;
+  const before = S.me, me = JSON.parse(JSON.stringify(before));
+  me.cash = Math.round(me.cash + RESCUE_AMT); me.inflow = (me.inflow || CASH0) + RESCUE_AMT; me.rescueN = (me.rescueN || 0) + 1;
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false;
+  if (ok) { toast('💸 구제금 5억이 들어왔어요'); renderAll(); }
+}
 function bonusCard() {
   if (!S.me || S.readOnly) return '';
   const n = earnedOf(S.me);
@@ -2145,6 +2162,7 @@ document.addEventListener('click', e => {
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
     case 'estAct': estAction(); break;
+    case 'rescueBtn': claimRescue(); break;
     case 'closeAllBtn': if (S.closeAllAt && Date.now() - S.closeAllAt < 4000) closePositions(() => true); else { S.closeAllAt = Date.now(); renderAll(); } break;
     case 'zoomIn': zoomAt(1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
     case 'zoomOut': zoomAt(1 / 1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
