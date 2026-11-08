@@ -1017,35 +1017,54 @@ function priceAt(sym, t) {
   return S.SE.prices[sym][k] * Math.exp(walkAt(sym, t) - walkAt(sym, t0) + h.c);
 }
 // ⛔ 과열·과매도 서킷브레이커: 2시간 변동률이 +40% 이상이면 -70% 폭락, -40% 이하면 +70% 폭등할 확률이 생기고
-// 멀어질수록 확률이 커져요(1분마다 40%: 0.1% → 50%: 1% → 60% 이상: 10%). 종목마다 2시간에 한 번까지, 터지면 3분간 거래정지.
+// 멀어질수록 확률이 커져요. 터지면 3분간 거래정지. (v1: 1분마다 40%: 0.1% → 50%: 1% → 60%+: 10%, 2시간에 한 번)
+// (v2: 2분마다 40%: 15% → 50%: 45% → 60%+: 90%, 재개 후 2분 쉬기 → 평균 7종목쯤 늘 거래정지)
 // 기존 가격 흐름 위에 덧씌우는 방식이라 HALT_FROM 전 가격은 하나도 안 바뀌고, 폭락·폭등분은 다음 주로 이어져요.
 const HALT_FROM = 1794154800000, HALT_MS = 3 * 60e3, HALT_STEP = 60e3, HALT_UP = Math.log(1.7), HALT_DN = Math.log(.3), HALT_PMAX = .1;
 const haltProb = a => a < .4 ? 0 : Math.min(HALT_PMAX, .001 * Math.pow(10, (a - .4) / .1));
+// v2(HALT_V2부터): 더 자주 터지게. 카테고리마다 한 종목쯤은 늘 거래정지가 떠 있을 정도.
+// 2시간 1회 제한 대신, 거래 재개 후 HC2.cd 동안만 쉬어요. 그 전 구간은 예전 규칙 그대로라 지난 가격은 안 바뀌어요.
+const HALT_V2 = 1794157020000, HC2 = { p40: .15, step: 3, pmax: .9, cd: 2 * 60e3 }; // 숫자를 바꾸면 아래 'halt3:' 저장 키도 바꿔요
+const haltProb2 = a => a < .4 ? 0 : Math.min(HC2.pmax, HC2.p40 * Math.pow(HC2.step, (a - .4) / .1));
 const HALTS = {}; let HALT_EVAL = 0;
+// 계산 결과는 기기에 저장해 두고 이어서 계산해요 (같은 시드라 결과가 늘 같아요)
 function haltState(sym) {
-  const key = S.season.sid + ':' + sym;
-  return HALTS[key] || (HALTS[key] = { ev: [], base: {}, t: Math.ceil(Math.max(HALT_FROM, S.season.start) / HALT_STEP) * HALT_STEP, busy: false });
+  const key = S.season.sid + ':' + sym; if (HALTS[key]) return HALTS[key];
+  const t0 = Math.ceil(Math.max(HALT_FROM, S.season.start) / HALT_STEP) * HALT_STEP;
+  const H = { ev: [], base: {}, t: t0, busy: false, key, saved: t0 };
+  try { const c = JSON.parse(localStorage.getItem('halt3:' + key) || 'null');
+    if (c && c.t > t0 && Array.isArray(c.e)) { let cum = 0; H.ev = c.e.map(x => { const j = x > 0 ? HALT_UP : HALT_DN; cum += j; return { t: Math.abs(x) * 60e3, j, cum }; }); H.t = H.saved = c.t; } } catch {}
+  return HALTS[key] = H;
+}
+function haltSave(H) {
+  if (H.t - H.saved < 30 * 60e3) return; H.saved = H.t;
+  try { localStorage.setItem('halt3:' + H.key, JSON.stringify({ t: H.t, e: H.ev.map(e => (e.j > 0 ? 1 : -1) * Math.round(e.t / 60e3)) })); } catch {}
 }
 function haltAdvance(sym, H, upto) {
   H.busy = true; HALT_EVAL++;
   try {
     while (H.t <= upto) {
       const tc = H.t; H.t += HALT_STEP;
-      const ds = dayStart(tc), last = H.ev[H.ev.length - 1];
-      if (tc === ds || (last && last.t >= ds)) continue; // 2시간 구간마다 한 번까지 (구간 시작 시각엔 안 터져요)
-      const u = seedOf('halt2:' + S.season.sid + ':' + sym + ':' + tc) / 4294967296; if (u >= HALT_PMAX) continue;
+      const ds = dayStart(tc), last = H.ev[H.ev.length - 1], v2 = tc >= HALT_V2;
+      if (tc === ds) continue; // 구간 시작 시각엔 안 터져요
+      if (v2 && (tc / 60e3) % 2) continue; // v2는 2분마다 굴려요
+      if (v2 ? (last && tc < last.t + HALT_MS + HC2.cd) : (last && last.t >= ds)) continue; // v1: 2시간에 한 번 · v2: 재개 후 잠깐 쉬기
+      const u = seedOf('halt2:' + S.season.sid + ':' + sym + ':' + tc) / 4294967296; if (u >= (v2 ? HC2.pmax : HALT_PMAX)) continue;
       if (H.base[ds] == null) H.base[ds] = priceAt(sym, ds);
       const chg = priceAt(sym, tc - 1000) / H.base[ds] - 1;
-      if (u < haltProb(Math.abs(chg))) H.ev.push({ t: tc, j: chg > 0 ? HALT_DN : HALT_UP });
+      if (u < (v2 ? haltProb2 : haltProb)(Math.abs(chg))) { const j = chg > 0 ? HALT_DN : HALT_UP; H.ev.push({ t: tc, j, cum: (last ? last.cum : 0) + j }); }
     }
   } finally { H.busy = false; HALT_EVAL--; }
+  haltSave(H);
 }
 function haltAt(sym, t) {
   if (t < HALT_FROM || !S.season) return { c: 0, from: 0, j: 0 };
   const H = haltState(sym); if (!H.busy && H.t <= t) haltAdvance(sym, H, t);
-  let c = 0, from = 0, j = 0;
-  for (const e of H.ev) { if (e.t > t) break; c += e.j; if (t < e.t + HALT_MS) { from = e.t; j = e.j; } }
-  return { c, from, j };
+  const ev = H.ev; let lo = 0, hi = ev.length - 1, i = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (ev[m].t <= t) { i = m; lo = m + 1; } else hi = m - 1; }
+  if (i < 0) return { c: 0, from: 0, j: 0 };
+  const e = ev[i], on = t < e.t + HALT_MS;
+  return { c: e.cum, from: on ? e.t : 0, j: on ? e.j : 0 };
 }
 const haltLeft = sym => { const h = haltAt(sym, now()); return h.from ? h.from + HALT_MS - now() : 0; };
 const haltMsg = sym => `⛔ ${SM[sym].n} 거래정지 중이에요 · ${hms(haltLeft(sym)).replace(/^0?0:/, '')} 뒤 재개`;
