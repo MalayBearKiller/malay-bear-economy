@@ -188,6 +188,11 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .betrow button{background:var(--paper);border-radius:12px;padding:10px 0;font-weight:800;font-size:14px;color:var(--dim)}
 .betrow button[aria-pressed="true"]{background:var(--ink);color:#fff}
 .betrow button:disabled{opacity:.35}
+.betin{display:flex;align-items:center;gap:8px;background:var(--paper);border-radius:14px;padding:4px 14px}
+.betin input{flex:1;min-width:0;border:0;background:transparent;font-family:var(--f-body);font-size:18px;font-weight:800;padding:10px 0;color:var(--ink)}
+.betin span{font-weight:700;color:var(--dim)}
+.betnow{margin:0;font-size:13.5px;font-weight:600;color:var(--dim)}
+.betnow b{color:var(--ink);font-size:15px}
 .game{padding:18px 16px;display:flex;flex-direction:column;gap:12px}
 .game h3{margin:0;font-size:17px;font-weight:800}
 .game .desc{font-size:12.5px;color:var(--dim);font-weight:500;margin:2px 0 0}
@@ -1161,29 +1166,43 @@ function wheelBg() { const cols = ['#6a4cf5', '#f5f5f9']; return 'conic-gradient
 function renderCasino() {
   const el = $('#tab-casino');
   if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 게임을 할 수 없어요.' : '참가하면 게임을 할 수 있어요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
-  const bet = Math.min(S.bet || 5e6, MAXBET);
-  const mx = Math.min(MAXBET, S.me.cash);
-  const bets = [[1e6, '100만'], [5e6, '500만'], [1e7, '1,000만'], [2e7, '2,000만']];
+  const bet = betAmount();
+  const mx = S.me.cash;
+  const bets = [['0.01', '1%'], ['0.1', '10%'], ['0.2', '20%'], ['custom', '직접 입력']];
   let h = `<div class="card bal"><span class="dim" style="font-weight:700;font-size:13px">현금</span><b class="num">${won(S.me.cash)}</b></div>
-    <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>한 판 최대 2,000만원</small></div>
-    <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${bet === v}" ${v > S.me.cash ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>
+    <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>내 총자산 기준</small></div>
+    <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${String(S.betPct) === v}">${l}</button>`).join('')}</div>
+    ${S.betPct === 'custom' ? `<div class="betin"><input id="betInput" type="number" inputmode="numeric" min="0" step="10000" placeholder="걸 금액 (원)" value="${S.betCustom || ''}" aria-label="베팅 금액 직접 입력"><span>원</span></div>` : ''}
+    <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b>${bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부)</span>' : ''}</p></div>
     <div class="card game"><div><h3>홀짝</h3><p class="desc">맞히면 1.95배. 50% 확률.</p></div>
       <div class="coin" id="coin">${C.coinFace}</div>
       <p class="res" id="coinMsg">${C.coinMsg}</p>
-      <div class="pick2"><button class="cta" type="button" data-coin="홀" ${C.busy || bet > S.me.cash ? 'disabled' : ''}>홀</button><button class="cta sell" type="button" data-coin="짝" ${C.busy || bet > S.me.cash ? 'disabled' : ''}>짝</button></div></div>
+      <div class="pick2"><button class="cta" type="button" data-coin="홀" ${C.busy || bet < MINBET ? 'disabled' : ''}>홀</button><button class="cta sell" type="button" data-coin="짝" ${C.busy || bet < MINBET ? 'disabled' : ''}>짝</button></div></div>
     <div class="card game"><div><h3>룰렛</h3><p class="desc">0배부터 4배까지. 돌려봐야 알아요.</p></div>
       <div class="wheel-wrap"><div class="pointer"></div><div class="wheel" id="wheel" style="background:${wheelBg()};transform:rotate(${C.wheelRot}deg)">${WHEEL.map((m, i) => `<span style="transform:rotate(${i * 36 + 18}deg) translateY(-92px)"><i>${m}x</i></span>`).join('')}</div><div class="hub"></div></div>
       <p class="res" id="wheelMsg">${C.wheelMsg}</p>
-      <button class="cta" type="button" id="spinBtn" ${C.busy || bet > S.me.cash ? 'disabled' : ''}>${won(bet)} 걸고 돌리기</button></div>
+      <button class="cta" type="button" id="spinBtn" ${C.busy || bet < MINBET ? 'disabled' : ''}>${won(bet)} 걸고 돌리기</button></div>
     <p class="hint">게임 결과도 총자산에 그대로 반영돼요. 기대값은 걸어둔 돈보다 조금 낮아요. 크게 따거나 크게 잃으면 소식에 떠요.</p>`;
   if (mx < MINBET) h = `<div class="empty">현금이 부족해요. 지원금을 받거나 주식을 팔아보세요.</div>`;
   el.innerHTML = h;
 }
+// 베팅 금액: 총자산의 1%/10%/20% 또는 직접 입력 (현금을 넘을 수 없음)
+function betAmount() {
+  if (!S.me) return 0;
+  const raw = S.betPct === 'custom' ? (+S.betCustom || 0) : worth(S.me, S.tick) * (+S.betPct || .1);
+  return Math.max(0, Math.min(Math.floor(S.me.cash / 10000) * 10000, Math.round(raw / 10000) * 10000));
+}
+function updateBetLabels() {
+  const b = betAmount(), ok = b >= MINBET && !C.busy;
+  const n = $('#betNow'); if (n) n.textContent = won(b);
+  const sp = $('#spinBtn'); if (sp) { sp.textContent = `${won(b)} 걸고 돌리기`; sp.disabled = !ok; }
+  document.querySelectorAll('[data-coin]').forEach(x => x.disabled = !ok);
+}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function playCasino(game, choice) {
   if (!S.me || S.saving || C.busy || seasonOver()) { if (seasonOver()) toast('시즌이 끝나서 게임도 닫혔어요'); return; }
-  const bet = Math.min(S.bet || 5e6, MAXBET);
-  if (bet > S.me.cash) { toast('현금이 부족해요'); return; }
+  const bet = betAmount();
+  if (bet < MINBET) { toast('걸 금액을 정해주세요 (최소 10만원)'); return; }
   C.busy = true; let mult, label;
   if (game === 'coin') {
     const face = Math.random() < .5 ? '홀' : '짝'; mult = face === choice ? COIN_PAY : 0;
@@ -1311,7 +1330,7 @@ function renderFeed() {
 }
 function renderAll() {
   renderHeader(); renderClock();
-  if (S.tab === 'assets') { if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, estate: renderEstate, casino: renderCasino })[S.sub](); }
+  if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, estate: renderEstate, casino: renderCasino })[S.sub](); }
   else ({ home: renderHome, market: renderMarket, feed: renderFeed })[S.tab]();
   if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); }
   const latest = S.feed.find(f => f.season === S.season.sid && f.uid !== S.uid);
@@ -1615,7 +1634,7 @@ function renderHelp(b) {
     <li><span>6</span><span>친구 지갑은 <b>대표 종목 하나</b>만 보여요. 하루 한 번 🕵️ <b>엿보기</b>로 한 명의 지갑을 다 볼 수 있어요.</span></li>
     <li><span>7</span><span><b>12시간마다 2,000만원</b> 지원금이 자동으로 들어와요(0시, 12시). 앱을 안 열어도 쌓여요.</span></li>
     <li><span>8</span><span><b>부동산</b>: 서울 건물을 사면 <b>1시간마다 가치의 0.1%가 월세</b>로 들어오고, 유지비·재산세(10억 넘으면 종부세)가 빠져요. 살 때 취득세 4%, 팔 때 양도세 22%. 남의 건물은 50%를 내고 파괴, 파괴된 건물은 2배로 강제 매입할 수 있어요.</span></li>
-    <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 한 판 최대 2,000만원.</span></li>
+    <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 걸 금액은 총자산의 1%·10%·20% 또는 직접 입력.</span></li>
     <li><span>10</span><span>일요일 밤 10시에 이번 주 1등이 정해져요.</span></li>
   </ul>
   <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>${S.fb && S.mode === 'live' ? '<button class="cta soft" type="button" id="logoutBtn">로그아웃</button>' : ''}`;
@@ -1775,7 +1794,7 @@ function startLive(db, uid) {
   db.collection('feed').orderBy('ts', 'desc').limit(40).onSnapshot(snap => { S.feed = snap.docs.map(d => d.data()); renderAll(); }, () => {});
 }
 async function boot() {
-  syncTime(); S.lastLive = liveStep(now()); S.bet = LS.get('bet4', 5e8); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
+  syncTime(); S.lastLive = liveStep(now()); S.betPct = LS.get('betPct', '0.1'); S.betCustom = LS.get('betCustom', 0); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
   const cfg = window.FIREBASE_CONFIG;
   if (cfg && cfg.apiKey) { bootFirebase(cfg); return; }
   let db = null, user = null;
@@ -1794,7 +1813,7 @@ document.addEventListener('click', e => {
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
-  if (t.dataset.bet) { S.bet = +t.dataset.bet; LS.set('bet4', S.bet); renderCasino(); return; }
+  if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); if (S.betPct === 'custom') setTimeout(() => { const i = $('#betInput'); if (i) i.focus(); }, 30); return; }
   if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
   if (t.dataset.filter) { S.filter = t.dataset.filter; renderMarket(); return; }
   if (t.dataset.vote) { castVote(t.dataset.vote); return; }
@@ -1831,7 +1850,7 @@ document.addEventListener('click', e => {
   }
 });
 $('#scrim').addEventListener('click', closeSheet);
-document.addEventListener('input', e => { if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
+document.addEventListener('input', e => { if (e.target.id === 'betInput') { S.betCustom = Math.max(0, Math.floor(+e.target.value || 0)); LS.set('betCustom', S.betCustom); updateBetLabels(); } if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (S.detail) closeDetail(); } if (e.key === 'Enter' && e.target.id === 'nick') doJoin(); if (e.key === 'Enter' && e.target.id === 'talkInput' && !e.isComposing) postTalk(); });
 window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (S.tab === 'home') renderHome(); drawBig(); }, 150); });
 
