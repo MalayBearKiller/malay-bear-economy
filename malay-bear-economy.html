@@ -158,6 +158,9 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .lb{display:flex;flex-direction:column;padding:6px;gap:2px}
 .lrow{display:grid;grid-template-columns:26px 38px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;width:100%;text-align:left;border-radius:16px}
 .lrow.isme{background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--violet)}
+/* 순위 배경: 프로필에서 고른 사진을 옅게 깔아요 */
+.lrow.bn{position:relative;isolation:isolate;overflow:hidden}
+.lrow.bn::before{content:'';position:absolute;inset:0;background:var(--bn) center/cover no-repeat;opacity:.28;z-index:-1}
 .lrow .rk{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--dim)}
 .lrow .rk.r1{background:var(--gold);color:#fff} .lrow .rk.r2{background:#a7adbb;color:#fff} .lrow .rk.r3{background:#cf8d5a;color:#fff}
 .lrow .who{min-width:0}
@@ -1364,19 +1367,28 @@ const ava = (p, lg, crown) => { const ph = !p.bot && okPhoto(p.photo);
   return `<span class="ava${lg ? ' lg' : ''}${ph ? ' ph' : ''}" style="${ph ? `background-image:url(${p.photo})` : `background:${p.bot ? '#e4e2ee' : avaColor(p.id)}`}">${crown ? '<span class="crown">👑</span>' : ''}${ph ? '' : esc(p.bot ? '🤖' : (p.name || '?').slice(0, 1))}</span>`; };
 // 프로필: 사진은 96px로 줄여서 지갑 문서에 저장, 닉네임 변경은 변경권(100조) 구매
 const RENAME_COST = 100_000_000_000_000;
-function pickPhoto() { const i = $('#photoIn'); if (i) { i.value = ''; i.click(); } }
-async function savePhoto(file) {
+let PICK = 'photo';
+function pickPhoto(kind = 'photo') { PICK = kind; const i = $('#photoIn'); if (i) { i.value = ''; i.click(); } }
+async function savePhoto(file, kind = 'photo') {
   if (!S.me || S.saving || !file) return;
   try {
     const img = await new Promise((res, rej) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { URL.revokeObjectURL(u); res(im); }; im.onerror = rej; im.src = u; });
-    const cv = document.createElement('canvas'); cv.width = cv.height = 96; const g = cv.getContext('2d'), m = Math.min(img.width, img.height);
-    g.drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, 96, 96);
+    const W = kind === 'banner' ? 360 : 96, Hh = kind === 'banner' ? 96 : 96, ar = W / Hh;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh; const g = cv.getContext('2d');
+    let sw = img.width, sh = img.width / ar; if (sh > img.height) { sh = img.height; sw = sh * ar; }
+    g.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, W, Hh);
     let q = .8, url = cv.toDataURL('image/jpeg', q); while (url.length > 30000 && q > .3) { q -= .15; url = cv.toDataURL('image/jpeg', q); }
     if (!okPhoto(url)) { toast('사진을 읽지 못했어요'); return; }
-    const before = S.me, me = JSON.parse(JSON.stringify(before)); me.photo = url;
+    const before = S.me, me = JSON.parse(JSON.stringify(before)); me[kind] = url;
     S.saving = true; const ok = await saveMe(me, before); S.saving = false;
-    if (ok) { toast('📸 프로필 사진을 바꿨어요'); renderAll(); }
+    if (ok) { toast(kind === 'banner' ? '🖼️ 순위 배경을 바꿨어요' : '📸 프로필 사진을 바꿨어요'); renderAll(); }
   } catch { toast('사진을 읽지 못했어요'); }
+}
+async function clearBanner() {
+  if (!S.me || S.saving || !S.me.banner) return;
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); delete me.banner;
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false;
+  if (ok) { toast('순위 배경을 지웠어요'); renderAll(); }
 }
 async function clearPhoto() {
   if (!S.me || S.saving || !S.me.photo) return;
@@ -1666,7 +1678,7 @@ function renderHome() {
         const canAtk = p.id !== S.uid && myPositions(p).length > 0;
         const wc = winChg(p, p.w);
         const subRight = p.id === S.uid && allCashP ? `<small class="up">자산을 구매하세요!</small>` : `<small class="${cls(wc)}">${pctTxt(wc)}</small>`;
-        h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}" type="button" data-player="${esc(p.id)}"><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
+        h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}${okPhoto(p.banner) ? ' bn' : ''}" type="button" data-player="${esc(p.id)}"${okPhoto(p.banner) ? ` style="--bn:url(${p.banner})"` : ''}><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
           <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${canAtk ? '<span class="tag atk">💥공격</span>' : ''}${mv}<small>${info}</small></span>
           <span class="r num"><b>${man(p.w)}</b>${subRight}</span></button>`;
       });
@@ -2315,7 +2327,7 @@ function renderWallet() {
   h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div><div>받은 월세<b class="num up">${won(m.rentTotal || 0)}</b></div><div>낸 유지비·세금<b class="num down">${won(m.taxTotal || 0)}</b></div></div>`;
   h += `<div class="sec"><div class="sec-h"><h2>프로필</h2></div>
     <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)}</b><small>사진은 모두에게 보여요</small></span></div>
-    <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button>
+    <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button><button type="button" id="bannerBtn">🖼️ 순위 배경 바꾸기</button><button type="button" id="bannerDel" ${m.banner ? '' : 'disabled'}>배경 지우기</button>
 </div></div>`;
   h += `<p class="hint">수익률은 시드 10억원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
   }
@@ -3022,7 +3034,9 @@ document.addEventListener('click', e => {
     case 'shopBack': S.shopView = null; renderShop(); break;
     case 'boardBack': closeBoard(); break;
     case 'boardSend': postBoard(); break;
-    case 'photoBtn': pickPhoto(); break;
+    case 'photoBtn': pickPhoto('photo'); break;
+    case 'bannerBtn': pickPhoto('banner'); break;
+    case 'bannerDel': clearBanner(); break;
     case 'photoDel': clearPhoto(); break;
     case 'renameOpen': if (S.me) openSheet('rename'); break;
     case 'renameBtn': doRename(); break;
@@ -3048,7 +3062,7 @@ document.addEventListener('click', e => {
 $('#scrim').addEventListener('click', closeSheet);
 ['touchstart', 'touchmove', 'wheel'].forEach(ev => document.addEventListener(ev, e => { if (e.target.closest && e.target.closest('.chips')) chipsTouchAt = Date.now(); }, { passive: true }));
 document.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('chips')) chipsTouchAt = Date.now(); }, true);
-document.addEventListener('change', e => { if (e.target.id === 'photoIn' && e.target.files && e.target.files[0]) savePhoto(e.target.files[0]); });
+document.addEventListener('change', e => { if (e.target.id === 'photoIn' && e.target.files && e.target.files[0]) savePhoto(e.target.files[0], PICK); });
 document.addEventListener('keydown', e => { if (e.target.id === 'boardInput' && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); postBoard(); } });
 document.addEventListener('input', e => { if (e.target.id === 'boardInput') S.boardDraft = e.target.value; if (e.target.id === 'betInput') { S.betCustom = Math.max(0, Math.floor(+e.target.value || 0)); LS.set('betCustom', S.betCustom); updateBetLabels(); } if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (S.detail) closeDetail(); } if (e.key === 'Enter' && e.target.id === 'nick') doJoin(); if (e.key === 'Enter' && e.target.id === 'talkInput' && !e.isComposing) postTalk(); });
