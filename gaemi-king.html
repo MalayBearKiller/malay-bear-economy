@@ -67,6 +67,18 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .sectors{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .sectors div{background:var(--bg);border-radius:12px;padding:7px 4px;text-align:center;font-size:11.5px;font-weight:600;color:var(--dim);min-width:0}
 .sectors b{display:block;font-size:13.5px;font-weight:800}
+.idxmini{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px}
+.idxmini .lab{font-size:13px;font-weight:800;color:var(--dim);margin-right:8px}
+.idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
+.idxmini > .num{font-size:17px;font-weight:900}
+.movers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:-12px}
+.mover{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:18px;background:var(--paper);text-align:left;min-width:0}
+.mover small{font-size:12px;font-weight:700;color:var(--dim)}
+.mover .mn{display:flex;align-items:center;gap:8px;min-width:0}
+.mover .mn .logo-b{width:30px;height:30px;font-size:11px;border-radius:9px}
+.mover .mn b{font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mover .mc{font-size:20px;font-weight:900}
+.mover.up{background:var(--up-bg)} .mover.down{background:var(--down-bg)}
 .join{display:flex;flex-direction:column;gap:6px;padding:18px;text-align:center;background:var(--violet-bg)}
 .join b{font-size:18px;font-weight:800}
 
@@ -851,11 +863,11 @@ function hms(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); const 
 function renderHome() {
   const el = $('#tab-home'); const k = S.tick; const I = S.SE.index;
   const Ik = indexNow(); const ic = Ik / index24() - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
-  let h = `<div class="card index"><div class="row"><div><div class="lab">곰스피 지수 · ${STOCKS.length}종목</div><div class="v num">${Ik.toFixed(2)}<span class="livedot" title="실시간"></span></div>
-      <div class="c num"><span class="${cls(ic)}">24시간 ${pctTxt(ic)}</span> <span class="dim" style="font-size:14px">이번 주 <span class="${cls(iw)}">${pctTxt(iw)}</span></span></div></div>
-      <span class="mood ${mc}">${ml}</span></div>
-    <canvas class="ichart" id="indexChart" aria-label="곰스피 지수 이번 주 흐름"></canvas>
-    <div class="sectors">${Object.entries(SECTORS).slice(0, 4).map(([sec, v]) => { const c = secNow(sec) / sec24(sec) - 1; return `<div>${v.n}<b class="${cls(c)}">${pctTxt(c)}</b></div>`; }).join('')}</div></div>`;
+  const ranked = STOCKS.map(x => ({ s: x, c: nowChg(x.id) })).sort((p, q) => q.c - p.c);
+  const best = ranked[0], worst = ranked[ranked.length - 1];
+  const mover = (r, lab) => `<button class="mover ${cls(r.c)}" type="button" data-stock="${r.s.id}"><small>${lab}</small><span class="mn">${badge(r.s)}<b>${esc(r.s.n)}</b></span><span class="mc num">${pctTxt(r.c)}</span></button>`;
+  let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
+    <div class="movers">${mover(best, '🚀 24시간 최고')}${mover(worst, '📉 24시간 최저')}</div>`;
 
   h = bonusCard() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
@@ -870,7 +882,7 @@ function renderHome() {
     h += `<button class="card rival press" type="button" data-player="${esc(S.rival)}"><div class="rival-top"><span class="g up">나</span><span class="num ${cls(gap)}">${gap >= 0 ? '앞서는 중' : '뒤지는 중'} ${signWon(gap)}</span><span class="g down">${esc(r.name)}</span></div><div class="tug"><i style="width:${(vis * 100).toFixed(1)}%"></i></div></button>`;
   }
 
-  h += `<div class="sec"><div class="sec-h"><h2>이번 주 순위</h2><small>실시간</small></div>`;
+  h += `<div class="sec"><div class="sec-h"><h2>현재 순위</h2><small>실시간</small></div>`;
   if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
   else {
     const cur = ranking(k), prev = ranking(Math.max(0, k - 1)); const prevIdx = Object.fromEntries(prev.map((p, i) => [p.id, i]));
@@ -899,7 +911,6 @@ function renderHome() {
   h += `</div>`;
   h += `<div class="sec"><div class="sec-h"><h2>전체 종목</h2><small>24시간 변동률</small></div><div class="slist">${STOCKS.map(stockRow).join('')}</div></div>`;
   el.innerHTML = h;
-  requestAnimationFrame(() => { const cv = $('#indexChart'); if (cv) drawChart(cv, I.slice(0, k + 1), { padB: 4, base: 1000, live: S.tick < NT ? { x: liveX(), v: Ik } : null }); });
 }
 
 function stockRow(s) {
@@ -964,7 +975,7 @@ const rentPerHour = () => estHourly().net;
 
 /* ───────── real estate ───────── */
 async function saveEstate(bid, doc) {
-  if (S.mode === 'demo') { S.estates[bid] = doc; LS.set('demoEst5:' + S.season.sid, Object.fromEntries(Object.entries(S.estates).filter(([, e]) => !e.bot))); return true; }
+  if (S.mode === 'demo') { S.estates[bid] = doc; LS.set('demoEst6:' + S.season.sid, Object.fromEntries(Object.entries(S.estates).filter(([, e]) => !e.bot))); return true; }
   try { await S.db.doc('estates/' + bid).set(doc); S.estates[bid] = doc; return true; } catch { toast('부동산 정보를 저장하지 못했어요.'); return false; }
 }
 function estState(bid) {
@@ -1168,11 +1179,10 @@ function renderCasino() {
   if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 게임을 할 수 없어요.' : '참가하면 게임을 할 수 있어요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
   const bet = betAmount();
   const mx = S.me.cash;
-  const bets = [['0.01', '1%'], ['0.1', '10%'], ['0.2', '20%'], ['custom', '직접 입력']];
+  const bets = [['0.01', '1%'], ['0.1', '10%'], ['0.2', '20%'], ['0.5', '50%']];
   let h = `<div class="card bal"><span class="dim" style="font-weight:700;font-size:13px">현금</span><b class="num">${won(S.me.cash)}</b></div>
     <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>내 총자산 기준</small></div>
     <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${String(S.betPct) === v}">${l}</button>`).join('')}</div>
-    ${S.betPct === 'custom' ? `<div class="betin"><input id="betInput" type="number" inputmode="numeric" min="0" step="10000" placeholder="걸 금액 (원)" value="${S.betCustom || ''}" aria-label="베팅 금액 직접 입력"><span>원</span></div>` : ''}
     <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b>${bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부)</span>' : ''}</p></div>
     <div class="card game"><div><h3>홀짝</h3><p class="desc">맞히면 1.95배. 50% 확률.</p></div>
       <div class="coin" id="coin">${C.coinFace}</div>
@@ -1189,7 +1199,7 @@ function renderCasino() {
 // 베팅 금액: 총자산의 1%/10%/20% 또는 직접 입력 (현금을 넘을 수 없음)
 function betAmount() {
   if (!S.me) return 0;
-  const raw = S.betPct === 'custom' ? (+S.betCustom || 0) : worth(S.me, S.tick) * (+S.betPct || .1);
+  const raw = worth(S.me, S.tick) * (+S.betPct || .1);
   return Math.max(0, Math.min(Math.floor(S.me.cash / 10000) * 10000, Math.round(raw / 10000) * 10000));
 }
 function updateBetLabels() {
@@ -1229,14 +1239,19 @@ async function playCasino(game, choice) {
 
 /* ───────── market: news + stocks ───────── */
 function newsTitle(n) { return n.sym ? `${SM[n.sym].n} · ${n.text}` : n.text; }
+function indexCardHTML() {
+  const k = S.tick; const I = S.SE.index;
+  const Ik = indexNow(); const ic = Ik / index24() - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
+  return `<div class="card index"><div class="row"><div><div class="lab">곰스피 지수 · ${STOCKS.length}종목</div><div class="v num">${Ik.toFixed(2)}<span class="livedot" title="실시간"></span></div>
+      <div class="c num"><span class="${cls(ic)}">24시간 ${pctTxt(ic)}</span> <span class="dim" style="font-size:14px">이번 주 <span class="${cls(iw)}">${pctTxt(iw)}</span></span></div></div>
+      <span class="mood ${mc}">${ml}</span></div>
+    <canvas class="ichart" id="indexChart" aria-label="곰스피 지수 이번 주 흐름"></canvas>
+    <div class="sectors">${Object.entries(SECTORS).slice(0, 4).map(([sec, v]) => { const c = secNow(sec) / sec24(sec) - 1; return `<div>${v.n}<b class="${cls(c)}">${pctTxt(c)}</b></div>`; }).join('')}</div></div>`;
+}
+function drawIndexChart() { const cv = $('#indexChart'); if (!cv) return; const I = S.SE.index, Ik = indexNow(); drawChart(cv, I.slice(0, S.tick + 1), { padB: 4, base: 1000, live: S.tick < NT ? { x: liveX(), v: Ik } : null }); }
 function renderMarket() {
   const el = $('#tab-market'); const k = S.tick; let h = '';
-  if (!seasonOver()) {
-    h += `<div class="sec"><div class="sec-h"><h2>🔥 속보</h2><small>곧 시세에 반영돼요</small></div><div class="news">`;
-    if (S.SE.shocks[k + 1]) h += `<div class="nrow shock"><span class="src 긴급">긴급</span><div class="t">시장에 큰손이 움직인다는 소문<small>어느 종목인지는 몰라요. 20~35% 급등 또는 급락</small></div></div>`;
-    (S.SE.news[k + 1] || []).forEach(n => { h += `<div class="nrow"><span class="src ${n.src}">${n.src}</span><div class="t">${esc(newsTitle(n))}</div></div>`; });
-    h += `</div></div>`;
-  }
+  h += indexCardHTML();
   const mine = S.me ? new Set([...Object.keys(S.me.hold || {}), ...Object.keys(S.me.shorts || {})].filter(s => SM[s])) : new Set();
   const chips = [['all', '전체'], ...(mine.size ? [['mine', '내 종목']] : []), ['up', '급등'], ['down', '급락'], ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
   if (S.filter === 'mine' && !mine.size) S.filter = 'all';
@@ -1249,6 +1264,7 @@ function renderMarket() {
   h += list.map(stockRow).join('');
   h += `</div></div><p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>`;
   el.innerHTML = h;
+  requestAnimationFrame(drawIndexChart);
 }
 
 /* ───────── wallet ───────── */
@@ -1626,7 +1642,7 @@ function renderHelp(b) {
   b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
   <ul class="rules">
     <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, 하루 몇 번 속보가 터지면 크게 출렁여요.</span></li>
-    <li><span>2</span><span>속보가 시세에 반영되기 전에 미리 떠요. <b>공시 &gt; 기사 &gt; 찌라시</b> 순으로 믿을 만해요. 가짜뉴스면 오히려 반대로 가요.</span></li>
+    <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
     <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
     <li><span>5</span><span><b>🚀 레버리지</b>: 2·5·10·20배로 롱을 걸 수 있어요. 10배면 1% 오를 때 10% 수익, 약 10% 떨어지면 청산 💀.</span></li>
@@ -1634,7 +1650,7 @@ function renderHelp(b) {
     <li><span>6</span><span>친구 지갑은 <b>대표 종목 하나</b>만 보여요. 하루 한 번 🕵️ <b>엿보기</b>로 한 명의 지갑을 다 볼 수 있어요.</span></li>
     <li><span>7</span><span><b>12시간마다 2,000만원</b> 지원금이 자동으로 들어와요(0시, 12시). 앱을 안 열어도 쌓여요.</span></li>
     <li><span>8</span><span><b>부동산</b>: 서울 건물을 사면 <b>1시간마다 가치의 0.1%가 월세</b>로 들어오고, 유지비·재산세(10억 넘으면 종부세)가 빠져요. 살 때 취득세 4%, 팔 때 양도세 22%. 남의 건물은 50%를 내고 파괴, 파괴된 건물은 2배로 강제 매입할 수 있어요.</span></li>
-    <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 걸 금액은 총자산의 1%·10%·20% 또는 직접 입력.</span></li>
+    <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 걸 금액은 총자산의 1%·10%·20%·50%.</span></li>
     <li><span>10</span><span>일요일 밤 10시에 이번 주 1등이 정해져요.</span></li>
   </ul>
   <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>${S.fb && S.mode === 'live' ? '<button class="cta soft" type="button" id="logoutBtn">로그아웃</button>' : ''}`;
@@ -1684,7 +1700,7 @@ let saveChain = Promise.resolve();
 function saveMe(me, before) {
   S.me = me; S.players[S.uid] = me;
   const run = async () => {
-    if (S.mode === 'demo') { LS.set('demo5:' + S.season.sid, me); return true; }
+    if (S.mode === 'demo') { LS.set('demo6:' + S.season.sid, me); return true; }
     try { await S.db.doc('players/' + S.uid).set(me); return true; }
     catch (e) {
       S.me = before || null; if (before) S.players[S.uid] = before; else delete S.players[S.uid];
@@ -1698,7 +1714,7 @@ function saveMe(me, before) {
 }
 function addFeed(f) {
   const item = { ...f, uid: S.uid, season: S.season.sid, ts: Date.now() };
-  if (S.mode === 'demo') { S.feed.unshift(item); LS.set('demoFeed5:' + S.season.sid, S.feed.filter(x => !x.bot)); return; }
+  if (S.mode === 'demo') { S.feed.unshift(item); LS.set('demoFeed6:' + S.season.sid, S.feed.filter(x => !x.bot)); return; }
   S.db.collection('feed').add(item).catch(() => {});
 }
 
@@ -1716,21 +1732,21 @@ function makeBots() {
 }
 function loadDemo() {
   S.uid = 'me'; S.players = makeBots();
-  const me = LS.get('demo5:' + S.season.sid, null); if (me && me.season === S.season.sid) { S.players.me = me; S.me = me; } else S.me = null;
+  const me = LS.get('demo6:' + S.season.sid, null); if (me && me.season === S.season.sid) { S.players.me = me; S.me = me; } else S.me = null;
   const bf = Object.entries(S.players).filter(([id]) => id !== 'me').flatMap(([id, p], i) => [
     { kind: 'join', uid: id, season: S.season.sid, ts: S.season.start + (i + 1) * 7 * 60e3, bot: true },
     ...Object.entries(p.hold).map(([s, q], j) => ({ kind: 'buy', uid: id, sym: s, amt: q * SM[s].p0, season: S.season.sid, ts: S.season.start + (i + 1) * 9 * 60e3 + j * 60e3, bot: true })),
     ...Object.keys(p.shorts).map(s => ({ kind: 'short', uid: id, sym: s, season: S.season.sid, ts: S.season.start + (i + 2) * 11 * 60e3, bot: true })),
   ]);
-  S.feed = [...LS.get('demoFeed5:' + S.season.sid, []), ...bf].sort((a, b) => b.ts - a.ts);
+  S.feed = [...LS.get('demoFeed6:' + S.season.sid, []), ...bf].sort((a, b) => b.ts - a.ts);
   const TR = rng('talk:' + S.season.sid); const LINES = ['이거 오늘 간다', '물렸다… 존버합니다', '찌라시 믿고 들어갔다가 망함ㅋㅋ', '공매도 각 아님?', '외국인 들어온다던데', '여기서 더 사는 건 욕심인가', '오늘 점심장에 손절함', '평단 낮추는 중', '이 가격이면 줍줍', '큰손 이벤트 여기 아니냐'];
   const botTalk = []; let c0 = 0;
   STOCKS.forEach(st => { if (TR() < .45) { const n = 1 + Math.floor(TR() * 3); for (let i = 0; i < n; i++) { const bi = Math.floor(TR() * 3); botTalk.push({ id: 'bt' + (c0++), bot: true, sym: st.id, uid: 'bot' + bi, text: pick(TR, LINES), ts: now() - Math.floor(TR() * 36e5 * 20), season: S.season.sid, likes: TR() < .5 ? { ['bot' + ((bi + 1) % 3)]: true } : {} }); } } });
   Object.values(S.players).forEach(p => { if (!p.bot) return; p.votes = {}; STOCKS.forEach(st => { if (TR() < .5) p.votes[st.id] = { k: S.tick, sid: S.season.sid, d: TR() < .55 ? 'up' : 'down' }; }); });
   S.talk = [...LS.get('demoTalk', []), ...botTalk];
   const ER = rng('est:' + S.season.sid); const bots = ['bot0', 'bot1', 'bot2']; const est = {};
-  ESTATES.forEach(b => { if (ER() < .3 && b.v0 <= 1.5e10) est[b.id] = { season: S.season.sid, owner: bots[Math.floor(ER() * 3)], paid: b.v0, at: S.season.start, destroyed: ER() < .25 ? { value: Math.round(b.v0 * (.9 + ER() * .2) / 10000) * 10000, at: S.season.start, by: 'bot0' } : null, bot: true }; });
-  S.estates = { ...est, ...LS.get('demoEst5:' + S.season.sid, {}) };
+  ESTATES.forEach(b => { if (ER() < .3 && b.v0 <= 1e9) est[b.id] = { season: S.season.sid, owner: bots[Math.floor(ER() * 3)], paid: b.v0, at: S.season.start, destroyed: ER() < .25 ? { value: Math.round(b.v0 * (.9 + ER() * .2) / 10000) * 10000, at: S.season.start, by: 'bot0' } : null, bot: true }; });
+  S.estates = { ...est, ...LS.get('demoEst6:' + S.season.sid, {}) };
 }
 function startDemo() { S.mode = 'demo'; S.loaded = true; loadDemo(); renderAll(); if (!maybeReveal()) maybeJoin(); autoCredit(); }
 
@@ -1794,7 +1810,7 @@ function startLive(db, uid) {
   db.collection('feed').orderBy('ts', 'desc').limit(40).onSnapshot(snap => { S.feed = snap.docs.map(d => d.data()); renderAll(); }, () => {});
 }
 async function boot() {
-  syncTime(); S.lastLive = liveStep(now()); S.betPct = LS.get('betPct', '0.1'); S.betCustom = LS.get('betCustom', 0); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
+  syncTime(); S.lastLive = liveStep(now()); S.betPct = LS.get('betPct', '0.1'); if (S.betPct === 'custom') S.betPct = '0.1'; S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
   const cfg = window.FIREBASE_CONFIG;
   if (cfg && cfg.apiKey) { bootFirebase(cfg); return; }
   let db = null, user = null;
@@ -1813,7 +1829,7 @@ document.addEventListener('click', e => {
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
-  if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); if (S.betPct === 'custom') setTimeout(() => { const i = $('#betInput'); if (i) i.focus(); }, 30); return; }
+  if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
   if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
   if (t.dataset.filter) { S.filter = t.dataset.filter; renderMarket(); return; }
   if (t.dataset.vote) { castVote(t.dataset.vote); return; }
@@ -1852,7 +1868,7 @@ document.addEventListener('click', e => {
 $('#scrim').addEventListener('click', closeSheet);
 document.addEventListener('input', e => { if (e.target.id === 'betInput') { S.betCustom = Math.max(0, Math.floor(+e.target.value || 0)); LS.set('betCustom', S.betCustom); updateBetLabels(); } if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (S.detail) closeDetail(); } if (e.key === 'Enter' && e.target.id === 'nick') doJoin(); if (e.key === 'Enter' && e.target.id === 'talkInput' && !e.isComposing) postTalk(); });
-window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (S.tab === 'home') renderHome(); drawBig(); }, 150); });
+window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (S.tab === 'home') renderHome(); drawIndexChart(); drawBig(); }, 150); });
 
 setInterval(() => {
   let changed = syncTime();
