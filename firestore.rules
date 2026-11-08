@@ -23,11 +23,30 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // 부동산: 누구나 사고, 남의 건물을 파괴·강제 매입할 수 있어서 로그인한 사람은 모두 쓸 수 있어요.
-    // (나중에 데이터베이스를 정리할 때 서버 함수로 옮기면 더 안전해져요.)
+    // 부동산: 게임에 있는 동작(매입·매도·파괴·복구·강제 매입)만 허용해요.
+    // 남의 멀쩡한 건물 주인을 바꾸거나, 남의 건물을 파괴 말고 다른 식으로 고칠 수 없어요.
     match /estates/{id} {
+      function me() { return request.auth.uid; }
+      function oldOwner() { return resource.data.get('owner', null); }
+      function oldBroken() { return resource.data.get('destroyed', null) != null; }
+      function newOwner() { return request.resource.data.get('owner', null); }
+      function newBroken() { return request.resource.data.get('destroyed', null); }
       allow read: if signedIn();
-      allow write: if signedIn() && request.resource.data.season is string;
+      // 빈 땅 첫 매입
+      allow create: if signedIn() && request.resource.data.season is string
+        && newOwner() == me() && newBroken() == null;
+      allow update: if signedIn() && request.resource.data.season is string && (
+        // 주인 없는 건물 매입, 또는 파괴된 남의 건물 강제 매입 → 내가 주인, 멀쩡한 상태
+        ((oldOwner() == null || oldBroken()) && newOwner() == me() && newBroken() == null)
+        // 내 건물: 매도(주인 비움) 또는 복구
+        || (oldOwner() == me() && (newOwner() == null || newOwner() == me()) && newBroken() == null)
+        // 남의 멀쩡한 건물 파괴: 주인·산 가격은 그대로, 파괴한 사람은 나
+        || (oldOwner() != null && oldOwner() != me() && !oldBroken()
+            && newOwner() == oldOwner()
+            && request.resource.data.get('paid', 0) == resource.data.get('paid', 0)
+            && newBroken() is map && newBroken().by == me())
+      );
+      allow delete: if false;
     }
 
     // 종목 채팅: 본인 이름으로만 보내고, 삭제는 본인 메시지만.
