@@ -36,8 +36,8 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.season is string
         && newOwner() == me() && newBroken() == null;
       allow update: if signedIn() && request.resource.data.season is string && (
-        // 주인 없는 건물 매입, 또는 파괴된 남의 건물 강제 매입 → 내가 주인, 멀쩡한 상태
-        ((oldOwner() == null || oldBroken()) && newOwner() == me() && newBroken() == null)
+        // 내가 주인이 되는 경우: 빈 건물 매입, 파괴된 건물 120% 매입, 남의 건물 강제 매입(200%) → 멀쩡한 상태
+        (newOwner() == me() && newBroken() == null)
         // 내 건물: 매도(주인 비움) 또는 복구
         || (oldOwner() == me() && (newOwner() == null || newOwner() == me()) && newBroken() == null)
         // 남의 멀쩡한 건물 파괴: 주인·산 가격은 그대로, 파괴한 사람은 나

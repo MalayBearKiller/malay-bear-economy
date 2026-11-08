@@ -123,6 +123,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .fxcard span{font-weight:700;color:var(--dim);font-size:13.5px}
 .fxcard b{font-size:20px;font-weight:900}
 .fxcard small{color:var(--dim);font-weight:700;margin-left:auto}
+.estbtns{display:flex;flex-direction:column;gap:8px}
 .shopitem{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .shopitem .si-ic{font-size:26px}
 .shopitem .si-t{flex:1;min-width:0}
@@ -955,15 +956,32 @@ const ESTATES = [
   B('HDM', '현대백화점 목동점', '양천구', 'mall', 37.5265, 126.8745, 5e+11, 3.8e+11, 0.022),
   B('MIR', '목동 아이스링크', '양천구', 'stadium', 37.531, 126.877, 1e+11, 7.5e+10, 0.02),
   B('SDP', '서대문형무소역사관', '서대문구', 'tower', 37.5743, 126.9561, 1e+12, 7.5e+11, 0.012),
+  B('KSM', '간송미술관', '성북구', 'tower', 37.5937, 126.9947, 2e+11, 1.5e+11, 0.015),
+  B('WKH', '워커힐 호텔', '광진구', 'office', 37.5556, 127.1037, 6e+11, 4.5e+11, 0.02),
+  B('CRS', '청량리역', '동대문구', 'office', 37.5803, 127.0469, 8e+11, 6e+11, 0.018),
+  B('BRM', '보라매공원', '동작구', 'tower', 37.4927, 126.9198, 1e+12, 7.5e+11, 0.012),
+  B('PRS', '푸른수목원', '구로구', 'tower', 37.4834, 126.825, 3e+11, 2.2e+11, 0.015),
+  B('LGS', 'LG사이언스파크', '강서구', 'office', 37.562, 126.835, 2e+12, 1.5e+12, 0.018),
+  B('HAS', '호압사', '금천구', 'tower', 37.452, 126.917, 1e+11, 7.5e+10, 0.015),
+  B('CPW', '서울창포원', '도봉구', 'tower', 37.689, 127.048, 2e+11, 1.5e+11, 0.015),
+  B('MHD', '현대백화점 미아점', '강북구', 'mall', 37.608, 127.029, 3e+11, 2.2e+11, 0.022),
+  B('GDE', '길동생태공원', '강동구', 'tower', 37.54, 127.154, 1.5e+11, 1.1e+11, 0.015),
+  B('YSN', '연신내 상가건물', '은평구', 'small', 37.619, 126.921, 3e+10, 2e+10, 0.035),
+  B('JRP', '서울장미공원', '중랑구', 'tower', 37.604, 127.075, 1e+11, 7.5e+10, 0.015),
+  B('PRP', '파리공원', '양천구', 'tower', 37.534, 126.878, 1.5e+11, 1.1e+11, 0.015),
+  B('SCL', '석촌호수', '송파구', 'tower', 37.509, 127.1, 2e+12, 1.5e+12, 0.012),
+  B('GRM', '가락시장', '송파구', 'mall', 37.493, 127.11, 1e+12, 7.5e+11, 0.02),
 ];
 // 카테고리 (내부용): 아파트, 백화점, 상업시설, 오피스, 랜드마크, 대학, 상가건물, 체육시설
 const CATS = { gov: '국가기관', apt: '아파트', dept: '백화점', retail: '상업시설', office: '오피스', landmark: '랜드마크', univ: '대학', shop: '상가건물', sports: '체육시설' };
-const CAT_OF = { NIS: 'gov', SPC: 'gov', SPO: 'gov', MND: 'gov', KNP: 'gov', BOK: 'gov', CCK: 'gov', BAI: 'gov', NTS: 'gov', NMK: 'landmark', SBG: 'landmark', CPK: 'landmark', NCM: 'landmark', DBM: 'landmark', BHS: 'landmark', MJM: 'landmark', ASS: 'landmark', JGS: 'landmark', YMP: 'landmark', GAS: 'landmark', BAS: 'landmark', SBO: 'landmark', SDP: 'landmark', KSC: 'dept', HDM: 'dept', SGS: 'dept', HDA: 'dept', GLR: 'dept', NWL: 'dept', CHH: 'dept', SCD: 'dept', NSP: 'landmark', GBG: 'landmark', CWD: 'landmark', CDG: 'landmark', DSG: 'landmark', NAS: 'landmark', GMP: 'landmark', OLP: 'landmark', SFT: 'landmark', YSP: 'landmark', YDP: 'landmark', SSG: 'dept', LDB: 'dept', HDS: 'dept', COEX: 'retail', LWD: 'retail', DDP: 'retail', IPK: 'retail', LWT: 'landmark', GBC: 'landmark', B63: 'landmark', NST: 'landmark' };
+const CAT_OF = { KSM: 'landmark', BRM: 'landmark', PRS: 'landmark', HAS: 'landmark', CPW: 'landmark', GDE: 'landmark', JRP: 'landmark', PRP: 'landmark', SCL: 'landmark', MHD: 'dept', GRM: 'retail', NIS: 'gov', SPC: 'gov', SPO: 'gov', MND: 'gov', KNP: 'gov', BOK: 'gov', CCK: 'gov', BAI: 'gov', NTS: 'gov', NMK: 'landmark', SBG: 'landmark', CPK: 'landmark', NCM: 'landmark', DBM: 'landmark', BHS: 'landmark', MJM: 'landmark', ASS: 'landmark', JGS: 'landmark', YMP: 'landmark', GAS: 'landmark', BAS: 'landmark', SBO: 'landmark', SDP: 'landmark', KSC: 'dept', HDM: 'dept', SGS: 'dept', HDA: 'dept', GLR: 'dept', NWL: 'dept', CHH: 'dept', SCD: 'dept', NSP: 'landmark', GBG: 'landmark', CWD: 'landmark', CDG: 'landmark', DSG: 'landmark', NAS: 'landmark', GMP: 'landmark', OLP: 'landmark', SFT: 'landmark', YSP: 'landmark', YDP: 'landmark', SSG: 'dept', LDB: 'dept', HDS: 'dept', COEX: 'retail', LWD: 'retail', DDP: 'retail', IPK: 'retail', LWT: 'landmark', GBC: 'landmark', B63: 'landmark', NST: 'landmark' };
 const CAT_BY_TYPE = { apt: 'apt', office: 'office', univ: 'univ', small: 'shop', stadium: 'sports', mall: 'retail', tower: 'landmark' };
 ESTATES.forEach(b => b.cat = CAT_OF[b.id] || CAT_BY_TYPE[b.t]);
 // 30억 이하 아파트는 목록·지도에서 뺐어요. 누가 갖고 있으면 그 사람이 팔 때까지는 그대로 보이고 가치도 그대로예요.
 const RETIRED = new Set(['ELS', 'HEL', 'EUN', 'MDS', 'SGJ', 'JS5', 'GDG', 'MKM', 'GEN', 'CLS', 'ARH']);
-const shownEst = () => ESTATES.filter(b => !RETIRED.has(b.id) || estOf(b.id));
+// 건물이 몰린 구는 덜 유명한 곳을 가려 뒀어요(지우지 않음, 나중에 다시 켤 수 있어요). 누가 갖고 있으면 그대로 보여요.
+const HIDDEN = new Set(['GSC', 'CTP', 'BAI', 'NTS', 'DTW', 'SRB', 'HKD', 'KRX', 'KBS', 'TMS', 'EJR', 'SSQ', 'SGS', 'GNS', 'GRS', 'ITW', 'HNH', 'BXI', 'SSD']);
+const shownEst = () => ESTATES.filter(b => (!RETIRED.has(b.id) && !HIDDEN.has(b.id)) || estOf(b.id));
 const EM = Object.fromEntries(ESTATES.map(e => [e.id, e]));
 const RENT = .001; // 월세: per hour, of current value (≈2.4% a day)
 // 건물 비용: 매시간 유지비·재산세(+큰 부자는 종부세), 살 때 취득세, 팔 때 양도세
@@ -1859,10 +1877,15 @@ function estState(bid) {
   if (e.owner === S.uid) return e.destroyed ? 'mineBroken' : 'mine';
   return e.destroyed ? 'otherBroken' : 'other';
 }
+// 🏚️ 건물 공격: 소형(3% 내고 5% 확률) · 대형(25% 내고 40% 확률) · 강제 매입(200%, 원래 주인에게 100% 보상)
+// 파괴된 건물은 가격이 멈추고, 누구나 멈춘 값의 120%로 매입 · 주인은 60%로 복구. 사거나 복구한 뒤 10분은 공격 면역.
+const EST_ATK = { small: { cost: .03, p: .05 }, big: { cost: .25, p: .4 } }, EST_SHIELD = 10 * 60e3;
+const estShield = bid => { const e = estOf(bid); return e && e.safe ? Math.max(0, e.safe - Date.now()) : 0; };
 function estPrice(bid, action) {
   const e = estOf(bid), v = estVal(bid, S.tick);
   const gain = e && e.owner === S.uid ? Math.max(0, v - (e.paid || v)) : 0;
-  return { buy: Math.round(v * (1 + ACQ_TAX)), sell: Math.round(v - gain * CGT), destroy: Math.round(v * .5), restore: e && e.destroyed ? Math.round(e.destroyed.value * .5) : 0, force: e && e.destroyed ? Math.round(e.destroyed.value * 2 * (1 + ACQ_TAX)) : 0 }[action];
+  const fz = e && e.destroyed ? e.destroyed.value : 0;
+  return { buy: Math.round(v * (1 + ACQ_TAX)), sell: Math.round(v - gain * CGT), small: Math.round(v * EST_ATK.small.cost), big: Math.round(v * EST_ATK.big.cost), force: Math.round(v * 2), restore: Math.round(fz * .6), buy120: Math.round(fz * 1.2) }[action];
 }
 const ZOOM_PINS = 2.2;
 function ownerColor(uid) { return uid === S.uid ? 'var(--violet)' : avaColor(uid); }
@@ -2018,40 +2041,68 @@ function renderEstateSheet(b, sh) {
   const bd = EM[sh.bid], k = S.tick, st = estState(bd.id), e = estOf(bd.id);
   const v = estVal(bd.id, k), frozen = e && e.destroyed ? e.destroyed.value : null, c = v / estAt(bd.id, S.season.start) - 1;
   const can = S.me && !S.readOnly && !seasonOver();
-  const act = { free: ['buy', '매입 (취득세 4% 포함)', 'buy'], mine: ['sell', '매각 (양도세 반영)', 'sell'], mineBroken: ['restore', '복구하기 (50%)', 'cover'], other: ['destroy', '💥 파괴하기 (50%)', 'short'], otherBroken: ['force', '강제 매입 (2배 + 취득세)', 'buy'] }[st];
-  const price = estPrice(bd.id, act[0]); const confirm = sh.confirm === act[0];
+  const acts = { free: [['buy', '매입 (취득세 4% 포함)', 'buy']], mine: [['sell', '매각 (양도세 반영)', 'sell']], mineBroken: [['restore', '🔧 복구하기 (멈춘 값의 60%)', 'cover']],
+    other: [['small', '💣 소형 공격 · 5% 확률로 파괴', 'short'], ['big', '🚀 대형 공격 · 40% 확률로 파괴', 'short'], ['force', '🏴 강제 매입 (200%, 주인에게 100% 보상)', 'buy']], otherBroken: [['buy120', '파괴된 건물 매입 (멈춘 값의 120%)', 'buy']] }[st];
+  const shield = estShield(bd.id), atkSt = st === 'other';
+  const btns = acts.map(([a, l, c]) => { const pr = estPrice(bd.id, a), off = (S.me && S.me.cash < pr && a !== 'sell') || S.saving || (atkSt && shield);
+    return `<button class="cta ${c}" type="button" data-estact="${a}" ${off ? 'disabled' : ''}>${sh.confirm === a ? `한 번 더 누르면 ${won(pr)} 결제` : `${l} · ${won(pr)}`}</button>`; }).join('');
   const ownerCard = e ? `<div class="ownercard" style="--oc:${e.destroyed ? 'var(--up)' : ownerColor(e.owner)}">${ava({ id: e.owner, name: nameOf(e.owner), bot: (S.players[e.owner] || {}).bot }, true)}<div><small>${e.destroyed ? '파괴된 건물의 주인' : '이 건물의 주인'}</small><b>${e.owner === S.uid ? '👑 ' : ''}${esc(nameOf(e.owner))}</b><small>${won(e.paid || 0)}에 매입 · ${timeAgo(e.at || Date.now())}</small></div></div>`
     : `<div class="ownercard free"><div><small>주인 없음</small><b>지금 사면 지도에 내 이름이 걸려요</b></div></div>`;
   b.innerHTML = `<div class="shead"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : 'var(--violet)'}">${st.endsWith('Broken') ? '💥' : ICON[bd.t]}</span><div><h3>${esc(bd.n)}</h3><small>${esc(bd.gu)} · 최저가 ${man(bd.min)}원</small></div></div>
     ${ownerCard}
     <div class="bigp"><div class="p num" id="estPrice">${won(frozen ?? v)}</div><div class="c num">${frozen ? '<span class="up">파괴되어 가치가 멈췄어요</span>' : `<span class="${cls(c)}">이번 주 ${pctTxt(c)}</span>`}</div></div>
     <canvas class="chart" id="estChart" aria-label="${esc(bd.n)} 가격 차트"></canvas>
-    <div class="info"><div>시간당 월세<b class="num up">+${won(v * RENT)}</b></div><div>시간당 유지비·재산세<b class="num down">-${won(v * (MAINT + PTAX))}</b></div><div>${frozen ? '지금 시세' : '파괴 비용'}<b class="num">${won(frozen ? v : v * .5)}</b></div></div>
-    ${can ? `<button class="cta ${act[2]}" type="button" id="estAct" ${(S.me.cash < price && act[0] !== 'sell') || S.saving ? 'disabled' : ''}>${confirm ? `한 번 더 누르면 ${won(price)} 결제` : `${act[1]} · ${won(price)}`}</button>
-      ${S.me.cash < price && act[0] !== 'sell' ? `<p class="hint">현금이 ${won(price - S.me.cash)} 부족해요.</p>` : ''}` : `<p class="hint">${seasonOver() ? '시즌이 끝나서 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}
-    <p class="hint">${{ free: '사면 1시간마다 가치의 0.1%가 월세로 들어오고, 지도와 순위표에 내 이름이 걸려요.', mine: '친구가 50%를 내면 파괴할 수 있어요. 파괴되면 가치가 멈추고 월세도 끊겨요.', mineBroken: '복구하지 않으면 누군가 2배 가격으로 강제 매입할 수 있어요.', other: '파괴하면 가치가 멈추고 주인의 총자산에서 빠져요. 파괴한 사람은 익명이에요.', otherBroken: '강제 매입하면 건물이 바로 복구되고 내 것이 돼요. 낸 돈은 시장으로 사라져요.' }[st]}</p>`;
+    <div class="info"><div>시간당 월세<b class="num up">+${won(v * RENT)}</b></div><div>시간당 유지비·재산세<b class="num down">-${won(v * (MAINT + PTAX))}</b></div><div>${frozen ? '지금 시세' : '강제 매입가'}<b class="num">${won(frozen ? v : v * 2)}</b></div></div>
+    ${can ? `${atkSt && shield ? `<p class="hint">🛡️ 산 지 얼마 안 된 건물이에요. ${Math.ceil(shield / 60e3)}분 뒤부터 공격할 수 있어요.</p>` : ''}<div class="estbtns">${btns}</div>` : `<p class="hint">${seasonOver() ? '시즌이 끝나서 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}
+    <p class="hint">${{ free: '사면 1시간마다 가치의 0.1%가 월세로 들어오고, 지도와 순위표에 내 이름이 걸려요.', mine: '친구가 공격(소형 3%·5% / 대형 25%·40%)으로 부수거나, 200%를 내고 강제 매입할 수 있어요. 강제 매입당하면 건물값의 100%를 보상받아요.', mineBroken: '파괴되면 가치가 멈추고 월세가 끊겨요. 복구하지 않으면 누구나 120%에 사갈 수 있어요.', other: '파괴되면 가치가 멈추고 주인의 총자산에서 빠져요. 그 뒤 누구나 멈춘 값의 120%로 살 수 있어요. 파괴한 사람은 익명이에요.', otherBroken: '사면 바로 복구되고 내 것이 돼요. 원래 주인은 보상을 못 받아요.' }[st]}</p>`;
   setTimeout(drawEstChart, 0);
 }
-async function estAction() {
+async function estAction(action) {
   const sh = S.sheet; const bid = sh.bid; const st = estState(bid);
-  const action = { free: 'buy', mine: 'sell', mineBroken: 'restore', other: 'destroy', otherBroken: 'force' }[st];
+  const allowed = { free: ['buy'], mine: ['sell'], mineBroken: ['restore'], other: ['small', 'big', 'force'], otherBroken: ['buy120'] }[st];
+  if (!allowed.includes(action)) return;
+  if (['small', 'big', 'force'].includes(action) && estShield(bid)) { toast('🛡️ 산 지 10분이 안 된 건물이라 아직 공격할 수 없어요'); return; }
   if (sh.confirm !== action) { sh.confirm = action; renderSheet(); return; }
-  const price = estPrice(bid, action); if (!S.me || S.saving || S.me.cash < price && action !== 'sell') return;
-  const e = estOf(bid), before = S.me; const me = JSON.parse(JSON.stringify(before));
-  let doc;
-  if (action === 'buy' || action === 'force') { me.cash -= price; if (me.rentH == null || !myEstates({ id: S.uid }).length) me.rentH = rentHour(now()); doc = { season: S.season.sid, owner: S.uid, paid: price, at: Date.now(), destroyed: null }; }
-  if (action === 'sell') { me.cash += price; doc = { season: S.season.sid, owner: null, paid: 0, at: Date.now(), destroyed: null }; }
-  if (action === 'destroy') { me.cash -= price; doc = { ...e, destroyed: { value: estVal(bid, S.tick), at: Date.now(), by: S.uid } }; }
-  if (action === 'restore') { me.cash -= price; doc = { ...e, destroyed: null }; }
+  const price = estPrice(bid, action); if (!S.me || S.saving || (S.me.cash < price && action !== 'sell')) return;
+  const e = estOf(bid), before = S.me; const me = JSON.parse(JSON.stringify(before)), v = estVal(bid, S.tick), keep = e && e.comp || null;
+  const mine = (paid, extra) => ({ season: S.season.sid, owner: S.uid, paid, at: Date.now(), destroyed: null, safe: Date.now() + EST_SHIELD, comp: keep, ...extra });
+  let doc = null, hit = false;
+  if (action === 'buy') { me.cash -= price; if (me.rentH == null || !myEstates({ id: S.uid }).length) me.rentH = rentHour(now()); doc = mine(price); }
+  if (action === 'sell') { me.cash += price; doc = { season: S.season.sid, owner: null, paid: 0, at: Date.now(), destroyed: null, comp: keep }; }
+  if (action === 'restore') { me.cash -= price; doc = { ...e, destroyed: null, safe: Date.now() + EST_SHIELD }; }
+  if (action === 'buy120') { me.cash -= price; if (me.rentH == null || !myEstates({ id: S.uid }).length) me.rentH = rentHour(now()); doc = mine(price); }
+  if (action === 'force') { me.cash -= price; if (me.rentH == null || !myEstates({ id: S.uid }).length) me.rentH = rentHour(now()); doc = mine(price, { comp: { to: e.owner, amt: Math.round(v), ts: Date.now(), from: S.uid } }); }
+  if (action === 'small' || action === 'big') { me.cash -= price; hit = Math.random() < EST_ATK[action].p; if (hit) doc = { ...e, destroyed: { value: v, at: Date.now(), by: S.uid } }; }
   me.cash = Math.round(me.cash);
-  S.saving = true; const ok = await saveMe(me, before); const ok2 = ok && await saveEstate(bid, doc); S.saving = false;
+  S.saving = true; const ok = await saveMe(me, before); const ok2 = ok && (!doc || await saveEstate(bid, doc)); S.saving = false;
   if (ok && ok2) {
-    addFeed({ kind: 'est_' + action, est: bid, amt: price });
-    toast({ buy: `🏢 ${EM[bid].n} 매입 완료!`, sell: `${EM[bid].n}을 팔았어요`, destroy: `💥 ${EM[bid].n} 파괴!`, restore: `🔧 ${EM[bid].n} 복구 완료`, force: `🏴 ${EM[bid].n} 강제 매입!` }[action]);
-    if (action === 'destroy') boom(); else if (action !== 'sell') confetti();
+    const n = EM[bid].n;
+    if (action === 'small' || action === 'big') {
+      if (hit) { addFeed({ kind: 'est_destroy', est: bid, amt: price }); toast(`💥 ${n} 파괴 성공!`); boom(); }
+      else toast(`💨 ${n} 공격 실패… ${won(price)} 날아갔어요`);
+    } else {
+      if (action === 'buy' || action === 'buy120') addFeed({ kind: 'est_buy', est: bid, amt: price });
+      if (action === 'force') addFeed({ kind: 'est_force', est: bid, amt: price, target: e.owner });
+      if (action === 'sell') addFeed({ kind: 'est_sell', est: bid, amt: price });
+      if (action === 'restore') addFeed({ kind: 'est_restore', est: bid, amt: price });
+      toast({ buy: `🏢 ${n} 매입 완료!`, buy120: `🏢 ${n} 매입 완료! (파괴된 건물 120%)`, sell: `${n}을 팔았어요`, restore: `🔧 ${n} 복구 완료`, force: `🏴 ${n} 강제 매입! 주인에게 ${won(v)} 보상` }[action]);
+      if (action !== 'sell') confetti();
+    }
     buzz();
   }
   sh.confirm = null; renderAll(); renderSheet();
+}
+// 강제 매입당한 주인은 앱을 켤 때 건물에 남겨진 보상금(comp)을 스스로 받아요
+let collecting = false;
+async function collectComp() {
+  if (!S.me || S.readOnly || S.saving || collecting || (S.mode === 'live' && !S.loaded)) return;
+  const got = S.me.compGot || {}, due = Object.entries(S.estates).filter(([bid, e]) => e && e.comp && e.comp.to === S.uid && !got[bid + ':' + e.comp.ts]);
+  if (!due.length) return;
+  collecting = true; const before = S.me, me = JSON.parse(JSON.stringify(before)); me.compGot = { ...(me.compGot || {}) }; let sum = 0;
+  due.forEach(([bid, e]) => { me.compGot[bid + ':' + e.comp.ts] = 1; sum += e.comp.amt || 0; });
+  me.cash = Math.round(me.cash + sum);
+  const ok = await saveMe(me, before); collecting = false;
+  if (ok) { toast(`🏴 건물을 강제 매입당해서 보상금 ${won(sum)}을 받았어요`); renderAll(); }
 }
 
 /* ───────── excitement ───────── */
@@ -2268,7 +2319,7 @@ function feedText(f) {
     case 'est_sell': return EM[f.est] ? ['down', '🏢', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 팔았어요`] : null;
     case 'est_destroy': return EM[f.est] ? ['up', '💥', `누군가 <b>${esc(EM[f.est].n)}</b>을(를) 파괴했어요!`] : null;
     case 'est_restore': return EM[f.est] ? ['gold', '🔧', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 복구했어요`] : null;
-    case 'est_force': return EM[f.est] ? ['up', '🏴', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 강제 매입했어요!`] : null;
+    case 'est_force': return EM[f.est] ? ['up', '🏴', `<b>${nm}</b>님이 ${f.target ? `<b>${esc(nameOf(f.target))}</b>님의 ` : ''}${esc(EM[f.est].n)}을(를) 강제 매입했어요!`] : null;
     case 'lev': return st ? [f.d < 0 ? 'down' : 'up', f.d < 0 ? '📉' : '🚀', `<b>${nm}</b>님이 ${esc(st.n)} <b>${f.x}배 ${f.d < 0 ? '숏' : '롱'}</b> 진입!`] : null;
     case 'levclose': return st ? [f.amt >= 0 ? 'up' : 'down', f.amt >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(st.n)} 레버리지 정리 <b class="${f.amt >= 0 ? 'up' : 'down'}">${pctTxt(f.amt)}</b>`] : null;
     case 'liq': return st ? ['down', '💀', `<b>${nm}</b>님 ${esc(st.n)} <b>${f.x > 1 ? f.x + '배 ' + (f.d < 0 ? '숏' : '롱') + ' 청산' : '공매도 반대매매'}</b>당했어요${f.amt ? ` <b class="down">-${man(f.amt)}원</b>` : ''}`] : null;
@@ -2884,6 +2935,7 @@ document.addEventListener('click', e => {
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { if (t.dataset.sub === 'estate') { goTab('estate'); return; } S.sub = t.dataset.sub; goTab('assets'); return; }
+  if (t.dataset.estact) { estAction(t.dataset.estact); return; }
   if (t.dataset.tbag) { teabag(t.dataset.tbag); return; }
   if (t.dataset.estpg) { S.estPage = (S.estPage || 0) + +t.dataset.estpg; renderInvest(); return; }
   if (t.dataset.inv) { S.inv = t.dataset.inv; renderInvest(); window.scrollTo({ top: 0 }); return; }
@@ -2921,7 +2973,7 @@ document.addEventListener('click', e => {
     case 'photoDel': clearPhoto(); break;
     case 'renameOpen': if (S.me) openSheet('rename'); break;
     case 'renameBtn': doRename(); break;
-    case 'estAct': estAction(); break;
+    case 'estAct': break;
     case 'rescueBtn': claimRescue(); break;
     case 'closeAllBtn': if (S.closeAllAt && Date.now() - S.closeAllAt < 4000) closePositions(hudFilter()); else { S.closeAllAt = Date.now(); renderAll(); } break;
     case 'zoomIn': zoomAt(1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
@@ -2951,7 +3003,7 @@ window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz
 
 setInterval(() => {
   let changed = syncTime();
-  feedAlerts(); saveWinBase();
+  feedAlerts(); saveWinBase(); collectComp();
   const sl = slotOf(now()); if (sl !== S.slot) { S.slot = sl; changed = true; }
   autoCredit();
   const ls = liveStep(now());
