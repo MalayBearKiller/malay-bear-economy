@@ -480,6 +480,11 @@ body.noscroll{overflow:hidden}
 .rv-row .chg{font-size:17px;font-weight:800}
 @keyframes pop{from{transform:translateY(8px);opacity:0}}
 
+.liqbar{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:0;right:0;margin-inline:auto;width:fit-content;max-width:calc(100% - 32px);z-index:61;display:flex;align-items:center;gap:8px;background:var(--ink);color:#fff;font-size:12.5px;font-weight:700;padding:6px 6px 6px 14px;border-radius:99px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.liqbar[hidden]{display:none}
+.liqbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.liqbar button{flex:none;background:#ffd23f;color:#17161f;font-size:12px;font-weight:800;padding:5px 10px;border-radius:99px}
+.liqbar.solo{padding-right:14px}
 .toast{position:fixed;left:0;right:0;margin-inline:auto;width:fit-content;bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:99px;max-width:calc(100% - 32px);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:rise .25s}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:360px){.sectors{grid-template-columns:repeat(2,1fr)}}
@@ -532,6 +537,7 @@ body.noscroll{overflow:hidden}
 </section>
 <section class="detail" id="detail" hidden aria-label="종목 상세"></section>
 <div class="toast" id="toast" hidden></div>
+<div class="liqbar" id="liqBar" hidden></div>
 
 <script src="firebase-config.js"></script>
 <script>
@@ -1060,6 +1066,36 @@ function isAllCash(p) {
 function activePlayers() { return Object.entries(S.players).filter(([, p]) => p && p.name).map(([id, p]) => ({ id, ...p })); }
 function ranking(k) { return activePlayers().map(p => ({ ...p, w: worth(p, k) })).sort((a, b) => b.w - a.w); }
 const nameOf = id => (S.players[id] && S.players[id].name) || '누군가';
+// 100억 이상 청산되면 상단에 작게 알려주고 티배깅할 수 있어요
+const BIG_LIQ = 10_000_000_000, LB_SEEN = new Set(), TBAGGED = new Set(); let lbTimer = 0;
+function showLiqBar(html, btn) {
+  const b = $('#liqBar'); if (!b) return;
+  b.innerHTML = `<span>${html}</span>${btn || ''}`; b.classList.toggle('solo', !btn); b.hidden = false;
+  clearTimeout(lbTimer); lbTimer = setTimeout(() => { b.hidden = true; }, 8000);
+}
+function feedAlerts() {
+  if (!S.feed || !S.season) return; const t = now();
+  for (const f of S.feed.slice(0, 30)) {
+    if (!f || t - (f.ts || 0) > 20e3) continue;
+    const key = f.kind + ':' + f.ts + ':' + f.uid; if (LB_SEEN.has(key)) continue;
+    if (f.kind === 'liq' && f.uid !== S.uid && (f.amt || 0) >= BIG_LIQ && SM[f.sym]) {
+      LB_SEEN.add(key);
+      const what = f.x > 1 ? `${f.x}배 ${f.d < 0 ? '숏' : '롱'}` : '공매도';
+      showLiqBar(`💀 ${esc(nameOf(f.uid))}님 ${esc(SM[f.sym].n)} ${what} 청산! -${man(f.amt)}원`,
+        S.me && !S.readOnly ? `<button type="button" data-tbag="${esc(f.uid)}:${esc(f.sym)}:${f.ts}">🫖 티배깅</button>` : '');
+      return;
+    }
+    if (f.kind === 'tbag' && f.target === S.uid && f.uid !== S.uid) {
+      LB_SEEN.add(key); showLiqBar(`🫖 ${esc(nameOf(f.uid))}님이 청산당한 나를 티배깅했어요`); return;
+    }
+  }
+}
+function teabag(arg) {
+  const [target, sym, ts] = arg.split(':'); const b = $('#liqBar');
+  if (!S.me || S.readOnly || TBAGGED.has(arg)) { if (b) b.hidden = true; return; }
+  TBAGGED.add(arg); addFeed({ kind: 'tbag', target, sym, liqTs: +ts });
+  if (b) b.hidden = true; toast(`🫖 ${nameOf(target)}님을 티배깅했어요`); buzz(40);
+}
 function topHolding(p, k) { let best = null, bv = 0; for (const [s, q] of Object.entries(p.hold || {})) { if (!SM[s]) continue; const v = q * px(s, k); if (v > bv) { bv = v; best = s; } } return best; }
 function posSummary(p) {
   const parts = [];
@@ -1516,7 +1552,7 @@ async function checkLiquidation() {
     burnt.forEach(([sym, o]) => { const p = lqDead(S.uid, 'short', sym, o) ? o.e * SHORT_LIQ : px(sym, S.tick); me2.cash += Math.max(0, o.q * (2 * o.e - p) - Math.ceil(o.q * p * FEE)); delete me2.shorts[sym]; });
     me2.cash = Math.round(me2.cash);
     const ok2 = await saveMe(me2, b0); liquidating = false;
-    if (ok2) { burnt.forEach(([sym]) => addFeed({ kind: 'liq', sym, x: 1, d: -1 })); toast(`💀 ${burnt.map(([sym]) => SM[sym].n).join(', ')} 숏스퀴즈 공매도 반대매매!`); boom(); renderAll(); }
+    if (ok2) { burnt.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: 1, d: -1, amt: Math.round(o.q * o.e * (SHORT_LIQ - 1)) })); toast(`💀 ${burnt.map(([sym]) => SM[sym].n).join(', ')} 숏스퀴즈 공매도 반대매매!`); boom(); renderAll(); }
     return;
   }
   if (!S.me.lev) return;
@@ -1525,7 +1561,7 @@ async function checkLiquidation() {
   liquidating = true; const before = S.me; const me = JSON.parse(JSON.stringify(before));
   dead.forEach(([sym]) => { me.levPnl = (me.levPnl || 0) - me.lev[sym].m; delete me.lev[sym]; });
   const ok = await saveMe(me, before); liquidating = false;
-  if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x, d: o.d || 1 })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 강제 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
+  if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x, d: o.d || 1, amt: Math.round(o.m) })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 강제 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
 }
 function jumpAlerts() {
   const k = Math.floor((now() - S.season.start) / BANG_MS);
@@ -1693,7 +1729,8 @@ function feedText(f) {
     case 'est_force': return EM[f.est] ? ['up', '🏴', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 강제 매입했어요!`] : null;
     case 'lev': return st ? [f.d < 0 ? 'down' : 'up', f.d < 0 ? '📉' : '🚀', `<b>${nm}</b>님이 ${esc(st.n)} <b>${f.x}배 ${f.d < 0 ? '숏' : '롱'}</b> 진입!`] : null;
     case 'levclose': return st ? [f.amt >= 0 ? 'up' : 'down', f.amt >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(st.n)} 레버리지 정리 <b class="${f.amt >= 0 ? 'up' : 'down'}">${pctTxt(f.amt)}</b>`] : null;
-    case 'liq': return st ? ['down', '💀', `<b>${nm}</b>님 ${esc(st.n)} <b>${f.x > 1 ? f.x + '배 ' + (f.d < 0 ? '숏' : '롱') + ' 고점 설거지 청산' : '공매도 반대매매'}</b>당했어요`] : null;
+    case 'liq': return st ? ['down', '💀', `<b>${nm}</b>님 ${esc(st.n)} <b>${f.x > 1 ? f.x + '배 ' + (f.d < 0 ? '숏' : '롱') + ' 청산' : '공매도 반대매매'}</b>당했어요${f.amt ? ` <b class="down">-${man(f.amt)}원</b>` : ''}`] : null;
+    case 'tbag': return ['gold', '🫖', `<b>${nm}</b>님이 청산당한 <b>${esc(nameOf(f.target))}</b>님을 티배깅했어요`];
     case 'atk': return st ? ['up', '💥', `<b>${nm}</b>님이 <b>${esc(nameOf(f.target))}</b>님의 ${esc(st.n)} 포지션을 <b>${f.dir < 0 ? '▼12% 폭락' : '▲12% 폭등'} 공격</b>했어요!${f.bounty ? ` <b class="up">(참수 성공 · 비용 환급)</b>` : ''}`] : null;
     case 'spy': return ['gold', '🕵️', `누군가 <b>${esc(nameOf(f.target))}</b>님의 지갑을 엿봤어요`];
     default: return null;
@@ -2250,6 +2287,7 @@ document.addEventListener('click', e => {
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
+  if (t.dataset.tbag) { teabag(t.dataset.tbag); return; }
   if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
   if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
   if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
@@ -2299,6 +2337,7 @@ window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz
 
 setInterval(() => {
   let changed = syncTime();
+  feedAlerts();
   const sl = slotOf(now()); if (sl !== S.slot) { S.slot = sl; changed = true; }
   autoCredit();
   const ls = liveStep(now());
