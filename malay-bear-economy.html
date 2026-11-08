@@ -78,6 +78,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .idxmini .lab{font-size:13px;font-weight:800;color:var(--dim);margin-right:8px}
 .idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
 .idxmini > .num{font-size:17px;font-weight:900}
+.idxmini.mine b{font-size:22px}
 .movers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:-12px}
 .mover{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:18px;background:var(--paper);min-width:0}
 .mover .mv-main{display:flex;flex-direction:column;gap:6px;text-align:left;min-width:0}
@@ -176,10 +177,10 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .tb.sell.lit{background:var(--down);color:#fff;box-shadow:0 2px 8px rgba(47,120,238,.35)}
 .tb:disabled{opacity:.3;cursor:default}
 .sprice .p{border-radius:6px;padding:0 3px;margin-right:-3px}
-.sprice .p.fu{animation:fu .9s} .sprice .p.fd{animation:fd .9s}
+
 @keyframes fu{0%{background:var(--up);color:#fff;transform:scale(1.08)}}
 @keyframes fd{0%{background:var(--down);color:#fff;transform:scale(1.08)}}
-.livedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-left:8px;vertical-align:middle;animation:blink 1.6s infinite}
+.livedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-left:8px;vertical-align:middle}
 @keyframes blink{50%{opacity:.2}}
 .seg.two{grid-template-columns:1fr 1fr}
 .sheet-wrap.center{align-items:center;padding:16px}
@@ -308,7 +309,7 @@ body.shake{animation:shake .45s}
 @keyframes pu{0%{background:#16b27e;transform:scale(1.03)}}
 @keyframes pd{0%{background:#f2414f;transform:scale(.98)}}
 .sprice .p.fu,.sprice .p.fd{font-weight:900}
-.srow.rowfu{animation:rowu .9s}.srow.rowfd{animation:rowd .9s}
+
 @keyframes rowu{0%{background:var(--up-bg)}}@keyframes rowd{0%{background:var(--down-bg)}}
 .srow{border-radius:12px;margin-inline:-6px;padding-inline:6px}
 
@@ -326,7 +327,7 @@ body.shake{animation:shake .45s}
 .fab .v{font-size:18px;font-weight:800}
 .fab .c{font-size:15px;font-weight:800;text-align:right}
 .fab .c.up{color:#ff7a85} .fab .c.down{color:#7fb0ff} .fab .c.flat{color:rgba(255,255,255,.6)}
-.fab .c.buy-prompt{color:var(--gold);font-size:13px;font-weight:800;background:rgba(255,210,63,.16);padding:6px 10px;border-radius:10px;white-space:nowrap;animation:blink 1.6s infinite}
+.fab .c.buy-prompt{color:var(--gold);font-size:13px;font-weight:800;background:rgba(255,210,63,.16);padding:6px 10px;border-radius:10px;white-space:nowrap}
 .fab.bump{animation:bump .5s}
 @keyframes bump{40%{transform:scale(1.03)}}
 
@@ -1214,7 +1215,10 @@ function hms(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); const 
 function renderHome() {
   const el = $('#tab-home'); const k = S.tick; const I = S.SE.index;
   const Ik = indexNow(); const ic = Ik / index24() - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
-  let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>`;
+  // 곰스피 지수 카드는 나중에 쓸 수 있게 남겨두고, 참가한 사람에겐 그 자리에 내 총자산을 보여줘요
+  const idxCard = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>`;
+  const myW = S.me ? worth(S.me, k) : 0, myRoi = S.me ? roiOf(S.me, myW) : 0;
+  let h = S.me ? `<div class="card idxmini mine"><div><span class="lab">내 총자산</span><b class="num">${won(myW)}</b></div><span class="num ${cls(myRoi)}">${pctTxt(myRoi)}</span></div>` : idxCard;
 
   h = rescueCard() + posHUD() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
@@ -2403,9 +2407,7 @@ setInterval(() => {
     const old = {}; STOCKS.forEach(x => old[x.id] = px(x.id, S.tick));
     S.lastLive = ls; LV.flash = {};
     STOCKS.forEach(x => { const v = px(x.id, S.tick); if (old[x.id] && v !== old[x.id]) LV.flash[x.id] = v > old[x.id] ? 'u' : 'd'; });
-    const w0 = S.me ? worthPrev(S.me, S.tick) : 0;
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
-    if (S.me && !isAllCash(S.me)) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
     lqScan(); holdingAlerts(); checkLiquidation(); jumpAlerts();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
