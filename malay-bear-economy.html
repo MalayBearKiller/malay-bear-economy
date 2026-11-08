@@ -90,9 +90,9 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .ws-top small{display:block;font-size:13px;font-weight:700;color:var(--dim)}
 .ws-top b{display:block;font-size:19px;font-weight:900;letter-spacing:-.03em}
 .ws-pnl{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
-.ws-pnl b.pct{font-size:18px!important;font-weight:900}.ws-pnl small.amt{font-weight:700;font-size:11.5px}
+.ws-pnl b.pct{font-size:22px!important;font-weight:900;line-height:1.1}.ws-pnl small.amt{font-weight:700;font-size:11.5px}
 .ws-pnl .up{color:var(--up)!important}.ws-pnl .down{color:var(--down)!important}
-.ws-top b.usd{font-size:15px}.ws-top b.usd .krw{font-size:12px;font-weight:700;color:var(--dim)}
+.ws-usd{margin-top:4px;font-size:12px;font-weight:700;color:var(--dim)}.ws-usd b{color:var(--ink);font-weight:800}.ws-usd .krw{font-size:11.5px}
 .ws-sub{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .ws-sub{margin-top:10px;padding-top:10px}
 .ws-rk{background:var(--violet);color:#fff;border-radius:14px;padding:6px 14px;text-align:center;line-height:1.1;flex:none}
@@ -2326,10 +2326,10 @@ function renderWallet() {
   const inSub = x => S.wsub === 'coin' ? !isEq(x) : isEq(x);
   // 맨 위 카드: 내 프로필이면 총자산, 주식·코인·부동산이면 그 분야 합계와 산 값 대비 손익
   const sumOf = list => { const v = list.reduce((a, x) => a + x.value, 0), c = list.reduce((a, x) => a + x.principal, 0); return { v, pnl: v - c, pct: c ? (v - c) / c : 0 }; };
-  const mp = myPositions(m), pnlTxt = x => `<span class="ws-pnl"><b class="num pct ${cls(x.pnl)}">${pctTxt(x.pct)}</b><small class="num amt ${cls(x.pnl)}">${signWon(x.pnl)}</small></span>`;
+  const mp = myPositions(m), pnlTxt = x => `<span class="ws-pnl"><small class="num amt ${cls(x.pnl)}">${signWon(x.pnl)}</small><b class="num pct ${cls(x.pnl)}">${pctTxt(x.pct)}</b></span>`;
   let top;
   if (S.wsub === 'stock') { const a = sumOf(mp.filter(x => isEq(x.sym) && !SM[x.sym].fx)), u = sumOf(mp.filter(x => SM[x.sym].fx));
-    top = `<div class="ws-top"><div><small>📈 주식 합계</small><b class="num">${won(a.v)}</b></div>${pnlTxt(a)}</div>${(m.hold || {}).USD ? `<div class="ws-top ws-sub"><div><small>💵 보유 달러</small><b class="num usd">${QT('USD', m.hold.USD)} <span class="krw">(${won(m.hold.USD * px('USD', k))})</span></b></div></div>` : ''}`; }
+    top = `<div class="ws-top"><div><small>📈 주식 합계</small><b class="num">${won(a.v)}</b></div>${pnlTxt(a)}</div>${(m.hold || {}).USD ? `<div class="ws-usd">💵 보유 달러 <b class="num">${QT('USD', m.hold.USD)}</b> <span class="krw num">(${won(m.hold.USD * px('USD', k))})</span></div>` : ''}`; }
   else if (S.wsub === 'coin') { const a = sumOf(mp.filter(x => !isEq(x.sym))); top = `<div class="ws-top"><div><small>🪙 코인 합계</small><b class="num">${won(a.v)}</b></div>${pnlTxt(a)}</div>`; }
   else if (S.wsub === 'estate') { const es = myEstates({ id: S.uid }).map(b => { const e = estOf(b.id); return { value: e.destroyed ? 0 : estVal(b.id, k), principal: e.paid || 0 }; }); const a = sumOf(es);
     top = `<div class="ws-top"><div><small>🏢 부동산 합계</small><b class="num">${won(a.v)}</b></div>${pnlTxt(a)}</div>`; }
