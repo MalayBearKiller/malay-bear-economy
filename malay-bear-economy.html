@@ -294,6 +294,8 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .seoul{width:100%;height:min(70vh,520px);display:block;background:#e8f1fb;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
 .seoul path.gu{stroke:#fff;stroke-width:2.2;vector-effect:non-scaling-stroke;transition:fill .2s}
 .seoul path.gu.mine{stroke:var(--violet);stroke-width:2.5}
+.seoul path.land{pointer-events:none;opacity:.3;stroke:#fff;stroke-width:2.2;vector-effect:non-scaling-stroke}
+.seoul path.land[opacity]{opacity:.16}
 .seoul .gl text{text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px;pointer-events:none}
 .seoul .gn{font-size:15px;font-weight:800;fill:var(--ink)}
 .seoul .gc{font-size:11.5px;font-weight:700;fill:var(--violet)}
@@ -1528,7 +1530,19 @@ function pinsSVG() {
 function districtSVG() {
   const mine = new Set(myEstates({ id: S.uid }).map(b => b.gu));
   const counts = {}; ESTATES.forEach(b => counts[b.gu] = (counts[b.gu] || 0) + 1);
-  return DISTRICTS.map((d, i) => `<path class="gu${mine.has(d.n) ? ' mine' : ''}" data-gu="${d.n}" d="${d.d}" style="fill:${mine.has(d.n) ? 'var(--violet-bg)' : ['#f3f2f8', '#eceaf4', '#f6f5fa', '#e9e7f1'][i % 4]}"/>`).join('') +
+  // 구마다 건물을 가장 많이 가진 사람(같으면 건물값 합이 큰 사람)의 프로필을 땅 배경으로 옅게 깔아요
+  const top = {};
+  { const agg = {};
+    ESTATES.forEach(b => { const e = estOf(b.id); if (!e || e.destroyed) return; const a = (agg[b.gu] ||= {}), o = (a[e.owner] ||= { n: 0, v: 0 }); o.n++; o.v += estVal(b.id, S.tick); });
+    Object.entries(agg).forEach(([gu, a]) => { top[gu] = Object.entries(a).sort((x, y) => y[1].n - x[1].n || y[1].v - x[1].v)[0][0]; }); }
+  const land = DISTRICTS.map((d, i) => {
+    const uid = top[d.n]; if (!uid) return '';
+    const p = S.players[uid] || {}; const ph = !p.bot && okPhoto(p.photo);
+    return ph
+      ? `<pattern id="land${i}" patternContentUnits="objectBoundingBox" width="1" height="1"><image href="${p.photo}" width="1" height="1" preserveAspectRatio="xMidYMid slice"/></pattern><path class="land" d="${d.d}" fill="url(#land${i})"/>`
+      : `<path class="land" d="${d.d}" style="fill:${ownerColor(uid)}" opacity=".16"/>`;
+  }).join('');
+  return DISTRICTS.map((d, i) => `<path class="gu${mine.has(d.n) ? ' mine' : ''}" data-gu="${d.n}" d="${d.d}" style="fill:${mine.has(d.n) ? 'var(--violet-bg)' : ['#f3f2f8', '#eceaf4', '#f6f5fa', '#e9e7f1'][i % 4]}"/>`).join('') + land +
     DISTRICTS.map(d => `<g class="gl" data-x="${d.c[0]}" data-y="${d.c[1]}"><text class="gn" y="0">${d.n}</text>${counts[d.n] ? `<text class="gc" y="18">건물 ${counts[d.n]}</text>` : ''}</g>`).join('');
 }
 function applyMapView() {
