@@ -2034,7 +2034,8 @@ function renderEstList(host) {
 function drawEstChart() {
   const cv = $('#estChart'), sh = S.sheet; if (!cv || !sh || sh.type !== 'estate') return;
   const e = estOf(sh.bid), t1 = now(), arr = [];
-  for (let t = t1 - 864e5; t < t1; t += 9e5) arr.push(estAt(sh.bid, Math.max(S.season.start, t)));
+  const t0 = Math.max(S.season.start, t1 - 864e5), stp = Math.max(6e4, (t1 - t0) / 60); // 시즌 시작 전 구간은 평평해서 빼요
+  for (let t = t0; t < t1; t += stp) arr.push(estAt(sh.bid, t));
   arr.push(e && e.destroyed ? e.destroyed.value : estVal(sh.bid, S.tick)); drawChart(cv, arr, {});
 }
 function renderEstateSheet(b, sh) {
