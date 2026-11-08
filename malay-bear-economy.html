@@ -650,6 +650,50 @@ const STOCKS = [
   { id: 'CELT', a: '셀트', n: '셀트리온',      s: 'bio',  vol: .04,  sens: 1.2, p0: 180000 },
 ];
 const SM = Object.fromEntries(STOCKS.map(s => [s.id, s]));
+// 🪙 코인: 예전 주식 30종목을 코인으로 바꿨어요. 내부 id·가격 흐름·보유 수량은 그대로 두고,
+// 화면에서만 코인 이름·가격(내부 가격 × 배율)·수량(내부 수량 ÷ 배율)으로 보여줘서 가치는 똑같아요.
+const COIN = {
+  MSFT: ['BTC', '비트코인', 'major', 102.389],
+  AAPL: ['ETH', '이더리움', 'major', 67.2948],
+  SEC: ['XRP', '리플', 'major', 0.127971],
+  HMC: ['BNB', '바이낸스코인', 'major', 3.7037],
+  SKH: ['SOL', '솔라나', 'major', 0.445633],
+  KIA: ['TRX', '트론', 'major', 0.0058651],
+  GOOG: ['LTC', '라이트코인', 'major', 2.67857],
+  AMZN: ['BCH', '비트코인캐시', 'major', 1.71779],
+  NFLX: ['ETC', '이더리움클래식', 'major', 0.131579],
+  TSM: ['ADA', '에이다', 'l1', 0.0178571],
+  AVGO: ['AVAX', '아발란체', 'l1', 0.357143],
+  QCOM: ['DOT', '폴카닷', 'l1', 0.00846433],
+  META: ['TON', '톤코인', 'l1', 0.00554939],
+  MU: ['SUI', '수이', 'l1', 0.0444444],
+  KRAF: ['APT', '앱토스', 'l1', 0.0414747],
+  KAKO: ['NEAR', '니어', 'l1', 0.450704],
+  LGES: ['ICP', '인터넷컴퓨터', 'l1', 0.301887],
+  SBIO: ['HBAR', '헤데라', 'l1', 0.000458716],
+  NAVR: ['XLM', '스텔라루멘', 'l1', 0.0190114],
+  ASML: ['LINK', '체인링크', 'defi', 0.020145],
+  CPNG: ['UNI', '유니스왑', 'defi', 1.09091],
+  CELT: ['AAVE', '에이브', 'defi', 5.31915],
+  AMD: ['ARB', '아비트럼', 'defi', 0.0334129],
+  HYBE: ['OP', '옵티미즘', 'defi', 0.00394477],
+  POSC: ['POL', '폴리곤', 'defi', 0.00657895],
+  NVDA: ['DOGE', '도지코인', 'meme', 0.00192926],
+  INTC: ['SHIB', '시바이누', 'meme', 8.23045e-07],
+  HMS: ['BONK', '봉크', 'meme', 1.98675e-06],
+  TSLA: ['WIF', '도그위프햇', 'meme', 0.0124481],
+  PLTR: ['PEPE', '페페', 'meme', 8.90208e-07],
+};
+const COIN_CATS = { major: { n: '메이저' }, l1: { n: '레이어1' }, defi: { n: '디파이·L2' }, meme: { n: '밈' } };
+STOCKS.forEach(s => { const c = COIN[s.id]; if (c) { s.a = c[0]; s.n = c[1]; s.cc = c[2]; s.cf = c[3]; } });
+const catName = s => s.cc ? COIN_CATS[s.cc].n : SECTORS[s.s].n;
+const cf = id => (SM[id] && SM[id].cf) || 1;
+const isCoin = id => !!(SM[id] && SM[id].cf);
+const PW = (id, p) => { const v = p * cf(id); return v < 100 ? (+v.toPrecision(4)).toLocaleString('ko-KR', { maximumFractionDigits: 8 }) + '원' : won(Math.round(v)); };
+const coinNum = x => x >= 1000 ? Math.round(x).toLocaleString() : (+x.toPrecision(6)).toLocaleString('ko-KR', { maximumFractionDigits: 8 });
+const QT = (id, q) => isCoin(id) ? coinNum(q / cf(id)) + '개' : (q || 0).toLocaleString() + '주';
+const qOut = (id, q) => isCoin(id) ? +(q / cf(id)).toPrecision(8) : q;
+const qIn = (id, v) => Math.max(0, isCoin(id) ? Math.round((parseFloat(v) || 0) * cf(id)) : Math.floor(+v || 0));
 const SRC = [ { k: '공시', rel: .85, w: .25 }, { k: '기사', rel: .65, w: .4 }, { k: '찌라시', rel: .45, w: .35 } ];
 const NEWS = {
   semi: { u: ['AI 서버용 칩 주문 급증 전망', '차세대 공정 수율 개선 소식', '대형 고객사 공급 계약 체결설'], d: ['메모리 가격 하락 우려', '재고 증가 경고 리포트', '수출 규제 강화 가능성'] },
@@ -1253,9 +1297,9 @@ function teabag(arg) {
 function topHolding(p, k) { let best = null, bv = 0; for (const [s, q] of Object.entries(p.hold || {})) { if (!SM[s]) continue; const v = q * px(s, k); if (v > bv) { bv = v; best = s; } } return best; }
 function posSummary(p) {
   const parts = [];
-  Object.entries(p.hold || {}).filter(([s]) => SM[s]).forEach(([s, q]) => parts.push(`${SM[s].n} ${q.toLocaleString()}주`));
+  Object.entries(p.hold || {}).filter(([s]) => SM[s]).forEach(([s, q]) => parts.push(`${SM[s].n} ${QT(s, q)}`));
   Object.entries(p.lev || {}).filter(([s]) => SM[s]).forEach(([s, o]) => parts.push(`${SM[s].n} ${o.x}배 ${levSide(o)}`));
-  Object.entries(p.shorts || {}).filter(([s]) => SM[s]).forEach(([s, o]) => parts.push(`${SM[s].n} 공매도 ${o.q.toLocaleString()}주`));
+  Object.entries(p.shorts || {}).filter(([s]) => SM[s]).forEach(([s, o]) => parts.push(`${SM[s].n} 공매도 ${QT(s, o.q)}`));
   const pid = p.id || (p === S.me || p === S.players[S.uid] ? S.uid : null);
   return parts.length ? parts.join(' · ') : (pid === S.uid ? '자산을 구매하세요!' : '현금만');
 }
@@ -1358,7 +1402,7 @@ function renderHome() {
     const me = S.me, myW = worth(me, k), shares = Object.values(me.hold || {}).reduce((a, q) => a + q, 0);
     const nLev = Object.keys(me.lev || {}).filter(s2 => SM[s2]).length, nSh = Object.keys(me.shorts || {}).filter(s2 => SM[s2]).length;
     const nEst = myEstates({ id: S.uid }).filter(b => !estOf(b.id).destroyed).length;
-    const rest = [shares ? `주식 ${shares.toLocaleString()}주` : '', nLev ? `레버리지 ${nLev}개` : '', nSh ? `공매도 ${nSh}개` : '', nEst ? `건물 ${nEst}채` : ''].filter(Boolean).join(' · ') || '보유 자산 없음';
+    const rest = [shares ? `코인 ${Object.keys(me.hold || {}).filter(x => SM[x] && me.hold[x] > 0).length}종` : '', nLev ? `레버리지 ${nLev}개` : '', nSh ? `공매도 ${nSh}개` : '', nEst ? `건물 ${nEst}채` : ''].filter(Boolean).join(' · ') || '보유 자산 없음';
     h = `<div class="card mycard"><div class="mc-row"><div><small>총자산</small><b class="num">${won(myW)}</b></div><div><small>현금</small><b class="num">${won(me.cash)}</b></div></div><p class="mc-rest">${rest}</p></div>`;
   }
 
@@ -1425,12 +1469,12 @@ function renderInvest() {
   if (S.inv === 'stock' || S.inv === 'fx') { body.innerHTML = `<div class="empty">${S.inv === 'stock' ? '주식 시장을 준비하고 있어요. 곧 열려요.' : '환율 시장을 준비하고 있어요. 곧 열려요.'}</div>`; return; }
   let h = '';
   const held = STOCKS.filter(x => exitMode(x.id));
-  if (S.homeSec == null) S.homeSec = held.length ? 'mine' : Object.keys(SECTORS)[0];
-  if (S.homeSec === 'mine' ? !held.length : !SECTORS[S.homeSec]) S.homeSec = Object.keys(SECTORS)[0];
-  const secs = [...(held.length ? [['mine', `보유 ${held.length}`]] : []), ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
+  if (S.homeSec == null) S.homeSec = held.length ? 'mine' : Object.keys(COIN_CATS)[0];
+  if (S.homeSec === 'mine' ? !held.length : !COIN_CATS[S.homeSec]) S.homeSec = Object.keys(COIN_CATS)[0];
+  const secs = [...(held.length ? [['mine', `보유 ${held.length}`]] : []), ...Object.entries(COIN_CATS).map(([k2, v]) => [k2, v.n])];
   h += `<div class="sec"><div class="sec-h"><h2>코인</h2><small>가격 높은 순</small></div>
     <div class="chips" role="group" aria-label="종목 분류">${secs.map(([k2, l]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${l}</button>`).join('')}</div>
-    <div class="slist">${byPrice(S.homeSec === 'mine' ? held : STOCKS.filter(x => x.s === S.homeSec)).map(stockRow).join('')}</div></div>`;
+    <div class="slist">${byPrice(S.homeSec === 'mine' ? held : STOCKS.filter(x => x.cc === S.homeSec)).map(stockRow).join('')}</div></div>`;
   const oldChips = body.querySelector('.chips'), sx = oldChips ? oldChips.scrollLeft : 0;
   body.innerHTML = h;
   const newChips = body.querySelector('.chips'); if (newChips && sx) newChips.scrollLeft = sx;
@@ -1495,7 +1539,7 @@ async function closePositions(filter) {
   }
   renderAll();
 }
-const byPrice = arr => arr.slice().sort((a, b) => px(b.id, S.tick) - px(a.id, S.tick));
+const byPrice = arr => arr.slice().sort((a, b) => px(b.id, S.tick) * cf(b.id) - px(a.id, S.tick) * cf(a.id));
 function exitMode(id) {
   if (!S.me) return null;
   if ((S.me.hold || {})[id]) return 'sell';
@@ -1511,11 +1555,11 @@ function stockRow(s) {
   const pos = lv ? `<span class="postag ${(lv.d || 1) < 0 ? 'short' : 'long'}">${lv.x}배 ${levSide(lv)}</span>` : sq ? `<span class="postag short">공매도</span>` : '';
   const mp = myPositions().filter(x => x.sym === s.id); const rowPnl = mp.reduce((a, x) => a + x.pnl, 0), rowP = mp.reduce((a, x) => a + x.principal, 0);
   const hl = haltLeft(s.id) > 0;
-  const sub = (hl ? '<span class="postag short">⛔ 거래정지</span> ' : '') + pos + (q ? `<span class="mine">${q.toLocaleString()}주 보유</span>` : pos ? '' : SECTORS[s.s].n) + (mp.length ? ` <b class="rowpnl ${cls(rowPnl)}">${signWon(rowPnl)} (${pctTxt(rowP ? rowPnl / rowP : 0)})</b>` : '') + (tc ? ` · 💬${tc}` : '');
+  const sub = (hl ? '<span class="postag short">⛔ 거래정지</span> ' : '') + pos + (q ? `<span class="mine">${QT(s.id, q)} 보유</span>` : pos ? '' : catName(s)) + (mp.length ? ` <b class="rowpnl ${cls(rowPnl)}">${signWon(rowPnl)} (${pctTxt(rowP ? rowPnl / rowP : 0)})</b>` : '') + (tc ? ` · 💬${tc}` : '');
   const fl = LV.flash && LV.flash[s.id] ? ' f' + LV.flash[s.id] : '';
   const off = seasonOver() || S.readOnly;
   return `<div class="srow${fl ? ' row' + fl.trim() : ''}"><button class="srow-main" type="button" data-stock="${s.id}">${badge(s)}<span class="sname"><b class="${lv ? ((lv.d || 1) < 0 ? 'hot-short' : 'hot-long') : sq ? 'hot-short' : ''}">${esc(s.n)}</b><small>${sub}</small></span>
-    <span class="sprice"><div class="p num${fl}">${won(p)}</div><div class="c num ${cls(c)}">${pctTxt(c)}</div></span></button>
+    <span class="sprice"><div class="p num${fl}">${PW(s.id, p)}</div><div class="c num ${cls(c)}">${pctTxt(c)}</div></span></button>
     <span class="tbtns"><button class="tb buy" type="button" data-quick="buy" data-sym="${s.id}" ${off ? 'disabled' : ''}>매수</button>${(() => { const ex = exitMode(s.id); return `<button class="tb sell${ex ? ' lit' : ''}" type="button" data-quick="${ex || 'sell'}" data-sym="${s.id}" ${off || !ex ? 'disabled' : ''}>매도</button>`; })()}</span></div>`;
 }
 
@@ -1952,18 +1996,18 @@ function renderWallet() {
   h += `<div class="sec"><div class="sec-h"><h2>보유 종목</h2><small>평균단가 대비</small></div><div class="slist">`;
   if (!hs.length) h += `<div class="empty">아직 산 종목이 없어요. 종목 탭에서 골라보세요.</div>`;
   hs.forEach(([s, q]) => { const st = SM[s], p = px(s, k), avg = (m.cost || {})[s] || p, pl = (p - avg) * q, r = p / avg - 1;
-    h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${q.toLocaleString()}주 · 평단 ${Math.round(avg).toLocaleString()}원</small></span><span class="r num"><b>${won(q * p)}</b><br><small class="${cls(pl)}">${signWon(pl)} (${pctTxt(r)})</small></span></button>`; });
+    h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${QT(s, q)} · 평단 ${PW(s, avg)}</small></span><span class="r num"><b>${won(q * p)}</b><br><small class="${cls(pl)}">${signWon(pl)} (${pctTxt(r)})</small></span></button>`; });
   h += `</div></div>`;
   const ss = Object.entries(m.shorts || {}).filter(([s]) => SM[s]);
   if (ss.length) {
     h += `<div class="sec"><div class="sec-h"><h2>🎯 공매도</h2><small>내리면 이득</small></div><div class="slist">`;
     ss.forEach(([s, o]) => { const st = SM[s], p = px(s, k), v = Math.max(0, o.q * (2 * o.e - p)), pl = v - o.q * o.e;
-      h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${o.q.toLocaleString()}주 · 진입 ${Math.round(o.e).toLocaleString()}원</small></span><span class="r num"><b>${won(v)}</b><br><small class="${cls(pl)}">${signWon(pl)}</small></span></button>`; });
+      h += `<button class="pos" type="button" data-stock="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)}</b><small class="dim num">${QT(s, o.q)} · 진입 ${PW(s, o.e)}</small></span><span class="r num"><b>${won(v)}</b><br><small class="${cls(pl)}">${signWon(pl)}</small></span></button>`; });
     h += `</div></div>`;
   }
   const lv = Object.entries(m.lev || {}).filter(([s]) => SM[s]);
   if (lv.length) { h += `<div class="sec"><div class="sec-h"><h2>🚀 레버리지</h2><small>진입가 대비 약 1/배수 떨어지면 청산 💀</small></div><div class="slist">`;
-    lv.forEach(([s, o]) => { const st = SM[s], pr = px(s, k), r = levROE(o, pr, s); h += `<button class="pos" type="button" data-quick="levclose" data-sym="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="tag rv">${o.x}배 ${levSide(o)}</span></b><small class="dim num">${o.q.toLocaleString()}주 · 진입 ${won(o.e)}</small></span><span class="r num"><b>${won(levVal(o, pr, s))}</b><br><small class="${cls(r)}" style="font-size:15px;font-weight:900">${pctTxt(r)}</small></span></button>`; });
+    lv.forEach(([s, o]) => { const st = SM[s], pr = px(s, k), r = levROE(o, pr, s); h += `<button class="pos" type="button" data-quick="levclose" data-sym="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="tag rv">${o.x}배 ${levSide(o)}</span></b><small class="dim num">${QT(s, o.q)} · 진입 ${PW(s, o.e)}</small></span><span class="r num"><b>${won(levVal(o, pr, s))}</b><br><small class="${cls(r)}" style="font-size:15px;font-weight:900">${pctTxt(r)}</small></span></button>`; });
     h += `</div></div>`; }
   const est = myEstates({ id: S.uid });
   if (est.length) { h += `<div class="sec"><div class="sec-h"><h2>🏢 부동산</h2><small>시간당 순수익 ${signWon(rentPerHour())}</small></div><div class="slist">`;
@@ -2114,14 +2158,14 @@ const VOL_TXT = v => v < .027 ? '낮음' : v < .045 ? '보통' : '높음';
 function detailPos(sym, p) {
   const q = (S.me && S.me.hold && S.me.hold[sym]) || 0, avg = S.me && S.me.cost && S.me.cost[sym];
   const sh = S.me && S.me.shorts && S.me.shorts[sym]; let h = '';
-  if (q) { const pl = (p - avg) * q; h += `<div class="r"><span>보유 ${q.toLocaleString()}주 · 평단 ${won(avg)}</span><b class="num ${cls(pl)}">${signWon(pl)} (${pctTxt(p / avg - 1)})</b></div>`; }
-  if (sh) { const v = Math.max(0, sh.q * (2 * sh.e - p)), pl = v - sh.q * sh.e; h += `<div class="r"><span>공매도 ${sh.q.toLocaleString()}주 · 진입 ${won(sh.e)}</span><b class="num ${cls(pl)}">${signWon(pl)}</b></div>`; }
+  if (q) { const pl = (p - avg) * q; h += `<div class="r"><span>보유 ${QT(sym, q)} · 평단 ${PW(sym, avg)}</span><b class="num ${cls(pl)}">${signWon(pl)} (${pctTxt(p / avg - 1)})</b></div>`; }
+  if (sh) { const v = Math.max(0, sh.q * (2 * sh.e - p)), pl = v - sh.q * sh.e; h += `<div class="r"><span>공매도 ${QT(sym, sh.q)} · 진입 ${PW(sym, sh.e)}</span><b class="num ${cls(pl)}">${signWon(pl)}</b></div>`; }
   return h ? `<div class="card mypos">${h}</div>` : '';
 }
 function detailStats(sym, p) {
   const hist = [...S.SE.prices[sym].slice(0, S.tick + 1), p]; const hi = Math.max(...hist), lo = Math.min(...hist);
   const holders = activePlayers().filter(x => (x.hold || {})[sym] > 0);
-  return `<div>이번 주 최고<b class="num up">${won(hi)}</b></div><div>이번 주 최저<b class="num down">${won(lo)}</b></div><div>월요일 시가<b class="num">${won(SM[sym].p0)}</b></div><div>친구 주주<b>${holders.length}명</b></div>`;
+  return `<div>이번 주 최고<b class="num up">${PW(sym, hi)}</b></div><div>이번 주 최저<b class="num down">${PW(sym, lo)}</b></div><div>월요일 시가<b class="num">${PW(sym, SM[sym].p0)}</b></div><div>보유한 친구<b>${holders.length}명</b></div>`;
 }
 /* ── per-stock community ── */
 const talkFor = sym => S.talk.filter(t => t.sym === sym).sort((a, b) => b.ts - a.ts);
@@ -2170,8 +2214,8 @@ function renderDetail() {
   const st = d.scrollTop; const cb0 = $('#chatBox'); const atBottom = !cb0 || cb0.scrollHeight - cb0.scrollTop - cb0.clientHeight < 40; const cst = cb0 ? cb0.scrollTop : 0;
   d.innerHTML = `<div class="in">
     <div class="dtop"><button class="back" type="button" id="detailBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>${esc(s.n)}</b></div>
-    <div class="dhead">${badge(s)}<div><h1>${esc(s.n)}</h1><small>${SECTORS[s.s].n} · 변동성 ${VOL_TXT(s.vol)}</small></div></div>
-    <div class="dprice"><div class="p num"><span id="dPrice">${won(p)}</span><span class="livedot" title="실시간"></span></div><div class="c num" id="dChg"><span class="${cls(c)}">2시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
+    <div class="dhead">${badge(s)}<div><h1>${esc(s.n)}</h1><small>${catName(s)} · 변동성 ${VOL_TXT(s.vol)}</small></div></div>
+    <div class="dprice"><div class="p num"><span id="dPrice">${PW(sym, p)}</span><span class="livedot" title="실시간"></span></div><div class="c num" id="dChg"><span class="${cls(c)}">2시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
     <div><canvas class="dchart" id="detailChart" aria-label="${esc(s.n)} 이번 주 가격 차트"></canvas></div>
     <div id="dPos">${detailPos(sym, p)}</div>
     <div class="sec"><div class="sec-h"><h2>누가 들고 있나</h2><small>모든 포지션 공개</small></div><div id="dHold">${holdersHTML(sym)}</div></div>
@@ -2194,7 +2238,7 @@ function drawDetailChart() {
   const cv = $('#detailChart'); const sym = S.detail; if (!cv || !sym) return;
   const t1 = liveStep(now()) * LIVE_MS, arr = [];
   for (let t = t1 - 15 * 60e3; t < t1; t += 10e3) arr.push(Math.max(1, tickRound(priceAt(sym, t))));
-  arr.push(px(sym, S.tick)); drawChart(cv, arr, {});
+  arr.push(px(sym, S.tick)); drawChart(cv, arr.map(v => v * cf(sym)), {});
 }
 // 이 종목을 가진 사람들과 공격 버튼 (지갑 화면의 공격 버튼과 같아요)
 function holdersHTML(sym) {
@@ -2205,7 +2249,7 @@ function holdersHTML(sym) {
       const q = x.kind === 'spot' ? (p.hold || {})[sym] : x.kind === 'lev' ? ((p.lev || {})[sym] || {}).q : ((p.shorts || {})[sym] || {}).q;
       const btn = canAtk ? `<button type="button" class="atk-btn" data-atk="${esc(p.id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼12%' : '▲12%'}<small>${man(cost)}원</small></button>` : '';
       rows += `<div class="pos${canAtk ? ' has-atk' : ''}">${ava(p)}<span class="sname"><b>${esc(p.name)}${isMe ? ' <span class="tag you">나</span>' : ''} <span class="postag ${x.kind === 'spot' ? 'spot' : dir > 0 ? 'short' : 'long'}">${x.label}</span></b>
-        <small class="dim num">${(q || 0).toLocaleString()}주 · 원금 ${man(x.principal)}${x.dist != null ? ` · 청산 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
+        <small class="dim num">${QT(sym, q || 0)} · 원금 ${man(x.principal)}${x.dist != null ? ` · 청산 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
         <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span>${btn}</div>`;
     });
   });
@@ -2214,7 +2258,7 @@ function holdersHTML(sym) {
 // live tick: touch only price parts so typing in the 토론방 is never interrupted
 function updateDetailLive() {
   const sym = S.detail; if (!sym) return; const s = SM[sym]; const p = px(sym, S.tick), c = nowChg(sym), cw = p / s.p0 - 1;
-  const el = $('#dPrice'); if (el) el.textContent = won(p);
+  const el = $('#dPrice'); if (el) el.textContent = PW(sym, p);
   const ch = $('#dChg'); if (ch) ch.innerHTML = `<span class="${cls(c)}">2시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span>`;
   const ps = $('#dPos'); if (ps) ps.innerHTML = detailPos(sym, p);
   const dh = $('#dHold'); if (dh) dh.innerHTML = holdersHTML(sym);
@@ -2249,12 +2293,12 @@ async function deleteTalk(id) {
 function renderQuickSheet(b, sh) {
   const s = SM[sh.sym], p = px(s.id, S.tick), c = nowChg(s.id);
   const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0;
-  b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>현재가 <b class="num" id="livePrice">${won(p)}</b> <span class="num ${cls(c)}" id="livePct">${pctTxt(c)}</span> · 보유 ${my.toLocaleString()}주</small></div></div>
+  b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>현재가 <b class="num" id="livePrice">${PW(s.id, p)}</b> <span class="num ${cls(c)}" id="livePct">${pctTxt(c)}</span> · 보유 ${QT(s.id, my)}</small></div></div>
     <div class="seg">${[['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']].map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
-    ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${o.q.toLocaleString()}주 · 진입 ${won(o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
+    ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${QT(s.id, o.q)} · 진입 ${PW(s.id, o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
     <div class="levdir" id="levdir" ${sh.m === 'lev' ? '' : 'hidden'}><button type="button" data-levd="long" aria-pressed="${sh.dir !== 'short'}">📈 롱 (오르면 이득)</button><button type="button" data-levd="short" aria-pressed="${sh.dir === 'short'}">📉 숏 (내리면 이득)</button></div>
     <div class="levx" id="levx" ${sh.m === 'lev' ? '' : 'hidden'}>${LEVS.map(x => `<button type="button" data-levx="${x}" aria-pressed="${(sh.x || 25) === x}">${x}배</button>`).join('')}</div>
-    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="numeric" min="0" value="${sh.q || ''}" placeholder="몇 주?" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
+    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="decimal" step="any" min="0" value="${sh.q ? qOut(s.id, sh.q) : ''}" placeholder="${isCoin(s.id) ? '몇 개?' : '몇 주?'}" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
     <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-frac="${f}">${l}</button>`).join('')}</div>
     <div class="est" id="est"></div>
     <button class="cta" id="doTrade" type="button">매수하기</button>
@@ -2267,14 +2311,14 @@ function renderStockSheet(b, sh) {
   let top = null, tv = 0; holders.forEach(x => { if (x.hold[s.id] > tv) { tv = x.hold[s.id]; top = x; } });
   const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0, myS = S.me && S.me.shorts && S.me.shorts[s.id];
   const canTrade = S.me && !S.readOnly && !seasonOver();
-  b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>${SECTORS[s.s].n}</small></div></div>
-    <div class="bigp"><div class="p num" id="livePrice">${won(p)}</div><div class="c num"><span class="${cls(c)}" id="livePct">2시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
+  b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>${catName(s)}</small></div></div>
+    <div class="bigp"><div class="p num" id="livePrice">${PW(s.id, p)}</div><div class="c num"><span class="${cls(c)}" id="livePct">2시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
     <canvas class="chart" id="bigChart" aria-label="이번 주 가격 차트"></canvas>
     <div class="info"><div>친구 주주<b>${holders.length}명</b></div><div>👑 최대 주주<b>${top ? esc(top.name) : '없음'}</b></div>
-      <div>내 보유<b class="num">${my ? my.toLocaleString() + '주' : '-'}</b></div><div>내 공매도<b class="num">${myS ? myS.q.toLocaleString() + '주' : '-'}</b></div></div>
+      <div>내 보유<b class="num">${my ? QT(s.id, my) : '-'}</b></div><div>내 공매도<b class="num">${myS ? QT(s.id, myS.q) : '-'}</b></div></div>
     ${canTrade ? `
     <div class="seg">${[['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['cover', '상환']].map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m}">${l}</button>`).join('')}</div>
-    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="numeric" min="0" value="${sh.q || ''}" placeholder="수량" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
+    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="decimal" step="any" min="0" value="${sh.q ? qOut(s.id, sh.q) : ''}" placeholder="수량" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
     <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '풀매수']].map(([f, l]) => `<button type="button" data-frac="${f}">${l}</button>`).join('')}</div>
     <div class="est" id="est"></div>
     <button class="cta" id="doTrade" type="button">매수하기</button>
@@ -2282,7 +2326,7 @@ function renderStockSheet(b, sh) {
   requestAnimationFrame(drawBig);
   updateTradeEst();
 }
-function drawBig() { const cv = $('#bigChart'); const sh = S.sheet; if (!cv || !sh || !sh.sym) return; drawChart(cv, S.SE.prices[sh.sym].slice(0, S.tick + 1), { live: true ? { x: liveX(), v: px(sh.sym, S.tick) } : null }); }
+function drawBig() { const cv = $('#bigChart'); const sh = S.sheet; if (!cv || !sh || !sh.sym) return; drawChart(cv, S.SE.prices[sh.sym].slice(0, S.tick + 1).map(v => v * cf(sh.sym)), { live: { x: liveX(), v: px(sh.sym, S.tick) * cf(sh.sym) } }); }
 function maxQty(m, sym) {
   const p = px(sym, S.tick), me = S.me; if (!me) return 0;
   if (m === 'buy' || m === 'short') return Math.max(0, Math.floor(me.cash / (p * (1 + FEE))));
@@ -2293,7 +2337,7 @@ function maxQty(m, sym) {
 }
 function updateTradeEst() {
   const sh = S.sheet; const est = $('#est'); if (!sh || (sh.type !== 'stock' && sh.type !== 'quick') || !est) return;
-  const q = Math.max(0, Math.floor(+$('#qty').value || 0)); sh.q = q; const p = px(sh.sym, S.tick), mx = maxQty(sh.m, sh.sym);
+  const q = qIn(sh.sym, $('#qty').value); sh.q = q; const p = px(sh.sym, S.tick), mx = maxQty(sh.m, sh.sym);
   const amt = q * p, fee = Math.ceil(amt * FEE);
   let line = '';
   if (sh.m === 'buy') line = `<span>필요 금액 <b class="num">${won(amt + fee)}</b></span>`;
@@ -2302,11 +2346,11 @@ function updateTradeEst() {
   if (sh.m === 'lev') { const x = sh.x || 25; line = `<span>증거금 <b class="num">${won(amt / x + fee)}</b> · ${x}배</span>`; }
   if (sh.m === 'levclose') { const o = (S.me.lev || {})[sh.sym]; line = o ? `<span>돌려받을 금액 <b class="num">${won(Math.max(0, levVal(o, p) - Math.ceil(o.q * p * FEE)))}</b></span>` : ''; }
   if (sh.m === 'cover') { const o = (S.me.shorts || {})[sh.sym]; const v = o ? Math.max(0, q * (2 * o.e - p)) : 0; line = `<span>돌려받을 금액 <b class="num">${won(Math.max(0, v - fee))}</b></span>`; }
-  est.innerHTML = line + `<span class="num">최대 ${mx.toLocaleString()}주</span>`;
+  est.innerHTML = line + `<span class="num">최대 ${QT(sh.sym, mx)}</span>`;
   const btn = $('#doTrade');
   btn.textContent = S.saving ? '처리 중…' : { buy: '매수하기', sell: '매도하기', short: '🎯 공매도 걸기', cover: '공매도 상환하기', lev: sh.dir === 'short' ? `📉 ${sh.x || 25}배 숏 진입` : `🚀 ${sh.x || 25}배 롱 진입`, levclose: '레버리지 청산하기' }[sh.m];
   btn.className = 'cta ' + (sh.m === 'lev' ? (sh.dir === 'short' ? 'sell' : 'buy') : sh.m === 'levclose' ? 'sell' : sh.m);
-  if (sh.m === 'levclose') { const i = $('#qty'); const all = maxQty('levclose', sh.sym); if (i && +i.value !== all) { i.value = all; sh.q = all; } }
+  if (sh.m === 'levclose') { const i = $('#qty'); const all = maxQty('levclose', sh.sym); if (i && qIn(sh.sym, i.value) !== all) { i.value = qOut(sh.sym, all); sh.q = all; } }
   btn.disabled = S.saving || !(sh.m === 'levclose' ? maxQty('levclose', sh.sym) : q) || q > mx;
   const lx = $('#levx'); if (lx) lx.hidden = sh.m !== 'lev'; const ld = $('#levdir'); if (ld) ld.hidden = sh.m !== 'lev';
   const lxVal = sh.x || 25, liqPct = +(94 / lxVal).toFixed(1);
@@ -2341,7 +2385,7 @@ async function doTrade() {
     else if (m === 'levclose') { const o = before.lev[sym], r = levROE(o, p); addFeed({ kind: 'levclose', sym, amt: r }); if (r > .5) { confetti(); buzz(80); } }
     else if (m !== 'cover') addFeed({ kind: m, sym, amt });
     if (m === 'sell' && before.cost && before.cost[sym] && p / before.cost[sym] - 1 >= .1) { confetti(); buzz(60); }
-    toast({ buy: `🛒 ${SM[sym].n} ${q.toLocaleString()}주 매수!`, sell: `💸 ${SM[sym].n} ${q.toLocaleString()}주 매도!`, short: `🎯 ${SM[sym].n} 공매도 진입`, cover: '공매도 상환 완료', lev: `${sh.dir === 'short' ? '📉' : '🚀'} ${SM[sym].n} ${sh.x || 25}배 ${sh.dir === 'short' ? '숏' : '롱'}!`, levclose: `${SM[sym].n} 레버리지 청산 ${m === 'levclose' ? pctTxt(levROE(before.lev[sym], p)) : ''}` }[m]);
+    toast({ buy: `🛒 ${SM[sym].n} ${QT(sym, q)} 매수!`, sell: `💸 ${SM[sym].n} ${QT(sym, q)} 매도!`, short: `🎯 ${SM[sym].n} 공매도 진입`, cover: '공매도 상환 완료', lev: `${sh.dir === 'short' ? '📉' : '🚀'} ${SM[sym].n} ${sh.x || 25}배 ${sh.dir === 'short' ? '숏' : '롱'}!`, levclose: `${SM[sym].n} 레버리지 청산 ${m === 'levclose' ? pctTxt(levROE(before.lev[sym], p)) : ''}` }[m]);
     sh.q = 0; if (sh.type === 'quick') closeSheet(); renderAll(); if (S.sheet) renderSheet();
   } else updateTradeEst();
 }
@@ -2644,8 +2688,8 @@ document.addEventListener('click', e => {
   if (t.dataset.levd) { S.sheet.dir = t.dataset.levd; S.sheet.q = 0; renderSheet(); return; }
   if (t.dataset.levx) { S.sheet.x = +t.dataset.levx; S.sheet.q = 0; renderSheet(); return; }
   if (t.dataset.m) { S.sheet.m = t.dataset.m; S.sheet.q = 0; renderSheet(); return; }
-  if (t.dataset.step) { const i = $('#qty'); i.value = Math.max(0, (Math.floor(+i.value) || 0) + +t.dataset.step); updateTradeEst(); return; }
-  if (t.dataset.frac) { const mx = maxQty(S.sheet.m, S.sheet.sym); $('#qty').value = Math.floor(mx * +t.dataset.frac); updateTradeEst(); return; }
+  if (t.dataset.step) { const i = $('#qty'), sy = S.sheet.sym, st = isCoin(sy) ? Math.max(1, Math.round(cf(sy))) : 1; i.value = qOut(sy, Math.max(0, qIn(sy, i.value) + st * +t.dataset.step)); updateTradeEst(); return; }
+  if (t.dataset.frac) { const mx = maxQty(S.sheet.m, S.sheet.sym); $('#qty').value = qOut(S.sheet.sym, Math.floor(mx * +t.dataset.frac)); updateTradeEst(); return; }
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
     case 'boardBtn': openBoard(); break;
@@ -2700,7 +2744,7 @@ setInterval(() => {
     if (sh && sh.type === 'player') renderSheet();
     if (sh && sh.sym && (sh.type === 'stock' || sh.type === 'quick')) {
       const lp = $('#livePrice'), pc = $('#livePct'); const v = px(sh.sym, S.tick), c = nowChg(sh.sym);
-      if (lp) lp.textContent = won(v);
+      if (lp) lp.textContent = PW(sh.sym, v);
       if (pc) { pc.className = 'num ' + cls(c); pc.textContent = (sh.type === 'stock' ? '2시간 ' : '') + pctTxt(c); }
       if (sh.type === 'stock') drawBig();
     }
