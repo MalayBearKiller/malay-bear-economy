@@ -292,6 +292,7 @@ body.shake{animation:shake .45s}
 .fab .v{font-size:18px;font-weight:800}
 .fab .c{font-size:15px;font-weight:800;text-align:right}
 .fab .c.up{color:#ff7a85} .fab .c.down{color:#7fb0ff} .fab .c.flat{color:rgba(255,255,255,.6)}
+.fab .c.buy-prompt{color:var(--gold);font-size:13px;font-weight:800;background:rgba(255,210,63,.16);padding:6px 10px;border-radius:10px;white-space:nowrap;animation:blink 1.6s infinite}
 .fab.bump{animation:bump .5s}
 @keyframes bump{40%{transform:scale(1.03)}}
 
@@ -779,9 +780,14 @@ const man = n => krwUnits(n, true);
 const signWon = n => (n > 0 ? '+' : n < 0 ? '-' : '') + won(Math.abs(n));
 const cls = v => v > 0.00001 ? 'up' : v < -0.00001 ? 'down' : 'flat';
 const pctTxt = v => (v > 0 ? '▲' : v < 0 ? '▼' : '') + Math.abs(v * 100).toFixed(1) + '%';
-const LIVE_MS = 2000;
+const pct2Txt = v => {
+  const a = Math.abs(v * 100);
+  const digits = a >= 10 ? 1 : a >= 0.01 ? 2 : a > 0 ? 3 : 2;
+  return (v > 0 ? '▲' : v < 0 ? '▼' : '') + a.toFixed(digits) + '%';
+};
+const LIVE_MS = 1000;
 const liveStep = t => Math.floor(t / LIVE_MS);
-const LV = { step: -1, map: {} };
+const LV = { step: -1, map: {}, prev: {} };
 // Between rounds prices keep wiggling around the round price (same for everyone: derived from the clock).
 // 펌핑/덤핑: in some 20-minute windows a stock spikes 15~55% with fast asymmetric surge and comes back
 function pumpAt(sym, rel) {
@@ -808,24 +814,40 @@ function jumpAt(sym, rel) {
     const s = (u - .28) / .72;
     return base + e.j * ((3 * s * s - 2 * s * s * s) + .18 * Math.sin(Math.PI * s) * (1 - s));
   }
-  // S-커브 급가속 + 고점 오버슈팅 파형 (7틱 동안 다다다닥 쏘아 올림)
+  // S-커브 급가속 + 고점 오버슈팅 파형 (14틱 동안 다다다닥 쏘아 올림)
   const wave = (3 * u * u - 2 * u * u * u) + .22 * Math.sin(Math.PI * u) ** 2 * (1 - u);
   return base + e.j * wave;
 }
 function walkAt(sym, t) {
   const L = S.SE.walk[sym]; const rel = Math.max(0, t - S.season.start); const MIN = L.length - 1;
   const m = Math.min(MIN - 1, Math.floor(rel / 60e3)); const f = Math.min(1, (rel - m * 60e3) / 60e3);
-  const j = Math.floor(f * 30); let c = 0, cj = 0;
-  // 변동성 군집: 시간의 78%는 폭풍전야처럼 고요하게(0.14x) 응축, 22% 과열 구간에서만 거칠게(1.45x) 흔들림
-  const reg = (seedOf(S.season.sid + ':reg:' + sym + ':' + m) % 100) < 78 ? .14 : 1.45;
-  const sd = SM[sym].vol * .45 * reg / Math.sqrt(30);
-  for (let i = 0; i < 30; i++) { const e = (seedOf(S.season.sid + sym + m + ':' + i) / 4294967296 - .5) * 3.46 * sd; c += e; if (i < j) cj = c; }
-  return L[m] + f * (L[m + 1] - L[m]) + (cj - (j / 30) * c) + pumpAt(sym, rel) + jumpAt(sym, rel);
+  const j = Math.floor(f * 60); let c = 0, cj = 0;
+  // 변동성 군집: 시간의 78%는 폭풍전야처럼 잔잔하게(0.45x) 응축, 22% 과열 구간에서만 거칠게(1.75x) 흔들림
+  const reg = (seedOf(S.season.sid + ':reg:' + sym + ':' + m) % 100) < 78 ? .45 : 1.75;
+  const sd = SM[sym].vol * .55 * reg / Math.sqrt(60);
+  for (let i = 0; i < 60; i++) { const e = (seedOf(S.season.sid + sym + m + ':' + i) / 4294967296 - .5) * 3.46 * sd; c += e; if (i < j) cj = c; }
+  return L[m] + f * (L[m + 1] - L[m]) + (cj - (j / 60) * c) + pumpAt(sym, rel) + jumpAt(sym, rel);
+}
+function prevPx(sym) {
+  const st = liveStep(now());
+  if (LV.prev && LV.prev[sym] != null) return LV.prev[sym];
+  const t0 = tickTime(S.season.start, S.tick), t = (st - 1) * LIVE_MS;
+  const p = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, t) - walkAt(sym, t0))));
+  return LV.prev ? (LV.prev[sym] = p) : p;
 }
 function livePx(sym) {
   const st = liveStep(now());
-  if (LV.step !== st) { LV.step = st; LV.map = {}; }
-  if (LV.map[sym] == null) { const t0 = tickTime(S.season.start, S.tick); LV.map[sym] = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, now()) - walkAt(sym, t0)))); }
+  if (LV.step !== st) { LV.prev = LV.step === st - 1 ? LV.map : {}; LV.step = st; LV.map = {}; }
+  if (LV.map[sym] == null) {
+    const t0 = tickTime(S.season.start, S.tick), t = st * LIVE_MS;
+    let p = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, t) - walkAt(sym, t0))));
+    const pv = prevPx(sym);
+    if (p === pv) {
+      const u = p >= 500000 ? 1000 : p >= 100000 ? 500 : p >= 50000 ? 100 : p >= 10000 ? 50 : p >= 1000 ? 5 : 1;
+      p = Math.max(1, p + ((seedOf(S.season.sid + ':nd:' + sym + ':' + st) & 1) ? u : -u));
+    }
+    LV.map[sym] = p;
+  }
   return LV.map[sym];
 }
 const isLive = k => k === S.tick;
@@ -879,6 +901,25 @@ function worth(p, k) {
   for (const b of ESTATES) { const e = estOf(b.id); if (e && pid && e.owner === pid && !e.destroyed) v += estVal(b.id, k); }
   return Math.round(v);
 }
+function worthPrev(p, k) {
+  if (!p) return 0; let v = (p.cash || 0) + BONUS * pendingOf(p);
+  for (const [s, q] of Object.entries(p.hold || {})) if (SM[s]) v += q * prevPx(s);
+  for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += Math.max(0, o.q * (2 * o.e - prevPx(s)));
+  for (const [s, o] of Object.entries(p.lev || {})) if (SM[s]) v += levVal(o, prevPx(s));
+  const pid = p.id || (p === S.me || p === S.players[S.uid] ? S.uid : null);
+  const tPrev = (liveStep(now()) - 1) * LIVE_MS;
+  for (const b of ESTATES) { const e = estOf(b.id); if (e && pid && e.owner === pid && !e.destroyed) v += estAt(b.id, tPrev); }
+  return Math.round(v);
+}
+function isAllCash(p) {
+  if (!p) return true;
+  const hasHold = Object.entries(p.hold || {}).some(([s, q]) => SM[s] && q > 0);
+  const hasLev = Object.entries(p.lev || {}).some(([s, o]) => SM[s] && o && o.q > 0);
+  const hasShort = Object.entries(p.shorts || {}).some(([s, o]) => SM[s] && o && o.q > 0);
+  const pid = p.id || (p === S.me || p === S.players[S.uid] ? S.uid : null);
+  const hasEst = pid ? ESTATES.some(b => { const e = estOf(b.id); return e && e.owner === pid && !e.destroyed; }) : false;
+  return !(hasHold || hasLev || hasShort || hasEst);
+}
 function activePlayers() { return Object.entries(S.players).filter(([, p]) => p && p.season === S.season.sid).map(([id, p]) => ({ id, ...p })); }
 function ranking(k) { return activePlayers().map(p => ({ ...p, w: worth(p, k) })).sort((a, b) => b.w - a.w); }
 const nameOf = id => (S.players[id] && S.players[id].name) || '누군가';
@@ -888,7 +929,8 @@ function posSummary(p) {
   Object.entries(p.hold || {}).filter(([s]) => SM[s]).forEach(([s, q]) => parts.push(`${SM[s].n} ${q.toLocaleString()}주`));
   Object.entries(p.lev || {}).filter(([s]) => SM[s]).forEach(([s, o]) => parts.push(`${SM[s].n} ${o.x}배 ${levSide(o)}`));
   Object.entries(p.shorts || {}).filter(([s]) => SM[s]).forEach(([s, o]) => parts.push(`${SM[s].n} 공매도 ${o.q.toLocaleString()}주`));
-  return parts.length ? parts.join(' · ') : '현금만';
+  const pid = p.id || (p === S.me || p === S.players[S.uid] ? S.uid : null);
+  return parts.length ? parts.join(' · ') : (pid === S.uid ? '자산을 구매하세요!' : '현금만');
 }
 function lockedCount(p) { const top = topHolding(p, S.tick); return Object.keys(p.hold || {}).filter(s => SM[s] && s !== top).length + Object.keys(p.shorts || {}).filter(s => SM[s]).length; }
 const spiedOn = id => S.me && S.me.spy && S.me.spy.day === kstDay(now()) && S.me.spy.target === id;
@@ -910,11 +952,16 @@ function syncTime() {
 function renderHeader() {
   const fab = $('#fab');
   if (!S.me) { fab.hidden = true; return; }
-  const w = worth(S.me, S.tick), roi = roiOf(S.me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
+  const w = worth(S.me, S.tick), w0 = worthPrev(S.me, S.tick), d2 = w - w0, r2 = w0 > 0 ? d2 / w0 : 0;
+  const roi = roiOf(S.me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
+  const allCash = isAllCash(S.me);
   if (S.sessBase == null) S.sessBase = w;
   const sig = String(rk);
   fab.hidden = false;
-  fab.innerHTML = `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · 접속 후 <b class="sd ${cls(w - (S.sessBase ?? w))}">${signWon(w - (S.sessBase ?? w))}</b></span><span class="v num">${won(w)}</span></span><span class="c num ${cls(roi)}">${pctTxt(roi)}</span>`;
+  fab.dataset.tabGo = allCash ? 'market' : 'assets';
+  fab.innerHTML = allCash
+    ? `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · 100% 현금 보유 중</span><span class="v num">${won(w)}</span></span><span class="c buy-prompt">자산을 구매하세요!</span>`
+    : `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · 1초 전 <b class="sd ${cls(d2)}">${signWon(d2)}</b> · 누적 <b class="sd ${cls(roi)}">${pctTxt(roi)}</b></span><span class="v num">${won(w)}</span></span><span class="c num ${cls(r2)}">${pct2Txt(r2)}</span>`;
   if (fab.dataset.sig && fab.dataset.sig !== sig) { fab.classList.remove('bump'); void fab.offsetWidth; fab.classList.add('bump'); }
   fab.dataset.sig = sig;
 }
@@ -967,15 +1014,17 @@ function renderHome() {
       const shown = cur.map((p, i) => [p, i]).filter(([, i]) => i < 5 || i === myIdx);
       shown.forEach(([p, i]) => {
         if (i >= 5) h += `<div class="lb-gap">···</div>`;
-        const roi = roiOf(p, p.w), d = (prevIdx[p.id] ?? i) - i;
+        const roi = roiOf(p, p.w), w0 = worthPrev(p, k), r2 = w0 > 0 ? (p.w - w0) / w0 : 0, d = (prevIdx[p.id] ?? i) - i;
         const mv = k && d ? `<span class="mv ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span>` : '';
         let info;
         info = esc(posSummary(p));
         const own = myEstates(p).filter(b => !estOf(b.id).destroyed).sort((a, b) => estVal(b.id, k) - estVal(a.id, k));
         if (own.length) info = `🏢 <b class="brag">${esc(own[0].n.replace(/ \(한 채\)$/, ''))}${own.length > 1 ? ` 외 ${own.length - 1}` : ''}</b> 건물주 · ` + info;
+        const allCashP = isAllCash(p);
+        const subRight = p.id === S.uid ? (allCashP ? `<small class="up">자산을 구매하세요!</small>` : `<small class="${cls(r2)}">${pct2Txt(r2)}</small>`) : `<small class="${cls(roi)}">${pctTxt(roi)}</small>`;
         h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}" type="button" data-player="${esc(p.id)}"><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
           <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${mv}<small>${info}</small></span>
-          <span class="r num"><b>${man(p.w)}</b><small class="${cls(roi)}">${pctTxt(roi)}</small></span></button>`;
+          <span class="r num"><b>${man(p.w)}</b>${subRight}</span></button>`;
       });
       h += `</div><p class="hint">상위 5명만 보여요${cur.length > 5 ? ` · 전체 ${cur.length}명` : ''}. 이름을 누르면 지갑 전체를 볼 수 있어요.</p>`;
     }
@@ -1556,7 +1605,7 @@ function renderDetail() {
     <div id="dPos">${detailPos(sym, p)}</div>
     <div class="sec"><div class="sec-h"><h2>${esc(s.n)} 채팅</h2><small>${talkFor(sym).length}개의 메시지</small></div><div id="dTalk" class="sec">${talkHTML(sym)}</div></div>
     <div class="stats" id="dStats">${detailStats(sym, p)}</div>
-    <p class="hint">가격은 게임용 가상 데이터예요. 2초마다 바뀌어요.</p>
+    <p class="hint">가격은 게임용 가상 데이터예요. 1초마다 바뀌어요.</p>
   </div>
   <div class="dbar"><div class="in">
     <button class="cta buy" type="button" data-quick="buy" data-sym="${sym}" ${off ? 'disabled' : ''}>매수</button>
@@ -1668,7 +1717,7 @@ function updateTradeEst() {
   btn.disabled = S.saving || !(sh.m === 'levclose' ? maxQty('levclose', sh.sym) : q) || q > mx;
   const lx = $('#levx'); if (lx) lx.hidden = sh.m !== 'lev'; const ld = $('#levdir'); if (ld) ld.hidden = sh.m !== 'lev';
   const lxVal = sh.x || 25, liqPct = +(100 / lxVal).toFixed(1);
-  $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 2초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가의 2배 가까이 오르면 자동 반대매매돼요. ', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
+  $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 1초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가의 2배 가까이 오르면 자동 반대매매돼요. ', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
 }
 async function doTrade() {
   const sh = S.sheet; const q = sh.q, sym = sh.sym, m = sh.m, p = px(sym, S.tick);
@@ -1981,9 +2030,9 @@ setInterval(() => {
     const old = {}; STOCKS.forEach(x => old[x.id] = px(x.id, S.tick));
     S.lastLive = ls; LV.flash = {};
     STOCKS.forEach(x => { const v = px(x.id, S.tick); if (old[x.id] && v !== old[x.id]) LV.flash[x.id] = v > old[x.id] ? 'u' : 'd'; });
-    const w0 = S.me ? worth(S.me, S.tick) : 0;
+    const w0 = S.me ? worthPrev(S.me, S.tick) : 0;
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
-    if (S.me) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
+    if (S.me && !isAllCash(S.me)) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
     holdingAlerts(); checkLiquidation(); jumpAlerts();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
