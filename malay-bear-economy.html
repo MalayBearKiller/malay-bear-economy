@@ -1708,8 +1708,10 @@ function myPositions(me) {
   out.forEach(x => { x.pnl = x.value - x.principal; x.pct = x.principal ? x.pnl / x.principal : 0; });
   return out.sort((a, b) => b.pnl - a.pnl);
 }
+// 투자 탭에서 지금 보는 시장(코인·주식·달러)의 포지션만 보여요
+const hudFilter = () => S.tab !== 'invest' ? () => true : S.inv === 'coin' ? x => !isEq(x.sym) : S.inv === 'stock' ? x => isEq(x.sym) && !SM[x.sym].fx : S.inv === 'fx' ? x => !!SM[x.sym].fx : () => false;
 function posHUD() {
-  const list = myPositions(); if (!list.length) return '';
+  const list = myPositions().filter(hudFilter()); if (!list.length) return '';
   const P = list.reduce((a, x) => a + x.principal, 0), V = list.reduce((a, x) => a + x.value, 0), pnl = V - P, pct = P ? pnl / P : 0;
   const armed = S.closeAllAt && Date.now() - S.closeAllAt < 4000;
   const off = seasonOver() || S.readOnly || S.saving;
@@ -2902,7 +2904,7 @@ document.addEventListener('click', e => {
     case 'renameBtn': doRename(); break;
     case 'estAct': estAction(); break;
     case 'rescueBtn': claimRescue(); break;
-    case 'closeAllBtn': if (S.closeAllAt && Date.now() - S.closeAllAt < 4000) closePositions(() => true); else { S.closeAllAt = Date.now(); renderAll(); } break;
+    case 'closeAllBtn': if (S.closeAllAt && Date.now() - S.closeAllAt < 4000) closePositions(hudFilter()); else { S.closeAllAt = Date.now(); renderAll(); } break;
     case 'zoomIn': zoomAt(1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
     case 'zoomOut': zoomAt(1 / 1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
     case 'zoomReset': { const h = MAP.w0 * mapAR(); S.mapV = { x: MAP.x0, y: MAP.y0 + MAP.h0 / 2 - h / 2, w: MAP.w0, h }; applyMapView(); break; }
