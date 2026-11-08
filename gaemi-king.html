@@ -641,7 +641,7 @@ function buildSeason(sid) {
   // live random walk (log price) sampled every minute for the whole week, with fat-tail jumps
   const MIN = 7 * 24 * 60, walk = {};
   STOCKS.forEach(s => {
-    const W = rng('walk4:' + sid + ':' + s.id); const L = new Float64Array(MIN + 1); const sd = s.vol * .24;
+    const W = rng('walk5:' + sid + ':' + s.id); const L = new Float64Array(MIN + 1); const sd = s.vol * .16;
     for (let m = 1; m <= MIN; m++) {
       let z = gauss(W) * sd;
       if (W() < .05) z += (W() < .5 ? 1 : -1) * (.02 + W() * .08) * s.sens;
@@ -669,6 +669,23 @@ function buildSeason(sid) {
   const shocks = {};
   const k1 = 3 + Math.floor(R() * 5), k2 = 9 + Math.floor(R() * 5), k3 = 15 + Math.floor(R() * 6);
   [k1, k2, k3].forEach(k => { shocks[k] = { sym: STOCKS[Math.floor(R() * STOCKS.length)].id, mag: (.3 + R() * .25) * (R() < .5 ? 1 : -1) }; });
+  // 급변: sudden ±6~20% steps that stay. After one hits, the same stock is far more likely to jump again (chain explosions).
+  const jumps = {}, jmin = {};
+  STOCKS.forEach(s => {
+    const J = rng('jump2:' + sid + ':' + s.id); const ev = []; let hot = 0, lastDir = 1; const WIN = 5 * 60e3, NW = 7 * 24 * 12;
+    for (let w = 0; w < NW; w++) {
+      const r = J(), r2 = J(), r3 = J(), r4 = J();
+      if (r < (hot > 0 ? .3 : .01)) {
+        const dir = hot > 0 && r2 < .65 ? lastDir : (r2 < .5 ? 1 : -1);
+        const size = (.06 + r3 * r3 * .14) * Math.sqrt(s.sens);
+        const j = dir * Math.log(1 + size); ev.push({ t: w * WIN + Math.floor(r4 * WIN), j, d: Math.exp(j) - 1 }); lastDir = dir; hot = 1;
+      } else hot = Math.max(0, hot - 1);
+    }
+    jumps[s.id] = ev;
+    const JM = new Float64Array(MIN + 1); let acc = 0, i = 0;
+    for (let mm = 0; mm <= MIN; mm++) { while (i < ev.length && ev[i].t <= mm * 60e3) acc += ev[i++].j; JM[mm] = acc; }
+    jmin[s.id] = JM;
+  });
   const prices = {}; STOCKS.forEach(s => prices[s.id] = [s.p0]);
   for (let k = 1; k <= NT; k++) {
     STOCKS.forEach(s => {
@@ -683,7 +700,7 @@ function buildSeason(sid) {
       r = Math.max(-.6, Math.min(1.2, r));
       // where the live walk drifted during the last round carries over, then the round result lands on top
       const m0 = Math.round((tickTimeRel(k - 1)) / 60e3), m1 = Math.round(tickTimeRel(k) / 60e3);
-      const drift = Math.exp(walk[s.id][m1] - walk[s.id][m0]);
+      const drift = Math.exp(walk[s.id][m1] - walk[s.id][m0] + jmin[s.id][m1] - jmin[s.id][m0]);
       prices[s.id].push(Math.max(1, tickRound(prev * drift * (1 + r))));
     });
   }
@@ -700,7 +717,7 @@ function buildSeason(sid) {
     }
     ewalk[e.id] = L;
   });
-  return { sid, news, shocks, prices, index, secIndex, walk, ewalk };
+  return { sid, news, shocks, prices, index, secIndex, walk, ewalk, jumps };
 }
 
 /* ───────── time ───────── */
@@ -759,13 +776,14 @@ function pumpAt(sym, rel) {
   }
   return v;
 }
+function jumpAt(sym, rel) { let v = 0; for (const e of S.SE.jumps[sym]) { if (e.t > rel) break; v += e.j; } return v; }
 function walkAt(sym, t) {
   const L = S.SE.walk[sym]; const rel = Math.max(0, t - S.season.start); const MIN = L.length - 1;
   const m = Math.min(MIN - 1, Math.floor(rel / 60e3)); const f = Math.min(1, (rel - m * 60e3) / 60e3);
   const j = Math.floor(f * 30); let c = 0, cj = 0;
-  const sd = SM[sym].vol * .9 / Math.sqrt(30);
+  const sd = SM[sym].vol * .45 / Math.sqrt(30);
   for (let i = 0; i < 30; i++) { const e = (seedOf(S.season.sid + sym + m + ':' + i) / 4294967296 - .5) * 3.46 * sd; c += e; if (i < j) cj = c; }
-  return L[m] + f * (L[m + 1] - L[m]) + (cj - (j / 30) * c) + pumpAt(sym, rel);
+  return L[m] + f * (L[m + 1] - L[m]) + (cj - (j / 30) * c) + pumpAt(sym, rel) + jumpAt(sym, rel);
 }
 function livePx(sym) {
   const st = liveStep(now());
@@ -784,8 +802,10 @@ function priceAt(sym, t) {
   const k = curTick(t, S.season.start), t0 = tickTime(S.season.start, k);
   return S.SE.prices[sym][k] * Math.exp(walkAt(sym, t) - walkAt(sym, t0));
 }
-const P24 = { step: -1, map: {} };
-function ago24(sym) { const st = liveStep(now()); if (P24.step !== st) { P24.step = st; P24.map = {}; } return P24.map[sym] ?? (P24.map[sym] = priceAt(sym, now() - D)); }
+// 변동률은 매일 0시(한국 시간)에 초기화
+const dayStart = t => Math.max(S.season.start, Math.floor((t + KST) / D) * D - KST);
+const P24 = { key: -1, map: {} };
+function ago24(sym) { const ds = dayStart(now()); if (P24.key !== ds) { P24.key = ds; P24.map = {}; } return P24.map[sym] ?? (P24.map[sym] = priceAt(sym, ds)); }
 const nowChg = sym => px(sym, S.tick) / ago24(sym) - 1;
 const index24 = () => 1000 * STOCKS.reduce((a, s) => a + ago24(s.id) / s.p0, 0) / STOCKS.length;
 const sec24 = sec => { const l = STOCKS.filter(s => s.s === sec); return l.reduce((a, s) => a + ago24(s.id) / s.p0, 0) / l.length; };
@@ -874,7 +894,7 @@ function renderHome() {
   const best = ranked[0], worst = ranked[ranked.length - 1];
   const mover = (r, lab) => `<button class="mover ${cls(r.c)}" type="button" data-stock="${r.s.id}"><small>${lab}</small><span class="mn">${badge(r.s)}<b>${esc(r.s.n)}</b></span><span class="mc num">${pctTxt(r.c)}</span></button>`;
   let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
-    <div class="movers">${mover(best, '🚀 24시간 최고')}${mover(worst, '📉 24시간 최저')}</div>`;
+    <div class="movers">${mover(best, '🚀 오늘 최고')}${mover(worst, '📉 오늘 최저')}</div>`;
 
   h = bonusCard() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
@@ -916,7 +936,7 @@ function renderHome() {
     }
   }
   h += `</div>`;
-  h += `<div class="sec"><div class="sec-h"><h2>전체 종목</h2><small>24시간 변동률</small></div><div class="slist">${STOCKS.map(stockRow).join('')}</div></div>`;
+  h += `<div class="sec"><div class="sec-h"><h2>전체 종목</h2><small>오늘 변동률 · 0시 기준</small></div><div class="slist">${STOCKS.map(stockRow).join('')}</div></div>`;
   el.innerHTML = h;
 }
 
@@ -1177,6 +1197,17 @@ async function checkLiquidation() {
   const ok = await saveMe(me, before); liquidating = false;
   if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x, d: o.d || 1 })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
 }
+function jumpAlerts() {
+  const rel = now() - S.season.start;
+  if (S.lastJumpRel == null) { S.lastJumpRel = rel; return; }
+  let best = null;
+  STOCKS.forEach(x => { for (const e of S.SE.jumps[x.id]) { if (e.t > rel) break; if (e.t > S.lastJumpRel && (!best || Math.abs(e.d) > Math.abs(best.e.d))) best = { x, e }; } });
+  S.lastJumpRel = rel;
+  if (!best) return;
+  const mine = S.me && ((S.me.hold || {})[best.x.id] || (S.me.lev || {})[best.x.id] || (S.me.shorts || {})[best.x.id]);
+  toast(`⚡ ${best.x.n} ${pctTxt(best.e.d)} ${best.e.d > 0 ? '폭등!' : '폭락!'}${mine ? ' (내 종목)' : ''}`);
+  if (mine) { best.e.d > 0 ? confetti() : boom(); buzz(60); }
+}
 function holdingAlerts() {
   if (!S.me) return;
   for (const sym of Object.keys(S.me.hold || {})) {
@@ -1259,7 +1290,7 @@ function indexCardHTML() {
   const k = S.tick; const I = S.SE.index;
   const Ik = indexNow(); const ic = Ik / index24() - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
   return `<div class="card index"><div class="row"><div><div class="lab">곰스피 지수 · ${STOCKS.length}종목</div><div class="v num">${Ik.toFixed(2)}<span class="livedot" title="실시간"></span></div>
-      <div class="c num"><span class="${cls(ic)}">24시간 ${pctTxt(ic)}</span> <span class="dim" style="font-size:14px">이번 주 <span class="${cls(iw)}">${pctTxt(iw)}</span></span></div></div>
+      <div class="c num"><span class="${cls(ic)}">오늘 ${pctTxt(ic)}</span> <span class="dim" style="font-size:14px">이번 주 <span class="${cls(iw)}">${pctTxt(iw)}</span></span></div></div>
       <span class="mood ${mc}">${ml}</span></div>
     <canvas class="ichart" id="indexChart" aria-label="곰스피 지수 이번 주 흐름"></canvas>
     <div class="sectors">${Object.entries(SECTORS).slice(0, 4).map(([sec, v]) => { const c = secNow(sec) / sec24(sec) - 1; return `<div>${v.n}<b class="${cls(c)}">${pctTxt(c)}</b></div>`; }).join('')}</div></div>`;
@@ -1275,7 +1306,7 @@ function renderMarket() {
   if (S.filter === 'mine') list = list.filter(s => mine.has(s.id));
   else if (S.filter === 'up' || S.filter === 'down') list = list.map(s => ({ s, c: k ? chg(s.id, k - 1, k) : 0 })).sort((a, b) => S.filter === 'up' ? b.c - a.c : a.c - b.c).slice(0, 10).map(x => x.s);
   else if (S.filter !== 'all') list = list.filter(s => s.s === S.filter);
-  h += `<div class="sec"><div class="sec-h"><h2>종목 ${STOCKS.length}</h2><small>24시간 변동률</small></div>
+  h += `<div class="sec"><div class="sec-h"><h2>종목 ${STOCKS.length}</h2><small>오늘 변동률 · 0시 기준</small></div>
     <div class="chips" role="group" aria-label="종목 분류">${chips.map(([v, l]) => `<button type="button" data-filter="${v}" aria-pressed="${S.filter === v}">${l}</button>`).join('')}</div><div class="slist">`;
   h += list.map(stockRow).join('');
   h += `</div></div><p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>`;
@@ -1466,7 +1497,7 @@ function renderDetail() {
   d.innerHTML = `<div class="in">
     <div class="dtop"><button class="back" type="button" id="detailBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>${esc(s.n)}</b></div>
     <div class="dhead">${badge(s)}<div><h1>${esc(s.n)}</h1><small>${SECTORS[s.s].n} · 변동성 ${VOL_TXT(s.vol)}</small></div></div>
-    <div class="dprice"><div class="p num"><span id="dPrice">${won(p)}</span><span class="livedot" title="실시간"></span></div><div class="c num" id="dChg"><span class="${cls(c)}">24시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
+    <div class="dprice"><div class="p num"><span id="dPrice">${won(p)}</span><span class="livedot" title="실시간"></span></div><div class="c num" id="dChg"><span class="${cls(c)}">오늘 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
     <div><canvas class="dchart" id="detailChart" aria-label="${esc(s.n)} 이번 주 가격 차트"></canvas></div>
     <div id="dPos">${detailPos(sym, p)}</div>
     <div class="sec"><div class="sec-h"><h2>${esc(s.n)} 채팅</h2><small>${talkFor(sym).length}개의 메시지</small></div><div id="dTalk" class="sec">${talkHTML(sym)}</div></div>
@@ -1489,7 +1520,7 @@ function drawDetailChart() { const cv = $('#detailChart'); const sym = S.detail;
 function updateDetailLive() {
   const sym = S.detail; if (!sym) return; const s = SM[sym]; const p = px(sym, S.tick), c = nowChg(sym), cw = p / s.p0 - 1;
   const el = $('#dPrice'); if (el) el.textContent = won(p);
-  const ch = $('#dChg'); if (ch) ch.innerHTML = `<span class="${cls(c)}">24시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span>`;
+  const ch = $('#dChg'); if (ch) ch.innerHTML = `<span class="${cls(c)}">오늘 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span>`;
   const ps = $('#dPos'); if (ps) ps.innerHTML = detailPos(sym, p);
   const stt = $('#dStats'); if (stt) stt.innerHTML = detailStats(sym, p);
   drawDetailChart();
@@ -1541,7 +1572,7 @@ function renderStockSheet(b, sh) {
   const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0, myS = S.me && S.me.shorts && S.me.shorts[s.id];
   const canTrade = S.me && !S.readOnly && !seasonOver();
   b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>${SECTORS[s.s].n}</small></div></div>
-    <div class="bigp"><div class="p num" id="livePrice">${won(p)}</div><div class="c num"><span class="${cls(c)}" id="livePct">24시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
+    <div class="bigp"><div class="p num" id="livePrice">${won(p)}</div><div class="c num"><span class="${cls(c)}" id="livePct">오늘 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
     <canvas class="chart" id="bigChart" aria-label="이번 주 가격 차트"></canvas>
     <div class="info"><div>친구 주주<b>${holders.length}명</b></div><div>👑 최대 주주<b>${top ? esc(top.name) : '없음'}</b></div>
       <div>내 보유<b class="num">${my ? my.toLocaleString() + '주' : '-'}</b></div><div>내 공매도<b class="num">${myS ? myS.q.toLocaleString() + '주' : '-'}</b></div></div>
@@ -1659,7 +1690,7 @@ async function doJoin() {
 function renderHelp(b) {
   b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
   <ul class="rules">
-    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, 하루 몇 번 속보가 터지면 크게 출렁여요.</span></li>
+    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, 가끔 한 번에 ±6~20%씩 <b>팍</b> 터져요. 한 번 터진 종목은 연속으로 터지기 쉬워요. 변동률은 매일 0시에 초기화돼요.</span></li>
     <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
     <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
@@ -1901,13 +1932,13 @@ setInterval(() => {
     const w0 = S.me ? worth(S.me, S.tick) : 0;
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
     if (S.me) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
-    holdingAlerts(); checkLiquidation();
+    holdingAlerts(); checkLiquidation(); jumpAlerts();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
     if (sh && sh.sym && (sh.type === 'stock' || sh.type === 'quick')) {
       const lp = $('#livePrice'), pc = $('#livePct'); const v = px(sh.sym, S.tick), c = nowChg(sh.sym);
       if (lp) lp.textContent = won(v);
-      if (pc) { pc.className = 'num ' + cls(c); pc.textContent = (sh.type === 'stock' ? '24시간 ' : '') + pctTxt(c); }
+      if (pc) { pc.className = 'num ' + cls(c); pc.textContent = (sh.type === 'stock' ? '오늘 ' : '') + pctTxt(c); }
       if (sh.type === 'stock') drawBig();
     }
     return;
