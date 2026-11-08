@@ -2400,13 +2400,14 @@ async function postBoard() {
   if (S.mode === 'demo') { S.talk.unshift({ id: 't' + Date.now(), ...item }); LS.set('demoTalk', S.talk.filter(t => !t.bot)); renderBoard(); return; }
   try { await S.db.collection('talk').add(item); } catch (e) { toast('건의를 보내지 못했어요. 잠시 후 다시 해주세요.'); i.value = text; }
 }
-// ⭐ 레벨: 상점에서 현금으로 올려요. LV.1에서 시작, 첫 레벨업 1억, 올릴 때마다 가격 2배
-const lvOf = p => Math.max(1, Math.floor((p && p.lv) || 1));
-const lvCost = lv => 1e8 * Math.pow(2, lv - 1);
+// ⭐ 레벨: 상점에서 현금으로 올려요. LV.1에서 시작, 첫 레벨업 100만원, 올릴 때마다 가격 2배
+// (레벨 초기화: 예전 필드 lv 대신 lvl을 써요. 데이터는 지우지 않아요)
+const lvOf = p => Math.max(1, Math.floor((p && p.lvl) || 1));
+const lvCost = lv => 1e6 * Math.pow(2, lv - 1);
 async function levelUp() {
   if (!S.me || S.saving || S.readOnly) return;
   const lv = lvOf(S.me), cost = lvCost(lv); if (S.me.cash < cost) { toast(`현금이 ${won(cost - S.me.cash)} 부족해요`); return; }
-  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - cost); me.lv = lv + 1;
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - cost); me.lvl = lv + 1;
   S.saving = true; const ok = await saveMe(me, before); S.saving = false;
   if (ok) { toast(`⭐ LV.${lv + 1} 달성!`); confetti(); buzz(60); renderAll(); }
 }
