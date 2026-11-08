@@ -652,6 +652,86 @@ const STOCKS = [
 const SM = Object.fromEntries(STOCKS.map(s => [s.id, s]));
 // 🪙 코인: 예전 주식 30종목을 코인으로 바꿨어요. 내부 id·가격 흐름·보유 수량은 그대로 두고,
 // 화면에서만 코인 이름·가격(내부 가격 × 배율)·수량(내부 수량 ÷ 배율)으로 보여줘서 가치는 똑같아요.
+// 📈 주식(안전자산): 코인과 따로 도는 잔잔한 정상 시장이에요. 시즌·코인 가격 엔진과 완전히 분리돼서
+// 코인 가격에는 아무 영향이 없어요. 가격은 시각만으로 계산(여러 주기의 부드러운 흔들림)해서 모든 기기가 같아요.
+const EQ = [
+  { id: 'E_SEC', a: '삼성', n: '삼성전자', s: 'semi', p0: 72000 },
+  { id: 'E_SKH', a: 'SK', n: 'SK하이닉스', s: 'semi', p0: 210000 },
+  { id: 'E_NVDA', a: 'NV', n: '엔비디아', s: 'semi', p0: 190000 },
+  { id: 'E_TSM', a: 'TS', n: 'TSMC', s: 'semi', p0: 280000 },
+  { id: 'E_AMD', a: 'AMD', n: 'AMD', s: 'semi', p0: 220000 },
+  { id: 'E_INTC', a: 'IN', n: '인텔', s: 'semi', p0: 30000 },
+  { id: 'E_ASML', a: 'AS', n: 'ASML', s: 'semi', p0: 950000 },
+  { id: 'E_AVGO', a: 'AV', n: '브로드컴', s: 'semi', p0: 250000 },
+  { id: 'E_QCOM', a: 'QC', n: '퀄컴', s: 'semi', p0: 230000 },
+  { id: 'E_MU', a: 'MU', n: '마이크론', s: 'semi', p0: 140000 },
+  { id: 'E_AAPL', a: 'AP', n: '애플', s: 'tech', p0: 300000 },
+  { id: 'E_MSFT', a: 'MS', n: '마이크로소프트', s: 'tech', p0: 600000 },
+  { id: 'E_GOOG', a: 'GO', n: '알파벳', s: 'tech', p0: 250000 },
+  { id: 'E_AMZN', a: 'AM', n: '아마존', s: 'tech', p0: 300000 },
+  { id: 'E_META', a: 'ME', n: '메타', s: 'tech', p0: 900000 },
+  { id: 'E_PLTR', a: 'PL', n: '팔란티어', s: 'tech', p0: 200000 },
+  { id: 'E_ORCL', a: 'OR', n: '오라클', s: 'tech', p0: 250000 },
+  { id: 'E_CRM', a: 'SF', n: '세일즈포스', s: 'tech', p0: 380000 },
+  { id: 'E_ADBE', a: 'AD', n: '어도비', s: 'tech', p0: 600000 },
+  { id: 'E_IBM', a: 'IBM', n: 'IBM', s: 'tech', p0: 330000 },
+  { id: 'E_TSLA', a: 'TL', n: '테슬라', s: 'auto', p0: 450000 },
+  { id: 'E_HMC', a: '현대', n: '현대차', s: 'auto', p0: 220000 },
+  { id: 'E_KIA', a: '기아', n: '기아', s: 'auto', p0: 100000 },
+  { id: 'E_BYD', a: 'BYD', n: 'BYD', s: 'auto', p0: 50000 },
+  { id: 'E_TM', a: '도요', n: '도요타', s: 'auto', p0: 260000 },
+  { id: 'E_MOBIS', a: '모비', n: '현대모비스', s: 'auto', p0: 250000 },
+  { id: 'E_GM', a: 'GM', n: 'GM', s: 'auto', p0: 70000 },
+  { id: 'E_F', a: 'F', n: '포드', s: 'auto', p0: 15000 },
+  { id: 'E_RIVN', a: 'RI', n: '리비안', s: 'auto', p0: 20000 },
+  { id: 'E_MBG', a: '벤츠', n: '메르세데스벤츠', s: 'auto', p0: 90000 },
+  { id: 'E_NAVR', a: 'N', n: '네이버', s: 'plat', p0: 210000 },
+  { id: 'E_KAKO', a: '카카', n: '카카오', s: 'plat', p0: 40000 },
+  { id: 'E_CPNG', a: 'CP', n: '쿠팡', s: 'plat', p0: 35000 },
+  { id: 'E_UBER', a: 'UB', n: '우버', s: 'plat', p0: 110000 },
+  { id: 'E_ABNB', a: 'AB', n: '에어비앤비', s: 'plat', p0: 180000 },
+  { id: 'E_SHOP', a: 'SH', n: '쇼피파이', s: 'plat', p0: 150000 },
+  { id: 'E_BABA', a: 'BA', n: '알리바바', s: 'plat', p0: 160000 },
+  { id: 'E_KBNK', a: '뱅크', n: '카카오뱅크', s: 'plat', p0: 25000 },
+  { id: 'E_KPAY', a: '페이', n: '카카오페이', s: 'plat', p0: 30000 },
+  { id: 'E_BKNG', a: 'BK', n: '부킹홀딩스', s: 'plat', p0: 7000000 },
+  { id: 'E_NFLX', a: 'NF', n: '넷플릭스', s: 'ent', p0: 1600000 },
+  { id: 'E_KRAF', a: '크래', n: '크래프톤', s: 'ent', p0: 300000 },
+  { id: 'E_HYBE', a: '하이', n: '하이브', s: 'ent', p0: 250000 },
+  { id: 'E_DIS', a: 'DIS', n: '디즈니', s: 'ent', p0: 150000 },
+  { id: 'E_SPOT', a: 'SP', n: '스포티파이', s: 'ent', p0: 900000 },
+  { id: 'E_NCSF', a: 'NC', n: '엔씨소프트', s: 'ent', p0: 200000 },
+  { id: 'E_NTMB', a: '넷마', n: '넷마블', s: 'ent', p0: 50000 },
+  { id: 'E_JYP', a: 'JYP', n: 'JYP', s: 'ent', p0: 70000 },
+  { id: 'E_SMEN', a: 'SM', n: 'SM엔터', s: 'ent', p0: 90000 },
+  { id: 'E_RBLX', a: 'RB', n: '로블록스', s: 'ent', p0: 100000 },
+  { id: 'E_LGES', a: 'LG', n: 'LG에너지솔루션', s: 'batt', p0: 380000 },
+  { id: 'E_POSC', a: 'PO', n: 'POSCO홀딩스', s: 'batt', p0: 300000 },
+  { id: 'E_SDI', a: 'SDI', n: '삼성SDI', s: 'batt', p0: 250000 },
+  { id: 'E_SKIN', a: 'SKI', n: 'SK이노베이션', s: 'batt', p0: 110000 },
+  { id: 'E_ECOP', a: '에코', n: '에코프로', s: 'batt', p0: 90000 },
+  { id: 'E_ECBM', a: '비엠', n: '에코프로비엠', s: 'batt', p0: 130000 },
+  { id: 'E_POFM', a: '퓨처', n: '포스코퓨처엠', s: 'batt', p0: 200000 },
+  { id: 'E_LGCH', a: 'LG화', n: 'LG화학', s: 'batt', p0: 300000 },
+  { id: 'E_CATL', a: 'CA', n: 'CATL', s: 'batt', p0: 350000 },
+  { id: 'E_ALB', a: 'AL', n: '앨버말', s: 'batt', p0: 120000 },
+  { id: 'E_SBIO', a: '삼바', n: '삼성바이오로직스', s: 'bio', p0: 1000000 },
+  { id: 'E_CELT', a: '셀트', n: '셀트리온', s: 'bio', p0: 180000 },
+  { id: 'E_YUHN', a: '유한', n: '유한양행', s: 'bio', p0: 120000 },
+  { id: 'E_HLB', a: 'HLB', n: 'HLB', s: 'bio', p0: 70000 },
+  { id: 'E_ALTE', a: '알테', n: '알테오젠', s: 'bio', p0: 400000 },
+  { id: 'E_LLY', a: 'LLY', n: '일라이릴리', s: 'bio', p0: 1100000 },
+  { id: 'E_NVO', a: 'NO', n: '노보노디스크', s: 'bio', p0: 100000 },
+  { id: 'E_PFE', a: 'PFE', n: '화이자', s: 'bio', p0: 35000 },
+  { id: 'E_MRNA', a: 'MR', n: '모더나', s: 'bio', p0: 45000 },
+  { id: 'E_SKBP', a: 'SK바', n: 'SK바이오팜', s: 'bio', p0: 110000 },
+].map(e => ({ ...e, eq: true, vol: .012, sens: .4 }));
+EQ.forEach(e => SM[e.id] = e);
+const isEq = id => !!(SM[id] && SM[id].eq);
+const EQ_EPOCH = Date.parse('2026-11-02T00:00:00+09:00');
+const EQ_OCT = [[7 * 864e5, .09], [864e5, .03], [72e5, .011], [6e5, .0045], [6e4, .0016], [5e3, .0005]];
+function vnoise(key, x) { const i = Math.floor(x), f = x - i, a = seedOf(key + i) / 2147483648 - 1, b = seedOf(key + (i + 1)) / 2147483648 - 1, u = f * f * (3 - 2 * f); return a + (b - a) * u; }
+function eqAt(sym, t) { const e = SM[sym]; let w = 0; const rel = t - EQ_EPOCH; for (const [per, amp] of EQ_OCT) w += amp * vnoise('eq1:' + sym + ':' + per + ':', rel / per); return Math.max(1, tickRound(e.p0 * Math.exp(w))); }
 const COIN = {
   MSFT: ['BTC', '비트코인', 'major', 102.389],
   AAPL: ['ETH', '이더리움', 'major', 67.2948],
@@ -1043,6 +1123,7 @@ function walkAt(sym, t) {
 }
 function prevPx(sym) {
   const st = liveStep(now());
+  if (isEq(sym)) return eqAt(sym, (st - 1) * LIVE_MS);
   if (LV.prev && LV.prev[sym] != null) return LV.prev[sym];
   const t0 = tickTime(S.season.start, S.tick), t = (st - 1) * LIVE_MS, h = haltAt(sym, t);
   const p = Math.max(1, tickRound(S.SE.prices[sym][S.tick] * Math.exp(walkAt(sym, h.from || t) - walkAt(sym, t0) + h.c)));
@@ -1050,6 +1131,7 @@ function prevPx(sym) {
 }
 function livePx(sym) {
   const st = liveStep(now());
+  if (isEq(sym)) return eqAt(sym, st * LIVE_MS);
   if (LV.step !== st) { LV.prev = LV.step === st - 1 ? LV.map : {}; LV.step = st; LV.map = {}; }
   if (LV.map[sym] == null) {
     const t0 = tickTime(S.season.start, S.tick), t = st * LIVE_MS, h = haltAt(sym, t);
@@ -1064,12 +1146,13 @@ function livePx(sym) {
   return LV.map[sym];
 }
 const isLive = k => k === S.tick;
-const px = (sym, k) => !SM[sym] ? 0 : isLive(k) ? livePx(sym) : S.SE.prices[sym][Math.max(0, Math.min(k, NT))];
+const px = (sym, k) => !SM[sym] ? 0 : isLive(k) ? livePx(sym) : isEq(sym) ? eqAt(sym, tickTime(S.season.start, Math.max(0, Math.min(k, NT)))) : S.SE.prices[sym][Math.max(0, Math.min(k, NT))];
 function liveX() { const a = tickTime(S.season.start, S.tick), b = S.tick >= NT ? S.season.start + 7 * D : tickTime(S.season.start, S.tick + 1); return S.tick + Math.min(1, (now() - a) / (b - a)); }
 const indexNow = () => 1000 * STOCKS.reduce((a, s) => a + px(s.id, S.tick) / s.p0, 0) / STOCKS.length;
 const secNow = sec => { const l = STOCKS.filter(s => s.s === sec); return l.reduce((a, s) => a + px(s.id, S.tick) / s.p0, 0) / l.length; };
 // price at any moment (round price × live walk since that round), for 24시간 변동률
 function priceAt(sym, t) {
+  if (isEq(sym)) return eqAt(sym, t);
   if (t <= S.season.start) return S.SE.prices[sym][0];
   const h = haltAt(sym, t); if (h.from) t = h.from;
   const k = curTick(t, S.season.start), t0 = tickTime(S.season.start, k);
@@ -1117,7 +1200,7 @@ function haltAdvance(sym, H, upto) {
   haltSave(H);
 }
 function haltAt(sym, t) {
-  if (t < HALT_FROM || !S.season) return { c: 0, from: 0, j: 0 };
+  if (t < HALT_FROM || !S.season || isEq(sym)) return { c: 0, from: 0, j: 0 };
   const H = haltState(sym); if (!H.busy && H.t <= t) haltAdvance(sym, H, t);
   const ev = H.ev; let lo = 0, hi = ev.length - 1, i = -1;
   while (lo <= hi) { const m = (lo + hi) >> 1; if (ev[m].t <= t) { i = m; lo = m + 1; } else hi = m - 1; }
@@ -1466,7 +1549,19 @@ function renderInvest() {
   const body = $('#invBody');
   if (body.dataset.sub !== S.inv) { body.innerHTML = ''; body.dataset.sub = S.inv; }
   if (S.inv === 'estate') { renderEstList(body); return; }
-  if (S.inv === 'stock' || S.inv === 'fx') { body.innerHTML = `<div class="empty">${S.inv === 'stock' ? '주식 시장을 준비하고 있어요. 곧 열려요.' : '환율 시장을 준비하고 있어요. 곧 열려요.'}</div>`; return; }
+  if (S.inv === 'fx') { body.innerHTML = `<div class="empty">환율 시장을 준비하고 있어요. 곧 열려요.</div>`; return; }
+  if (S.inv === 'stock') {
+    const heldE = EQ.filter(x => exitMode(x.id));
+    if (S.eqSec == null) S.eqSec = heldE.length ? 'mine' : Object.keys(SECTORS)[0];
+    if (S.eqSec === 'mine' ? !heldE.length : !SECTORS[S.eqSec]) S.eqSec = Object.keys(SECTORS)[0];
+    const secsE = [...(heldE.length ? [['mine', `보유 ${heldE.length}`]] : []), ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
+    const he = `<div class="sec"><div class="sec-h"><h2>주식</h2><small>잔잔한 안전자산 · 가격 높은 순</small></div>
+      <div class="chips" role="group" aria-label="주식 분류">${secsE.map(([k2, l]) => `<button type="button" data-eqsec="${k2}" aria-pressed="${S.eqSec === k2}">${l}</button>`).join('')}</div>
+      <div class="slist">${byPrice(S.eqSec === 'mine' ? heldE : EQ.filter(x => x.s === S.eqSec)).map(stockRow).join('')}</div></div>
+      <p class="hint">주식은 코인과 달리 천천히 움직여요. 매수·매도만 할 수 있어요. 게임 끄기 전에 돈을 넣어두기 좋아요.</p>`;
+    const oc = body.querySelector('.chips'), ox = oc ? oc.scrollLeft : 0; body.innerHTML = he; const nc = body.querySelector('.chips'); if (nc && ox) nc.scrollLeft = ox;
+    return;
+  }
   let h = '';
   const held = STOCKS.filter(x => exitMode(x.id));
   if (S.homeSec == null) S.homeSec = held.length ? 'mine' : Object.keys(COIN_CATS)[0];
@@ -2163,9 +2258,9 @@ function detailPos(sym, p) {
   return h ? `<div class="card mypos">${h}</div>` : '';
 }
 function detailStats(sym, p) {
-  const hist = [...S.SE.prices[sym].slice(0, S.tick + 1), p]; const hi = Math.max(...hist), lo = Math.min(...hist);
+  const hist = isEq(sym) ? Array.from({ length: 25 }, (_, i) => eqAt(sym, now() - i * 36e5)) : [...S.SE.prices[sym].slice(0, S.tick + 1), p]; const hi = Math.max(...hist), lo = Math.min(...hist);
   const holders = activePlayers().filter(x => (x.hold || {})[sym] > 0);
-  return `<div>이번 주 최고<b class="num up">${PW(sym, hi)}</b></div><div>이번 주 최저<b class="num down">${PW(sym, lo)}</b></div><div>월요일 시가<b class="num">${PW(sym, SM[sym].p0)}</b></div><div>보유한 친구<b>${holders.length}명</b></div>`;
+  return `<div>${isEq(sym) ? '24시간' : '이번 주'} 최고<b class="num up">${PW(sym, hi)}</b></div><div>${isEq(sym) ? '24시간' : '이번 주'} 최저<b class="num down">${PW(sym, lo)}</b></div><div>${isEq(sym) ? '기준가' : '월요일 시가'}<b class="num">${PW(sym, SM[sym].p0)}</b></div><div>보유한 친구<b>${holders.length}명</b></div>`;
 }
 /* ── per-stock community ── */
 const talkFor = sym => S.talk.filter(t => t.sym === sym).sort((a, b) => b.ts - a.ts);
@@ -2225,8 +2320,8 @@ function renderDetail() {
   <div class="dbar"><div class="in">
     <button class="cta buy" type="button" data-quick="buy" data-sym="${sym}" ${off ? 'disabled' : ''}>매수</button>
     <button class="cta sell" type="button" data-quick="${exitMode(sym) || 'sell'}" data-sym="${sym}" ${off || !exitMode(sym) ? 'disabled' : ''}>매도</button>
-    <button class="cta short" type="button" data-quick="${sh ? 'cover' : 'short'}" data-sym="${sym}" ${off ? 'disabled' : ''}>${sh ? '상환' : '공매도'}</button>
-    <button class="cta lev" type="button" data-quick="lev" data-sym="${sym}" ${off ? 'disabled' : ''}>🚀 레버</button>
+${isEq(sym) ? '' : `<button class="cta short" type="button" data-quick="${sh ? 'cover' : 'short'}" data-sym="${sym}" ${off ? 'disabled' : ''}>${sh ? '상환' : '공매도'}</button>
+    <button class="cta lev" type="button" data-quick="lev" data-sym="${sym}" ${off ? 'disabled' : ''}>🚀 레버</button>`}
   </div></div>`;
   d.scrollTop = st;
   const cb = $('#chatBox'); if (cb) cb.scrollTop = atBottom || S.chatJump ? cb.scrollHeight : cst; S.chatJump = false;
@@ -2245,7 +2340,7 @@ function holdersHTML(sym) {
   const canAtk0 = S.me && !S.readOnly && !seasonOver(); let rows = '';
   activePlayers().forEach(p => {
     myPositions(p).filter(x => x.sym === sym).forEach(x => {
-      const isMe = p.id === S.uid, canAtk = canAtk0 && !isMe, dir = (x.kind === 'spot' || (x.kind === 'lev' && !x.label.includes('숏'))) ? -1 : 1, cost = atkCostOf(x.principal);
+      const isMe = p.id === S.uid, canAtk = canAtk0 && !isMe && !isEq(sym), dir = (x.kind === 'spot' || (x.kind === 'lev' && !x.label.includes('숏'))) ? -1 : 1, cost = atkCostOf(x.principal);
       const q = x.kind === 'spot' ? (p.hold || {})[sym] : x.kind === 'lev' ? ((p.lev || {})[sym] || {}).q : ((p.shorts || {})[sym] || {}).q;
       const btn = canAtk ? `<button type="button" class="atk-btn" data-atk="${esc(p.id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼12%' : '▲12%'}<small>${man(cost)}원</small></button>` : '';
       rows += `<div class="pos${canAtk ? ' has-atk' : ''}">${ava(p)}<span class="sname"><b>${esc(p.name)}${isMe ? ' <span class="tag you">나</span>' : ''} <span class="postag ${x.kind === 'spot' ? 'spot' : dir > 0 ? 'short' : 'long'}">${x.label}</span></b>
@@ -2294,7 +2389,7 @@ function renderQuickSheet(b, sh) {
   const s = SM[sh.sym], p = px(s.id, S.tick), c = nowChg(s.id);
   const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0;
   b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>현재가 <b class="num" id="livePrice">${PW(s.id, p)}</b> <span class="num ${cls(c)}" id="livePct">${pctTxt(c)}</span> · 보유 ${QT(s.id, my)}</small></div></div>
-    <div class="seg">${[['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']].map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
+    <div class="seg"${isEq(s.id) ? ' style="grid-template-columns:1fr 1fr"' : ''}>${(isEq(s.id) ? [['buy', '매수'], ['sell', '매도']] : [['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']]).map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
     ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${QT(s.id, o.q)} · 진입 ${PW(s.id, o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
     <div class="levdir" id="levdir" ${sh.m === 'lev' ? '' : 'hidden'}><button type="button" data-levd="long" aria-pressed="${sh.dir !== 'short'}">📈 롱 (오르면 이득)</button><button type="button" data-levd="short" aria-pressed="${sh.dir === 'short'}">📉 숏 (내리면 이득)</button></div>
     <div class="levx" id="levx" ${sh.m === 'lev' ? '' : 'hidden'}>${LEVS.map(x => `<button type="button" data-levx="${x}" aria-pressed="${(sh.x || 25) === x}">${x}배</button>`).join('')}</div>
@@ -2326,7 +2421,7 @@ function renderStockSheet(b, sh) {
   requestAnimationFrame(drawBig);
   updateTradeEst();
 }
-function drawBig() { const cv = $('#bigChart'); const sh = S.sheet; if (!cv || !sh || !sh.sym) return; drawChart(cv, S.SE.prices[sh.sym].slice(0, S.tick + 1).map(v => v * cf(sh.sym)), { live: { x: liveX(), v: px(sh.sym, S.tick) * cf(sh.sym) } }); }
+function drawBig() { const cv = $('#bigChart'); const sh = S.sheet; if (!cv || !sh || !sh.sym) return; if (isEq(sh.sym)) { drawChart(cv, Array.from({ length: 49 }, (_, i) => eqAt(sh.sym, now() - (48 - i) * 18e5)), {}); return; } drawChart(cv, S.SE.prices[sh.sym].slice(0, S.tick + 1).map(v => v * cf(sh.sym)), { live: { x: liveX(), v: px(sh.sym, S.tick) * cf(sh.sym) } }); }
 function maxQty(m, sym) {
   const p = px(sym, S.tick), me = S.me; if (!me) return 0;
   if (m === 'buy' || m === 'short') return Math.max(0, Math.floor(me.cash / (p * (1 + FEE))));
@@ -2398,7 +2493,7 @@ function renderPlayerSheet(b, sh) {
   const list = myPositions(p);
   const rows = list.map(x => {
     const st = SM[x.sym], dir = (x.kind === 'spot' || (x.kind === 'lev' && !x.label.includes('숏'))) ? -1 : 1, cost = atkCostOf(x.principal);
-    const btn = canAtk ? `<button type="button" class="atk-btn" data-atk="${esc(sh.id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼12%' : '▲12%'}<small>${man(cost)}원</small></button>` : '';
+    const btn = canAtk && !isEq(x.sym) ? `<button type="button" class="atk-btn" data-atk="${esc(sh.id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼12%' : '▲12%'}<small>${man(cost)}원</small></button>` : '';
     return `<div class="pos${canAtk ? ' has-atk' : ''}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="postag ${x.kind === 'spot' ? 'spot' : dir > 0 ? 'short' : 'long'}">${x.label}</span></b>
       <small class="dim num">원금 ${man(x.principal)} → ${man(x.value)}${x.dist != null ? ` · 청산 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
       <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span>${btn}</div>`;
@@ -2668,6 +2763,7 @@ document.addEventListener('click', e => {
   if (t.dataset.inv) { S.inv = t.dataset.inv; renderInvest(); window.scrollTo({ top: 0 }); return; }
   if (t.dataset.boardtab) { S.board = t.dataset.boardtab; renderBoard(); return; }
   if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); if (S.homeView === 'map') { const sw = document.querySelector('#homeDyn .hswitch'); if (sw) window.scrollTo(0, sw.getBoundingClientRect().top + window.scrollY - 12); } return; }
+  if (t.dataset.eqsec) { S.eqSec = t.dataset.eqsec; renderAll(); return; }
   if (t.dataset.homesec) { S.homeSec = t.dataset.homesec; renderAll(); return; }
   if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
   if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
