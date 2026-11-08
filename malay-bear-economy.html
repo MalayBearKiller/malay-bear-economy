@@ -296,19 +296,26 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .seoul path.gu.mine{stroke:var(--violet);stroke-width:2.5}
 .seoul path.land{pointer-events:none;opacity:.3;stroke:#fff;stroke-width:2.2;vector-effect:non-scaling-stroke}
 .seoul path.land[opacity]{opacity:.16}
-.seoul .gl text{text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px;pointer-events:none}
-.seoul .gn{font-size:15px;font-weight:800;fill:var(--ink)}
-.seoul .gc{font-size:11.5px;font-weight:700;fill:var(--violet)}
+.seoul .gl text{text-anchor:middle;pointer-events:none}
+.seoul .glbg,.seoul .plbg{fill:#fff;opacity:.92;stroke:rgba(23,22,31,.12);stroke-width:1px;pointer-events:none}
+.seoul .stamp{pointer-events:none}
+.seoul .stamp .stx{text-anchor:middle;font-size:12px;font-weight:900;fill:#17161f}
+.seoul.zoomed .stamp{display:none}
+.seoul .gn{font-size:12px;font-weight:800;fill:var(--ink)}
+.seoul:not(.zoomed) .gc,.seoul:not(.zoomed) .gcb{display:none}
+.seoul .gc{font-size:10.5px;font-weight:700;fill:var(--violet)}
 .seoul.zoomed .gn{fill:var(--faint);font-size:17px} .seoul.zoomed .gc{display:none}
 .seoul .pin{cursor:pointer}
 .seoul .pin .hit{fill:transparent}
 .seoul .pin .pi{text-anchor:middle;font-size:16px}
-.seoul .pin .pl{font-size:12.5px;font-weight:800;fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3.5px}
-.seoul .pin .pv{font-size:11px;font-weight:700;fill:var(--dim);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px}
+.seoul .pin .pl{font-size:12.5px;font-weight:800;fill:var(--ink);text-anchor:middle}
+.seoul .pin .pv{font-size:11px;font-weight:700;fill:var(--dim);text-anchor:middle}
 .seoul .pin .fn{font-size:12.5px;font-weight:900;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:rgba(0,0,0,.25);stroke-width:2px}
 .seoul .pin.broken .pl{fill:var(--up)}
 .seoul:not(.zoomed) .pin:not(.owned){display:none}
 .seoul:not(.zoomed) .pin .pl,.seoul:not(.deep) .pin .pv{display:none}
+.seoul:not(.zoomed) .pin .plbg{display:none}
+.seoul:not(.deep) .pin .plbg{height:17px}
 .seoul:not(.zoomed) .pin .flag,.seoul:not(.zoomed) .pin .pi{display:none}
 .seoul:not(.zoomed) .pin.owned circle:not(.hit){r:6px}
 .seoul:not(.zoomed) .gn{font-size:11px}
@@ -1553,7 +1560,7 @@ function pinsSVG() {
     return `<g class="pin${owned ? ' owned' : ''}${broken ? ' broken' : ''}" data-estate="${b.id}" data-x="${x}" data-y="${y}" role="button" tabindex="0" aria-label="${esc(b.n)}">
       <circle r="22" class="hit"/><circle r="15" fill="${col}" stroke="${broken ? 'var(--up)' : 'var(--ink)'}" stroke-width="2" ${broken ? 'stroke-dasharray="4 3"' : ''}/>
       <text class="pi" y="6">${broken ? '💥' : ICON[b.t]}</text>${flag}
-      <text class="pl" y="31">${esc(b.n.replace(/ \(한 채\)$/, ''))}</text><text class="pv" y="45">${man(e && e.destroyed ? e.destroyed.value : estVal(b.id, S.tick))}</text></g>`;
+      <rect class="plbg" x="${-(b.n.replace(/ \(한 채\)$/, '').length * 12.5 + 14) / 2}" y="19" width="${b.n.replace(/ \(한 채\)$/, '').length * 12.5 + 14}" height="31" rx="8"/><text class="pl" y="31">${esc(b.n.replace(/ \(한 채\)$/, ''))}</text><text class="pv" y="45">${man(e && e.destroyed ? e.destroyed.value : estVal(b.id, S.tick))}</text></g>`;
   }).join('');
 }
 function districtSVG() {
@@ -1572,7 +1579,15 @@ function districtSVG() {
       : `<path class="land" d="${d.d}" style="fill:${ownerColor(uid)}" opacity=".16"/>`;
   }).join('');
   return DISTRICTS.map((d, i) => `<path class="gu${mine.has(d.n) ? ' mine' : ''}" data-gu="${d.n}" d="${d.d}" style="fill:${mine.has(d.n) ? 'var(--violet-bg)' : ['#f3f2f8', '#eceaf4', '#f6f5fa', '#e9e7f1'][i % 4]}"/>`).join('') + land +
-    DISTRICTS.map(d => `<g class="gl" data-x="${d.c[0]}" data-y="${d.c[1]}"><text class="gn" y="0">${d.n}</text>${counts[d.n] ? `<text class="gc" y="18">건물 ${counts[d.n]}</text>` : ''}</g>`).join('');
+    DISTRICTS.map(d => { const wd = d.n.length * 12 + 10, wc = 54;
+      return `<g class="gl" data-x="${d.c[0]}" data-y="${d.c[1]}"><rect class="glbg" x="${-wd / 2}" y="-12" width="${wd}" height="17" rx="8.5"/><text class="gn" y="1">${d.n}</text>${counts[d.n] ? `<rect class="glbg gcb" x="${-wc / 2}" y="7" width="${wc}" height="15" rx="7.5"/><text class="gc" y="18">건물 ${counts[d.n]}</text>` : ''}</g>`; }).join('') +
+    // 도장: 그 구 1등 땅주인 프로필을 구 가운데에 크게 찍어요 (확대하면 사라짐)
+    DISTRICTS.map((d, i) => { const uid = top[d.n]; if (!uid) return ''; const p = S.players[uid] || {}, ph = !p.bot && okPhoto(p.photo), col = ownerColor(uid);
+      return `<g class="stamp" data-x="${d.c[0]}" data-y="${d.c[1]}"><g transform="translate(0,-27)">
+        ${ph ? `<clipPath id="stc${i}"><circle r="11"/></clipPath>` : ''}
+        <circle r="15" fill="${col}"/><circle r="12.5" fill="#fff"/>
+        ${ph ? `<image href="${p.photo}" x="-11" y="-11" width="22" height="22" clip-path="url(#stc${i})" preserveAspectRatio="xMidYMid slice"/>` : `<circle r="11" fill="${col}" opacity=".35"/><text class="stx" y="4.5">${esc(p.bot ? '🤖' : (p.name || '?').slice(0, 1))}</text>`}
+        <circle r="15" fill="none" stroke="#17161f" stroke-width="1.6"/></g></g>`; }).join('');
 }
 function applyMapView() {
   const svg = $('#seoulMap'); if (!svg) return; const v = S.mapV;
@@ -1581,6 +1596,7 @@ function applyMapView() {
   svg.classList.toggle('zoomed', zoom >= ZOOM_PINS); svg.classList.toggle('deep', zoom >= 4);
   svg.querySelectorAll('.pin').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u})`));
   svg.querySelectorAll('.gl').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u * (zoom >= ZOOM_PINS ? 1.1 : 1)})`));
+  svg.querySelectorAll('.stamp').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u})`));
   const zi = $('#zoomInfo'); if (zi) zi.textContent = zoom >= ZOOM_PINS ? '건물을 눌러 사고팔아요' : '구를 누르면 확대돼요';
 }
 const mapAR = () => { const svg = $('#seoulMap'); return svg && svg.clientWidth ? svg.clientHeight / svg.clientWidth : 1.39; };
