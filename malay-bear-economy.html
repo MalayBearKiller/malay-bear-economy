@@ -1260,10 +1260,13 @@ function renderHome() {
   }
   h += `</div>`;
   } else {
-  if (!SECTORS[S.homeSec]) S.homeSec = Object.keys(SECTORS)[0];
+  const held = STOCKS.filter(x => exitMode(x.id));
+  if (S.homeSec == null) S.homeSec = held.length ? 'mine' : Object.keys(SECTORS)[0];
+  if (S.homeSec === 'mine' ? !held.length : !SECTORS[S.homeSec]) S.homeSec = Object.keys(SECTORS)[0];
+  const secs = [...(held.length ? [['mine', `보유 ${held.length}`]] : []), ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
   h += `<div class="sec"><div class="sec-h">${hsw}<small>가격 높은 순</small></div>
-    <div class="chips" role="group" aria-label="종목 분류">${Object.entries(SECTORS).map(([k2, v]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${v.n}</button>`).join('')}</div>
-    <div class="slist">${byPrice(STOCKS.filter(x => x.s === S.homeSec)).map(stockRow).join('')}</div></div>`;
+    <div class="chips" role="group" aria-label="종목 분류">${secs.map(([k2, l]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${l}</button>`).join('')}</div>
+    <div class="slist">${byPrice(S.homeSec === 'mine' ? held : STOCKS.filter(x => x.s === S.homeSec)).map(stockRow).join('')}</div></div>`;
   }
   el.innerHTML = h;
 }
