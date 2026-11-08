@@ -1374,7 +1374,10 @@ function renderHome() {
     <div class="chips" role="group" aria-label="종목 분류">${secs.map(([k2, l]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${l}</button>`).join('')}</div>
     <div class="slist">${byPrice(S.homeSec === 'mine' ? held : STOCKS.filter(x => x.s === S.homeSec)).map(stockRow).join('')}</div></div>`;
   }
+  // 1초마다 다시 그려도 카테고리 버튼 줄의 가로 스크롤 위치는 그대로 둬요
+  const oldChips = el.querySelector('.chips'), sx = oldChips ? oldChips.scrollLeft : 0;
   el.innerHTML = h;
+  const newChips = el.querySelector('.chips'); if (newChips && sx) newChips.scrollLeft = sx;
 }
 
 // 내 포지션 한 줄씩: 원금(넣은 돈) → 평가(지금 정리하면 받는 돈), 손익, 고점 대비 청산까지 남은 거리
@@ -1848,7 +1851,9 @@ function renderMarket() {
     <div class="chips" role="group" aria-label="종목 분류">${chips.map(([v, l]) => `<button type="button" data-filter="${v}" aria-pressed="${S.filter === v}">${l}</button>`).join('')}</div><div class="slist">`;
   h += (S.filter === 'up' || S.filter === 'down' ? list : byPrice(list)).map(stockRow).join('');
   h += `</div></div><p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>`;
+  const oldChips = el.querySelector('.chips'), sx = oldChips ? oldChips.scrollLeft : 0;
   el.innerHTML = h;
+  const newChips = el.querySelector('.chips'); if (newChips && sx) newChips.scrollLeft = sx;
   requestAnimationFrame(drawIndexChart);
 }
 
@@ -1946,10 +1951,12 @@ function renderFeed() {
   if (items.length) { S.feedSeen = items[0][0].ts; LS.set('feedSeen', S.feedSeen); }
   $('#feedDot').hidden = true;
 }
+// 카테고리 버튼 줄을 밀고 있는 동안(그리고 관성 스크롤 동안)은 1초 새로고침을 잠깐 멈춰요
+let chipsTouchAt = 0;
 function renderAll() {
   renderHeader(); renderClock();
   if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, casino: renderCasino })[S.sub](); }
-  else ({ home: renderHome, market: renderMarket, estate: renderEstate, feed: renderFeed })[S.tab]();
+  else if (!(S.liveOnly && (S.tab === 'home' || S.tab === 'market') && Date.now() - chipsTouchAt < 1500)) ({ home: renderHome, market: renderMarket, estate: renderEstate, feed: renderFeed })[S.tab]();
   if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); }
   const latest = S.feed.find(f => f.uid !== S.uid);
   $('#feedDot').hidden = S.tab === 'feed' || !latest || latest.ts <= S.feedSeen;
@@ -2530,6 +2537,8 @@ document.addEventListener('click', e => {
   }
 });
 $('#scrim').addEventListener('click', closeSheet);
+['touchstart', 'touchmove', 'wheel'].forEach(ev => document.addEventListener(ev, e => { if (e.target.closest && e.target.closest('.chips')) chipsTouchAt = Date.now(); }, { passive: true }));
+document.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('chips')) chipsTouchAt = Date.now(); }, true);
 document.addEventListener('change', e => { if (e.target.id === 'photoIn' && e.target.files && e.target.files[0]) savePhoto(e.target.files[0]); });
 document.addEventListener('input', e => { if (e.target.id === 'betInput') { S.betCustom = Math.max(0, Math.floor(+e.target.value || 0)); LS.set('betCustom', S.betCustom); updateBetLabels(); } if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (S.detail) closeDetail(); } if (e.key === 'Enter' && e.target.id === 'nick') doJoin(); if (e.key === 'Enter' && e.target.id === 'talkInput' && !e.isComposing) postTalk(); });
