@@ -889,12 +889,55 @@ const ESTATES = [
   B('CLS', '청량리 SKY-L65 (한 채)', '동대문구', 'apt', 37.581, 127.047, 1.5e+09, 1e+09, 0.035),
   B('ARH', '아크로리버하임 (한 채)', '동작구', 'apt', 37.508, 126.962, 2.5e+09, 1.8e+09, 0.03),
   B('SCD', '현대백화점 신촌점', '서대문구', 'mall', 37.556, 126.936, 3e+11, 2.2e+11, 0.022),
+  B('NIS', '국가정보원', '서초구', 'office', 37.4656, 127.0634, 8e+12, 6e+12, 0.012),
+  B('SPC', '대법원', '서초구', 'office', 37.4927, 127.0074, 3e+12, 2.2e+12, 0.012),
+  B('SPO', '대검찰청', '서초구', 'office', 37.495, 127.004, 2e+12, 1.5e+12, 0.012),
+  B('MND', '국방부', '용산구', 'office', 37.5338, 126.9771, 6e+12, 4.5e+12, 0.012),
+  B('KNP', '경찰청', '서대문구', 'office', 37.5717, 126.9665, 1e+12, 7.5e+11, 0.012),
+  B('BOK', '한국은행', '중구', 'office', 37.5622, 126.98, 2e+12, 1.5e+12, 0.012),
+  B('CCK', '헌법재판소', '종로구', 'office', 37.5776, 126.9853, 1e+12, 7.5e+11, 0.012),
+  B('BAI', '감사원', '종로구', 'office', 37.5838, 126.981, 8e+11, 6e+11, 0.012),
+  B('NTS', '국세청', '종로구', 'office', 37.5735, 126.9772, 7e+11, 5.2e+11, 0.012),
+  B('NMK', '국립중앙박물관', '용산구', 'tower', 37.524, 126.9803, 4e+12, 3e+12, 0.012),
+  B('SBG', '길상사', '성북구', 'tower', 37.5992, 126.9945, 3e+11, 2.2e+11, 0.02),
+  B('KMU', '국민대', '성북구', 'univ', 37.6106, 126.997, 4e+11, 3e+11, 0.02),
+  B('CPK', '어린이대공원', '광진구', 'tower', 37.548, 127.074, 3e+12, 2.2e+12, 0.012),
+  B('KSC', '롯데백화점 건대스타시티', '광진구', 'mall', 37.539, 127.071, 3e+11, 2.2e+11, 0.022),
+  B('KDM', '경동시장', '동대문구', 'small', 37.5797, 127.039, 2e+11, 1.5e+11, 0.03),
+  B('UOS', '서울시립대', '동대문구', 'univ', 37.5838, 127.0587, 4e+11, 3e+11, 0.02),
+  B('NCM', '국립서울현충원', '동작구', 'tower', 37.5003, 126.9734, 5e+12, 3.8e+12, 0.01),
+  B('NFM', '노량진 수산시장', '동작구', 'mall', 37.5131, 126.9408, 3e+11, 2.2e+11, 0.025),
+  B('MRO', '가산 마리오아울렛', '금천구', 'mall', 37.4785, 126.8862, 2.5e+11, 1.9e+11, 0.025),
+  B('GCH', '금천구청사', '금천구', 'office', 37.4568, 126.8957, 1e+11, 7.5e+10, 0.02),
+  B('DBM', '도봉산', '도봉구', 'tower', 37.6987, 127.0156, 2e+12, 1.5e+12, 0.012),
+  B('SAR', '서울아레나', '도봉구', 'stadium', 37.653, 127.047, 5e+11, 3.8e+11, 0.02),
+  B('BHS', '북한산', '강북구', 'tower', 37.6583, 126.9779, 5e+12, 3.8e+12, 0.01),
+  B('MJM', '국립4·19민주묘지', '강북구', 'tower', 37.6466, 127.0049, 1e+12, 7.5e+11, 0.01),
+  B('ASS', '암사동 선사유적지', '강동구', 'tower', 37.5605, 127.1306, 1e+12, 7.5e+11, 0.012),
+  B('KHH', '강동경희대병원', '강동구', 'office', 37.5532, 127.1572, 3e+11, 2.2e+11, 0.02),
+  B('EHV', '은평한옥마을', '은평구', 'small', 37.6417, 126.9343, 2e+11, 1.5e+11, 0.025),
+  B('JGS', '진관사', '은평구', 'tower', 37.6393, 126.9496, 5e+11, 3.8e+11, 0.012),
+  B('YMP', '용마폭포공원', '중랑구', 'tower', 37.5856, 127.0921, 3e+11, 2.2e+11, 0.015),
+  B('SMC', '서울의료원', '중랑구', 'office', 37.6125, 127.0985, 4e+11, 3e+11, 0.02),
+  B('SRS', '샤로수길 상가', '관악구', 'small', 37.4795, 126.953, 3e+10, 2e+10, 0.04),
+  B('GAS', '관악산', '관악구', 'tower', 37.444, 126.964, 2e+12, 1.5e+12, 0.01),
+  B('BAS', '불암산', '노원구', 'tower', 37.6574, 127.0855, 1e+12, 7.5e+11, 0.01),
+  B('STU', '서울과학기술대', '노원구', 'univ', 37.632, 127.077, 4e+11, 3e+11, 0.02),
+  B('TMR', '신도림 테크노마트', '구로구', 'mall', 37.507, 126.89, 4e+11, 3e+11, 0.025),
+  B('SBO', '서울식물원', '강서구', 'tower', 37.5694, 126.835, 2e+12, 1.5e+12, 0.012),
+  B('SBM', '목동 SBS', '양천구', 'office', 37.5297, 126.8758, 4e+11, 3e+11, 0.02),
+  B('HDM', '현대백화점 목동점', '양천구', 'mall', 37.5265, 126.8745, 5e+11, 3.8e+11, 0.022),
+  B('MIR', '목동 아이스링크', '양천구', 'stadium', 37.531, 126.877, 1e+11, 7.5e+10, 0.02),
+  B('SDP', '서대문형무소역사관', '서대문구', 'tower', 37.5743, 126.9561, 1e+12, 7.5e+11, 0.012),
 ];
 // 카테고리 (내부용): 아파트, 백화점, 상업시설, 오피스, 랜드마크, 대학, 상가건물, 체육시설
-const CATS = { apt: '아파트', dept: '백화점', retail: '상업시설', office: '오피스', landmark: '랜드마크', univ: '대학', shop: '상가건물', sports: '체육시설' };
-const CAT_OF = { SGS: 'dept', HDA: 'dept', GLR: 'dept', NWL: 'dept', CHH: 'dept', SCD: 'dept', NSP: 'landmark', GBG: 'landmark', CWD: 'landmark', CDG: 'landmark', DSG: 'landmark', NAS: 'landmark', GMP: 'landmark', OLP: 'landmark', SFT: 'landmark', YSP: 'landmark', YDP: 'landmark', SSG: 'dept', LDB: 'dept', HDS: 'dept', COEX: 'retail', LWD: 'retail', DDP: 'retail', IPK: 'retail', LWT: 'landmark', GBC: 'landmark', B63: 'landmark', NST: 'landmark' };
+const CATS = { gov: '국가기관', apt: '아파트', dept: '백화점', retail: '상업시설', office: '오피스', landmark: '랜드마크', univ: '대학', shop: '상가건물', sports: '체육시설' };
+const CAT_OF = { NIS: 'gov', SPC: 'gov', SPO: 'gov', MND: 'gov', KNP: 'gov', BOK: 'gov', CCK: 'gov', BAI: 'gov', NTS: 'gov', NMK: 'landmark', SBG: 'landmark', CPK: 'landmark', NCM: 'landmark', DBM: 'landmark', BHS: 'landmark', MJM: 'landmark', ASS: 'landmark', JGS: 'landmark', YMP: 'landmark', GAS: 'landmark', BAS: 'landmark', SBO: 'landmark', SDP: 'landmark', KSC: 'dept', HDM: 'dept', SGS: 'dept', HDA: 'dept', GLR: 'dept', NWL: 'dept', CHH: 'dept', SCD: 'dept', NSP: 'landmark', GBG: 'landmark', CWD: 'landmark', CDG: 'landmark', DSG: 'landmark', NAS: 'landmark', GMP: 'landmark', OLP: 'landmark', SFT: 'landmark', YSP: 'landmark', YDP: 'landmark', SSG: 'dept', LDB: 'dept', HDS: 'dept', COEX: 'retail', LWD: 'retail', DDP: 'retail', IPK: 'retail', LWT: 'landmark', GBC: 'landmark', B63: 'landmark', NST: 'landmark' };
 const CAT_BY_TYPE = { apt: 'apt', office: 'office', univ: 'univ', small: 'shop', stadium: 'sports', mall: 'retail', tower: 'landmark' };
 ESTATES.forEach(b => b.cat = CAT_OF[b.id] || CAT_BY_TYPE[b.t]);
+// 30억 이하 아파트는 목록·지도에서 뺐어요. 누가 갖고 있으면 그 사람이 팔 때까지는 그대로 보이고 가치도 그대로예요.
+const RETIRED = new Set(['ELS', 'HEL', 'EUN', 'MDS', 'SGJ', 'JS5', 'GDG', 'MKM', 'GEN', 'CLS', 'ARH']);
+const shownEst = () => ESTATES.filter(b => !RETIRED.has(b.id) || estOf(b.id));
 const EM = Object.fromEntries(ESTATES.map(e => [e.id, e]));
 const RENT = .001; // 월세: per hour, of current value (≈2.4% a day)
 // 건물 비용: 매시간 유지비·재산세(+큰 부자는 종부세), 살 때 취득세, 팔 때 양도세
@@ -1788,7 +1831,7 @@ const ZOOM_PINS = 2.2;
 function ownerColor(uid) { return uid === S.uid ? 'var(--violet)' : avaColor(uid); }
 function pinsSVG() {
   const zoom = MAP.w0 / S.mapV.w;
-  return ESTATES.map(b => {
+  return shownEst().map(b => {
     const [x, y] = mapXY(b); const e = estOf(b.id); const broken = e && e.destroyed; const owned = !!e;
     const col = broken ? '#ffe1e1' : owned ? ownerColor(e.owner) : '#fff';
     const flag = owned ? `<g class="flag" transform="translate(0,-34)"><rect x="-${(nameOf(e.owner).length * 7 + 30) / 2}" y="-15" width="${nameOf(e.owner).length * 7 + 30}" height="24" rx="12" fill="${broken ? 'var(--up)' : ownerColor(e.owner)}" stroke="var(--ink)" stroke-width="1.5"/><text y="2" class="fn">${e.owner === S.uid ? '👑 ' : ''}${esc(e.owner === S.uid ? '내 건물' : nameOf(e.owner))}</text></g>` : '';
@@ -1816,7 +1859,7 @@ function stampsSVG() {
 }
 function districtSVG() {
   const mine = new Set(myEstates({ id: S.uid }).map(b => b.gu));
-  const counts = {}; ESTATES.forEach(b => counts[b.gu] = (counts[b.gu] || 0) + 1);
+  const counts = {}; shownEst().forEach(b => counts[b.gu] = (counts[b.gu] || 0) + 1);
   // 구마다 건물을 가장 많이 가진 사람(같으면 건물값 합이 큰 사람)의 프로필을 땅 배경으로 옅게 깔아요
   const top = topOwners();
   const land = DISTRICTS.map((d, i) => {
@@ -1908,16 +1951,16 @@ function updateMap() {
 function renderEstList(host) {
   const k = S.tick;
   if (!host.querySelector('#estList')) host.innerHTML = `<div class="card estsum" id="estSum"></div>
-      <div class="sec"><div class="sec-h"><h2>건물 ${ESTATES.length}</h2><span class="rpager" id="estPager"></span></div><div class="slist" id="estList"></div></div>
+      <div class="sec"><div class="sec-h"><h2>건물 <span id="estCount"></span></h2><span class="rpager" id="estPager"></span></div><div class="slist" id="estList"></div></div>
       <p class="hint">건물 값은 주식처럼 움직이지만 정해진 최저가 아래로는 안 내려가요. 내 건물은 1시간마다 가치의 0.1%를 월세로 주고, 유지비 0.02%와 재산세 0.02%가 빠져요. 부동산 합계가 10억을 넘으면 넘는 부분에 종부세 0.03%가 더 붙어요. 살 때 취득세 4%, 팔 때 차익의 22%를 양도세로 내요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
   const mineList = myEstates({ id: S.uid });
   $('#estSum').innerHTML = `<div><span class="dim" style="font-size:13px;font-weight:700">내 부동산 ${mineList.length}곳</span><b class="num">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0))}</b></div>
     <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">시간당 순수익 · <span class="num" id="rentCd">${mmss((rentHour(now()) + 1) * H - now())}</span></span><b class="num ${cls(rentPerHour())}">${signWon(rentPerHour())}</b></div>
     ${mineList.length ? (() => { const hb = estHourly(); return `<div class="costline">월세 <b class="up">+${won(hb.rent)}</b> · 유지비 <b class="down">-${won(hb.maint)}</b> · 재산세${hb.jtax ? '·종부세' : ''} <b class="down">-${won(hb.tax)}</b></div>`; })() : ''}`;
   let h = '';
-  const EPG = 10, ePages = Math.ceil(ESTATES.length / EPG); S.estPage = Math.max(0, Math.min(S.estPage || 0, ePages - 1));
-  $('#estPager').innerHTML = `<button type="button" data-estpg="-1" aria-label="이전 건물" ${S.estPage ? '' : 'disabled'}>◀</button><small class="num">비싼 순 ${S.estPage * EPG + 1}~${Math.min(ESTATES.length, (S.estPage + 1) * EPG)}</small><button type="button" data-estpg="1" aria-label="다음 건물" ${S.estPage < ePages - 1 ? '' : 'disabled'}>▶</button>`;
-  ESTATES.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).slice(S.estPage * EPG, (S.estPage + 1) * EPG).forEach(b => {
+  const EST = shownEst(), EPG = 10, ePages = Math.ceil(EST.length / EPG); $('#estCount').textContent = EST.length; S.estPage = Math.max(0, Math.min(S.estPage || 0, ePages - 1));
+  $('#estPager').innerHTML = `<button type="button" data-estpg="-1" aria-label="이전 건물" ${S.estPage ? '' : 'disabled'}>◀</button><small class="num">비싼 순 ${S.estPage * EPG + 1}~${Math.min(EST.length, (S.estPage + 1) * EPG)}</small><button type="button" data-estpg="1" aria-label="다음 건물" ${S.estPage < ePages - 1 ? '' : 'disabled'}>▶</button>`;
+  EST.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).slice(S.estPage * EPG, (S.estPage + 1) * EPG).forEach(b => {
     const st = estState(b.id), e = estOf(b.id), v = e && e.destroyed ? e.destroyed.value : estVal(b.id, k), c = estVal(b.id, k) / estAt(b.id, S.season.start) - 1;
     const who = st === 'free' ? '<span class="dim">매물</span>' : `<b class="owner-tag" style="background:${e.destroyed ? 'var(--up)' : ownerColor(e.owner)}">${e.owner === S.uid ? '👑 내 건물' : esc(nameOf(e.owner))}</b>`;
     h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : st === 'free' ? '#9a98ad' : ownerColor(e.owner)}">${st.endsWith('Broken') ? '💥' : ICON[b.t]}</span>
