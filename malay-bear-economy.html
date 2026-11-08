@@ -371,6 +371,8 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .seoul:not(.zoomed) .pin:not(.owned){display:none}
 .seoul:not(.zoomed) .pin .pl,.seoul:not(.deep) .pin .pv{display:none}
 .seoul:not(.zoomed) .pin .plbg{display:none}
+/* 건물 이름·가격은 8배 이상 확대했을 때만 */
+.seoul:not(.z3) .pin .pl,.seoul:not(.z3) .pin .pv,.seoul:not(.z3) .pin .plbg{display:none}
 .seoul:not(.deep) .pin .plbg{height:17px}
 .seoul:not(.zoomed) .pin .flag,.seoul:not(.zoomed) .pin .pi{display:none}
 .seoul:not(.zoomed) .pin.owned circle:not(.hit){r:3px;stroke-width:1px}
@@ -1392,8 +1394,8 @@ const avaColor = id => AVA_COLORS[seedOf(String(id)) % AVA_COLORS.length];
 const okPhoto = u => typeof u === 'string' && u.length < 40000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(u);
 const ava = (p, lg, crown) => { const ph = !p.bot && okPhoto(p.photo);
   return `<span class="ava${lg ? ' lg' : ''}${ph ? ' ph' : ''}" style="${ph ? `background-image:url(${p.photo})` : `background:${p.bot ? '#e4e2ee' : avaColor(p.id)}`}">${crown ? '<span class="crown">👑</span>' : ''}${ph ? '' : esc(p.bot ? '🤖' : (p.name || '?').slice(0, 1))}</span>`; };
-// 프로필: 사진은 96px로 줄여서 지갑 문서에 저장, 닉네임 변경은 변경권(100조) 구매
-const RENAME_COST = 100_000_000_000_000;
+// 프로필: 사진은 96px로 줄여서 지갑 문서에 저장, 닉네임 변경은 변경권(100억) 구매
+const RENAME_COST = 10_000_000_000;
 let PICK = 'photo';
 function pickPhoto(kind = 'photo') { PICK = kind; const i = $('#photoIn'); if (i) { i.value = ''; i.click(); } }
 async function savePhoto(file, kind = 'photo') {
@@ -2927,7 +2929,7 @@ const HELP = {
     '<b>내 프로필</b> 탭: 월세·세금 합계와 프로필 사진·순위 배경이에요. 사진은 순위·지도 도장에 모두에게 보여요.']],
   shop: ['상점', '현금으로 사는 것들', [
     '<b>⭐ 레벨업</b>: 첫 레벨업은 100원이고 올릴 때마다 가격이 1.14배가 돼요. LV.100은 약 4,300만원, LV.200은 한 번에 약 21조원이에요. 레벨은 순위와 프로필에 보여요.',
-    '<b>✏️ 닉네임 변경권</b>: 100조원. 사면 바로 닉네임을 바꿀 수 있고, 소식에 바뀐 이름이 올라가요.',
+    '<b>✏️ 닉네임 변경권</b>: 100억원. 사면 바로 닉네임을 바꿀 수 있고, 소식에 바뀐 이름이 올라가요.',
     '<b>🎰 게임</b>: 총자산의 10%·25%·50%·올인 중에서 걸어요. 한 판 최대 10억이에요.',
     '<b>홀짝</b>: 맞히면 1.95배, 확률 50%예요.',
     '<b>룰렛</b>: 20칸, 0배부터 대박 10배까지. 평균은 홀짝과 같은 0.975배라 오래 하면 조금씩 잃어요.']],
