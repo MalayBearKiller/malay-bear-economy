@@ -67,7 +67,9 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .sectors{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .sectors div{background:var(--bg);border-radius:12px;padding:7px 4px;text-align:center;font-size:11.5px;font-weight:600;color:var(--dim);min-width:0}
 .sectors b{display:block;font-size:13.5px;font-weight:800}
-.idxmini{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px}
+.idxmini{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;padding-top:30px}
+.bangcd{position:absolute;left:16px;top:8px;font-size:11.5px;font-weight:800;color:var(--violet)}
+.bangcd.soon{color:var(--up);animation:blink .5s infinite}
 .idxmini .lab{font-size:13px;font-weight:800;color:var(--dim);margin-right:8px}
 .idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
 .idxmini > .num{font-size:17px;font-weight:900}
@@ -669,26 +671,24 @@ function buildSeason(sid) {
   const shocks = {};
   const k1 = 3 + Math.floor(R() * 5), k2 = 9 + Math.floor(R() * 5), k3 = 15 + Math.floor(R() * 6);
   [k1, k2, k3].forEach(k => { shocks[k] = { sym: STOCKS[Math.floor(R() * STOCKS.length)].id, mag: (.3 + R() * .25) * (R() < .5 ? 1 : -1) }; });
-  // 급변: calm, then BANG. Each minute a stock may jump ±8~25% (mostly ~15%) in one tick and stay there.
-  // Right after a jump the same stock is very likely to jump again (bursts). Direction leans back toward
-  // the Monday price when a stock has run far, so prices swing hard but don't fly off to 0 or infinity.
-  const jumps = {}, jmin = {};
+  // 급변: every 30 seconds, 3 random stocks move ±15~30% at once and stay there.
+  // A stock that has already run far is more likely to reverse, so prices swing hard but stay in range.
+  const BANG = 30e3, NB = Math.floor(7 * D / BANG);
+  const JR = rng('bang1:' + sid); const jumps = {}, jcum = {}, jmin = {}, bangs = new Array(NB);
+  const acc = {}; STOCKS.forEach(s => { jumps[s.id] = []; acc[s.id] = 0; });
+  for (let k = 1; k < NB; k++) {
+    const t = k * BANG, mm = Math.min(MIN, Math.floor(t / 60e3)); const picked = [];
+    while (picked.length < 3) { const i = Math.floor(JR() * STOCKS.length); if (!picked.includes(i)) picked.push(i); }
+    bangs[k] = picked.map(i => {
+      const s = STOCKS[i], dev = walk[s.id][mm] + acc[s.id];
+      const dir = JR() < 1 / (1 + Math.exp(4 * dev)) ? 1 : -1, size = .15 + JR() * .15;
+      const j = dir * Math.log(1 + size); jumps[s.id].push({ t, j, d: Math.exp(j) - 1 }); acc[s.id] += j;
+      return { id: s.id, d: Math.exp(j) - 1 };
+    });
+  }
   STOCKS.forEach(s => {
-    const J = rng('jump3:' + sid + ':' + s.id); const ev = []; let hot = 0, lastDir = 1, acc = 0;
-    const JM = new Float64Array(MIN + 1);
-    for (let mm = 0; mm < MIN; mm++) {
-      JM[mm] = acc;
-      const r = J(), r2 = J(), r3 = J(), r4 = J();
-      if (r < (hot > 0 ? .3 : .035)) {
-        const dev = walk[s.id][mm] + acc;                       // how far from the Monday price (log)
-        const pUp = 1 / (1 + Math.exp(3 * dev));                 // far up → likely down, far down → likely up
-        const dir = hot > 0 && r2 < .6 ? lastDir : (r2 < pUp ? 1 : -1);
-        const size = .08 + .17 * Math.pow(r3, 1.6);              // 8~25%, mostly around 12~16%
-        const j = dir * Math.log(1 + size);
-        ev.push({ t: mm * 60e3 + Math.floor(r4 * 60e3), j, d: Math.exp(j) - 1 }); acc += j; lastDir = dir; hot = 2;
-      } else hot = Math.max(0, hot - 1);
-    }
-    JM[MIN] = acc; jumps[s.id] = ev; jmin[s.id] = JM;
+    const ev = jumps[s.id], C = new Float64Array(ev.length); let a = 0; ev.forEach((e, i) => { a += e.j; C[i] = a; }); jcum[s.id] = C;
+    const JM = new Float64Array(MIN + 1); let i = 0, c = 0; for (let mm = 0; mm <= MIN; mm++) { while (i < ev.length && ev[i].t <= mm * 60e3) c += ev[i++].j; JM[mm] = c; } jmin[s.id] = JM;
   });
   const prices = {}; STOCKS.forEach(s => prices[s.id] = [s.p0]);
   for (let k = 1; k <= NT; k++) {
@@ -721,7 +721,7 @@ function buildSeason(sid) {
     }
     ewalk[e.id] = L;
   });
-  return { sid, news, shocks, prices, index, secIndex, walk, ewalk, jumps };
+  return { sid, news, shocks, prices, index, secIndex, walk, ewalk, jumps, jcum, bangs };
 }
 
 /* ───────── time ───────── */
@@ -780,7 +780,8 @@ function pumpAt(sym, rel) {
   }
   return v;
 }
-function jumpAt(sym, rel) { let v = 0; for (const e of S.SE.jumps[sym]) { if (e.t > rel) break; v += e.j; } return v; }
+function jumpAt(sym, rel) { const ev = S.SE.jumps[sym]; let lo = 0, hi = ev.length - 1, idx = -1; while (lo <= hi) { const md = (lo + hi) >> 1; if (ev[md].t <= rel) { idx = md; lo = md + 1; } else hi = md - 1; } return idx < 0 ? 0 : S.SE.jcum[sym][idx]; }
+const BANG_MS = 30e3;
 function walkAt(sym, t) {
   const L = S.SE.walk[sym]; const rel = Math.max(0, t - S.season.start); const MIN = L.length - 1;
   const m = Math.min(MIN - 1, Math.floor(rel / 60e3)); const f = Math.min(1, (rel - m * 60e3) / 60e3);
@@ -881,6 +882,7 @@ function renderHeader() {
 function renderClock() {
   const t = now();
   const bc = $('#bonusCd'); if (bc) bc.textContent = hms(nextSlotAt(t) - t);
+  const bg = $('#bangCd'); if (bg) { const left = BANG_MS - ((t - S.season.start) % BANG_MS); bg.textContent = mmss(left); bg.parentElement.classList.toggle('soon', left <= 5000); }
   const rc = $('#rentCd'); if (rc) rc.textContent = mmss(rentHour(t) * H + H + S.season.start - t);
   if (!$('#nextLab')) return;
   if (seasonOver()) { $('#nextLab').textContent = '시즌 끝! 새 시즌까지'; $('#nextName').textContent = '월요일 0시'; $('#countdown').textContent = hms(S.season.start + 7 * D - t); return; }
@@ -898,7 +900,7 @@ function renderHome() {
   const ranked = STOCKS.map(x => ({ s: x, c: nowChg(x.id) })).sort((p, q) => q.c - p.c);
   const best = ranked[0], worst = ranked[ranked.length - 1];
   const mover = (r, lab) => `<button class="mover ${cls(r.c)}" type="button" data-stock="${r.s.id}"><small>${lab}</small><span class="mn">${badge(r.s)}<b>${esc(r.s.n)}</b></span><span class="mc num">${pctTxt(r.c)}</span></button>`;
-  let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
+  let h = `<div class="card idxmini"><span class="bangcd">⚡ 급변 <b class="num" id="bangCd">00:30</b></span><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
     <div class="movers">${mover(best, '🚀 2시간 최고')}${mover(worst, '📉 2시간 최저')}</div>`;
 
   h = bonusCard() + h;
@@ -1203,17 +1205,14 @@ async function checkLiquidation() {
   if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x, d: o.d || 1 })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
 }
 function jumpAlerts() {
-  const rel = now() - S.season.start;
-  if (S.lastJumpRel == null) { S.lastJumpRel = rel; return; }
-  let best = null;
-  STOCKS.forEach(x => { for (const e of S.SE.jumps[x.id]) { if (e.t > rel) break; if (e.t > S.lastJumpRel && (!best || Math.abs(e.d) > Math.abs(best.e.d))) best = { x, e }; } });
-  S.lastJumpRel = rel;
-  if (!best) return;
-  const mine0 = S.me && ((S.me.hold || {})[best.x.id] || (S.me.lev || {})[best.x.id] || (S.me.shorts || {})[best.x.id]);
-  if (Math.abs(best.e.d) < .12 && !mine0) return;
-  const mine = S.me && ((S.me.hold || {})[best.x.id] || (S.me.lev || {})[best.x.id] || (S.me.shorts || {})[best.x.id]);
-  toast(`⚡ ${best.x.n} ${pctTxt(best.e.d)} ${best.e.d > 0 ? '폭등!' : '폭락!'}${mine ? ' (내 종목)' : ''}`);
-  if (mine) { best.e.d > 0 ? confetti() : boom(); buzz(60); }
+  const k = Math.floor((now() - S.season.start) / BANG_MS);
+  if (S.lastBang == null) { S.lastBang = k; return; }
+  if (k === S.lastBang) return; S.lastBang = k;
+  const list = S.SE.bangs[k]; if (!list) return;
+  const own = id => S.me && ((S.me.hold || {})[id] || (S.me.lev || {})[id] || (S.me.shorts || {})[id]);
+  toast('⚡ ' + list.map(x => `${SM[x.id].n} ${pctTxt(x.d)}`).join(' · '));
+  const mineHit = list.find(x => own(x.id));
+  if (mineHit) { const lv = (S.me.lev || {})[mineHit.id], sh = (S.me.shorts || {})[mineHit.id]; const good = (mineHit.d > 0) === !(sh || (lv && (lv.d || 1) < 0)); good ? confetti() : boom(); buzz(60); }
 }
 function holdingAlerts() {
   if (!S.me) return;
@@ -1697,7 +1696,7 @@ async function doJoin() {
 function renderHelp(b) {
   b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
   <ul class="rules">
-    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, 잔잔하다가 한 번에 ±8~25%씩 <b>팍</b> 터져요(30종목 중 어딘가에서 40초에 한 번꼴). 한 번 터진 종목은 연달아 터지기 쉬워요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
+    <li><span>1</span><span><b>24시간 쉬지 않는 시장</b>이에요. 가격은 2초마다 움직이고, <b>30초마다 종목 3개</b>가 한 번에 ±15~30%씩 팍 움직여요. 홈의 ⚡ 카운트다운을 보세요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
     <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
     <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
