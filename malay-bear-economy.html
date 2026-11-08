@@ -32,6 +32,9 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .sec{display:flex;flex-direction:column;gap:10px}
 .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .sec-h small{color:var(--faint);font-size:12.5px;font-weight:600}
+.rpager{display:flex;align-items:center;gap:6px}
+.rpager button{width:32px;height:32px;border-radius:10px;background:var(--paper);font-size:13px;color:var(--ink)}
+.rpager button:disabled{opacity:.3}
 .card{background:var(--paper);border-radius:22px}
 .press:active{opacity:.7}
 
@@ -1097,15 +1100,9 @@ function hms(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); const 
 function renderHome() {
   const el = $('#tab-home'); const k = S.tick; const I = S.SE.index;
   const Ik = indexNow(); const ic = Ik / index24() - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
-  const ranked = STOCKS.map(x => ({ s: x, c: nowChg(x.id) })).sort((p, q) => q.c - p.c);
-  const best = ranked[0], worst = ranked[ranked.length - 1];
-  const mover = (r, lab) => { const off = seasonOver() || S.readOnly, ex = exitMode(r.s.id);
-    return `<div class="mover ${cls(r.c)}"><button class="mv-main" type="button" data-stock="${r.s.id}"><small>${lab}</small><span class="mn">${badge(r.s)}<b>${esc(r.s.n)}</b></span><span class="mc num">${pctTxt(r.c)}</span></button>
-      <span class="tbtns"><button class="tb buy" type="button" data-quick="buy" data-sym="${r.s.id}" ${off ? 'disabled' : ''}>매수</button><button class="tb sell${ex ? ' lit' : ''}" type="button" data-quick="${ex || 'sell'}" data-sym="${r.s.id}" ${off || !ex ? 'disabled' : ''}>매도</button></span></div>`; };
-  let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
-    <div class="movers">${mover(best, '🚀 2시간 최고')}${mover(worst, '📉 2시간 최저')}</div>`;
+  let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>`;
 
-  h = rescueCard() + posHUD() + bonusCard() + h;
+  h = rescueCard() + posHUD() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">10억원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
@@ -1118,17 +1115,17 @@ function renderHome() {
     h += `<button class="card rival press" type="button" data-player="${esc(S.rival)}"><div class="rival-top"><span class="g up">나</span><span class="num ${cls(gap)}">${gap >= 0 ? '앞서는 중' : '뒤지는 중'} ${signWon(gap)}</span><span class="g down">${esc(r.name)}</span></div><div class="tug"><i style="width:${(vis * 100).toFixed(1)}%"></i></div></button>`;
   }
 
-  h += `<div class="sec"><div class="sec-h"><h2>현재 순위</h2><small>실시간</small></div>`;
+  const RPG = 5, nRank = S.mode === 'loading' ? 0 : ranking(k).length, rPages = Math.max(1, Math.ceil(nRank / RPG));
+  S.rankPage = Math.max(0, Math.min(S.rankPage || 0, rPages - 1));
+  h += `<div class="sec"><div class="sec-h"><h2>현재 순위</h2><span class="rpager"><button type="button" data-rankpg="-1" aria-label="이전 순위" ${S.rankPage ? '' : 'disabled'}>◀</button><small class="num">${S.rankPage * RPG + 1}~${Math.min(nRank, (S.rankPage + 1) * RPG) || RPG}위</small><button type="button" data-rankpg="1" aria-label="다음 순위" ${S.rankPage < rPages - 1 ? '' : 'disabled'}>▶</button></span></div>`;
   if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
   else {
     const cur = ranking(k), prev = ranking(Math.max(0, k - 1)); const prevIdx = Object.fromEntries(prev.map((p, i) => [p.id, i]));
     if (!cur.length) h += `<div class="empty">아직 아무도 없어요. 첫 번째로 참가해보세요.</div>`;
     else {
       h += `<div class="card lb">`;
-      const myIdx = cur.findIndex(p => p.id === S.uid);
-      const shown = cur.map((p, i) => [p, i]).filter(([, i]) => i < 5 || i === myIdx);
+      const shown = cur.map((p, i) => [p, i]).slice(S.rankPage * RPG, (S.rankPage + 1) * RPG);
       shown.forEach(([p, i]) => {
-        if (i >= 5) h += `<div class="lb-gap">···</div>`;
         const roi = roiOf(p, p.w), w0 = worthPrev(p, k), r2 = w0 > 0 ? (p.w - w0) / w0 : 0, d = (prevIdx[p.id] ?? i) - i;
         const mv = k && d ? `<span class="mv ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span>` : '';
         let info;
@@ -1142,7 +1139,7 @@ function renderHome() {
           <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${canAtk ? '<span class="tag atk">💥공격</span>' : ''}${mv}<small>${info}</small></span>
           <span class="r num"><b>${man(p.w)}</b>${subRight}</span></button>`;
       });
-      h += `</div><p class="hint">상위 5명만 보여요${cur.length > 5 ? ` · 전체 ${cur.length}명` : ''}. 이름을 누르면 지갑 전체를 볼 수 있어요.</p>`;
+      h += `</div><p class="hint">전체 ${cur.length}명 · ${S.rankPage + 1}/${rPages}쪽. 이름을 누르면 지갑 전체를 볼 수 있어요.</p>`;
     }
   }
   h += `</div>`;
@@ -2207,6 +2204,7 @@ document.addEventListener('click', e => {
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
+  if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
   if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
   if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
   if (t.dataset.filter) { S.filter = t.dataset.filter; renderMarket(); return; }
