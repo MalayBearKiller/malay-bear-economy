@@ -85,15 +85,17 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .idxmini .lab{font-size:13px;font-weight:800;color:var(--dim);margin-right:8px}
 .idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
 .idxmini > .num{font-size:17px;font-weight:900}
-.wsum{padding:16px}
-.ws-top{display:flex;justify-content:space-between;align-items:flex-start}
+.wsum{padding:14px 16px}
+.ws-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .ws-top small{display:block;font-size:13px;font-weight:700;color:var(--dim)}
-.ws-top b{display:block;font-size:26px;font-weight:900;letter-spacing:-.03em}
+.ws-top b{display:block;font-size:22px;font-weight:900;letter-spacing:-.03em}
 .ws-pnl{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
-.ws-pnl b{font-size:17px;font-weight:900}.ws-pnl small{font-weight:800;font-size:13px}
+.ws-pnl b{font-size:15px!important;font-weight:900}.ws-pnl small{font-weight:800;font-size:12.5px;color:inherit!important}
 .ws-sub{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
-.ws-sub b{font-size:20px}
-.ws-rk{background:var(--paper);border-radius:99px;padding:5px 12px;font-weight:800;font-size:14px}
+.ws-sub{margin-top:10px;padding-top:10px}
+.ws-rk{background:var(--violet);color:#fff;border-radius:14px;padding:6px 14px;text-align:center;line-height:1.1;flex:none}
+.ws-rk small{color:rgba(255,255,255,.8)!important;font-size:11px!important}
+.ws-rk b{font-size:24px!important;color:#fff}
 .ws-bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--paper);margin:14px 0 10px}
 .ws-bar i{display:block;height:100%}
 .ws-rows > div{display:grid;grid-template-columns:1fr auto 52px;gap:8px;align-items:center;padding:6px 0;font-size:14px}
@@ -2329,7 +2331,7 @@ function renderWallet() {
   else if (S.wsub === 'coin') { const a = sumOf(mp.filter(x => !isEq(x.sym))); top = `<div class="ws-top"><div><small>🪙 코인 합계</small><b class="num">${won(a.v)}</b></div>${pnlTxt(a)}</div>`; }
   else if (S.wsub === 'estate') { const es = myEstates({ id: S.uid }).map(b => { const e = estOf(b.id); return { value: e.destroyed ? 0 : estVal(b.id, k), principal: e.paid || 0 }; }); const a = sumOf(es);
     top = `<div class="ws-top"><div><small>🏢 부동산 합계</small><b class="num">${won(a.v)}</b></div>${pnlTxt(a)}</div>`; }
-  else top = `<div class="ws-top"><div><small>총자산</small><b class="num">${won(W)}</b></div>${rk ? `<span class="ws-rk">${rk}위</span>` : ''}</div>`;
+  else top = `<div class="ws-top"><div><small>총자산</small><b class="num">${won(W)}</b></div>${rk ? `<span class="ws-rk"><small>순위</small><b class="num">${rk}위</b></span>` : ''}</div>`;
   let h = `<div class="card wsum">${top}</div>
     <div class="seg" role="group" aria-label="내 자산 보기">${[['profile', '내 프로필'], ['stock', '주식'], ['coin', '코인'], ['estate', '부동산']].map(([v, l]) => `<button type="button" data-wsub="${v}" aria-pressed="${S.wsub === v}">${l}</button>`).join('')}</div>`;
   if (S.wsub === 'stock' || S.wsub === 'coin') {
