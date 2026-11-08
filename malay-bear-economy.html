@@ -53,6 +53,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 #homeMap{margin-top:-10px}
 #homeMap .seoul{height:calc(100vh - 250px);height:calc(100dvh - 250px);min-height:300px}
 .boardbtn{margin-left:auto;position:relative;height:34px;padding:0 12px;border-radius:99px;font-weight:800;font-size:13.5px;background:var(--paper);color:var(--ink)}
+.boardbtn[hidden] + .helpbtn{margin-left:auto}
 .boardbtn .dot{position:absolute;top:2px;right:2px}
 .invseg{margin-bottom:14px}
 .helpbtn{margin-left:8px;width:34px;height:34px;border-radius:50%;font-weight:800;font-size:15px;background:var(--paper);color:var(--dim)}
@@ -560,7 +561,7 @@ body.noscroll{overflow:hidden}
 <div class="wrap">
   <div class="top">
     <span class="brand"><img class="bear" src="bear.jpg" alt="말레이곰" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2732%27 fill=%27%23f6d78b%27/%3E%3Ccircle cx=%2715%27 cy=%2717%27 r=%278%27 fill=%27%232b211c%27/%3E%3Ccircle cx=%2749%27 cy=%2717%27 r=%278%27 fill=%27%232b211c%27/%3E%3Ccircle cx=%2715%27 cy=%2717%27 r=%273.5%27 fill=%27%237a5a40%27/%3E%3Ccircle cx=%2749%27 cy=%2717%27 r=%273.5%27 fill=%27%237a5a40%27/%3E%3Cellipse cx=%2732%27 cy=%2735%27 rx=%2722%27 ry=%2720%27 fill=%27%232b211c%27/%3E%3Cellipse cx=%2732%27 cy=%2744%27 rx=%2712%27 ry=%279%27 fill=%27%23e9b96e%27/%3E%3Cellipse cx=%2732%27 cy=%2739.5%27 rx=%274.6%27 ry=%273.2%27 fill=%27%23120c09%27/%3E%3Ccircle cx=%2723%27 cy=%2730%27 r=%273%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2741%27 cy=%2730%27 r=%273%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2723.7%27 cy=%2730.5%27 r=%271.6%27 fill=%27%23120c09%27/%3E%3Ccircle cx=%2741.7%27 cy=%2730.5%27 r=%271.6%27 fill=%27%23120c09%27/%3E%3Cpath d=%27M27 47.5q5 3.2 10 0%27 stroke=%27%23120c09%27 stroke-width=%271.8%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E'"><span class="logo">곰스피</span></span>
-    <button class="boardbtn" id="boardBtn" type="button">💬 건의<i class="dot" id="feedDot" hidden></i></button>
+    <button class="boardbtn" id="boardBtn" type="button" hidden>💬 건의<i class="dot" id="feedDot" hidden></i></button>
     <button class="helpbtn" id="helpBtn" type="button" aria-label="규칙 보기">?</button>
   </div>
 </div>
@@ -2418,6 +2419,7 @@ function goTab(name) {
   S.tab = name; document.querySelectorAll('.nav [data-tab]').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
   S.sub = 'wallet';
   ['home', 'market', 'invest', 'shop'].forEach(n => $('#tab-' + n).hidden = n !== name);
+  const bb = $('#boardBtn'); if (bb) bb.hidden = name !== 'invest';
   $('#assetSeg').hidden = true; $('#tab-wallet').hidden = name !== 'assets';
   document.querySelectorAll('#assetSeg [data-sub]').forEach(x => x.setAttribute('aria-pressed', x.dataset.sub === S.sub));
   renderAll(); window.scrollTo({ top: 0 });
@@ -2756,21 +2758,43 @@ async function doJoin() {
   S.saving = true; const ok = await saveMe(me, S.me); S.saving = false;
   if (ok) { LS.set('seen:' + S.season.sid, S.tick); addFeed({ kind: 'join' }); closeSheet(); toast('참가 완료!'); renderAll(); autoCredit(); }
 }
+// ? 도움말: 지금 보고 있는 탭에 맞는 설명을 보여줘요
+const HELP = {
+  home: ['순위/지도', '누가 1등인지, 서울 땅은 누구 건지', [
+    '<b>총자산</b> = 현금 + 코인 + 주식 + 달러 + 레버리지·공매도 평가금 + 건물 값이에요. 파괴된 건물은 빠져요. 순위는 총자산 순서예요.',
+    '순위 옆 <b>%</b>는 이번 20분 동안 자산이 얼마나 변했는지예요. 매시 00·20·40분에 0%로 초기화돼요.',
+    '이름을 누르면 그 사람 지갑이 전부 보여요. 모든 포지션이 공개고, 💥 공격 버튼으로 상대 코인 포지션을 흔들 수 있어요.',
+    '<b>지도</b>: 구를 누르면 확대돼요. 조금 확대하면 1조 이상 건물만, 4배부터 1,000억 이상, 8배부터 전부 보여요. 구마다 건물을 가장 많이 가진 사람의 도장과 사진이 찍혀요.',
+    '<b>지원금</b> 2억원이 2시간마다(짝수 시) 자동으로 들어와요. 총자산이 500만원 이하로 떨어지면 <b>구제금 5억</b>을 받을 수 있어요.',
+    '상단 알림은 누가 <b>100억 이상 청산</b>당하거나 <b>100억 이상 벌었을 때</b>만 떠요. 청산당한 친구는 🫖 티배깅할 수 있어요.']],
+  invest: ['투자', '코인 · 주식 · 부동산 · 환율', [
+    '<b>🪙 코인</b> 30종목: 24시간 쉬지 않고 1초마다 움직이고, 15초마다 몇 종목이 크게 출렁여요. 펌핑 후 덤프도 자주 와요.',
+    '<b>⛔ 서킷브레이커</b>(코인): 2시간 변동률이 +40% 넘으면 -70% 폭락, -40% 밑이면 +70% 폭등할 확률이 생기고 멀어질수록 커져요. 터지면 3분간 거래정지예요.',
+    '<b>📈 주식</b> 70종목(분야별 10개): 코인보다 덜 거칠지만 2시간에 ±40%까지 가고, 가끔 ±8~30% 급등락이 와요. 거래정지는 없어요.',
+    '<b>🚀 레버리지</b> 5·10·25·50·100배(코인·주식): 진입가 대비 약 0.94÷배수만큼 반대로 가면 증거금을 다 잃고 청산돼요. 앱을 꺼 둬도 그 사이 가격으로 청산돼요.',
+    '<b>🎯 공매도</b>(코인·주식): 내리면 이득이에요. 진입가보다 35% 오르면 자동 반대매매되고 남은 돈은 돌려받아요.',
+    '<b>💵 환율</b>: 1달러가 900~1,900원 사이에서 움직여요. 매수·매도만 돼요. 수수료는 모든 거래에 0.3%예요.',
+    '<b>🏢 부동산</b>: 사면(취득세 4%) 1시간마다 가치의 0.1%가 월세로 들어오고 유지비·재산세 0.04%가 빠져요. 합계 10억 넘는 부분엔 종부세 0.03%, 팔 때 차익의 22%가 양도세예요.',
+    '<b>건물 공격</b>: 💣 3% 내고 5% 확률 파괴 · 🚀 25% 내고 40% 확률 파괴 · 🏴 200% 내고 강제 매입(원래 주인은 100% 보상). 파괴된 건물은 누구나 120%에 사고, 주인은 60%에 복구해요. 사거나 복구한 뒤 10분은 공격 면역이에요.',
+    '<b>💥 포지션 공격</b>(코인): 상대 원금의 15%를 내고 45초 동안 가격을 12% 반대로 밀어요. 상대 레버리지를 청산시키면 비용을 돌려받아요.',
+    '제목 옆 <b>📋 내 포지션</b>을 누르면 그 시장 포지션만 모아 보고 바로 정리할 수 있어요. <b>💬 건의</b>에선 바라는 점을 남기고 소식을 봐요.']],
+  assets: ['자산', '내 돈이 어디에 있나', [
+    '맨 위가 <b>총자산</b>과 내 순위예요.',
+    '<b>주식</b> 탭: 보유 주식과 달러, 주식 레버리지·공매도를 평균단가 대비 손익과 함께 보여줘요.',
+    '<b>코인</b> 탭: 보유 코인과 코인 레버리지·공매도예요. 레버리지를 누르면 바로 청산 창이 떠요.',
+    '<b>부동산</b> 탭: 내 건물과 시간당 순수익이에요. 파괴된 건물은 가치가 멈춘 채로 보여요.',
+    '<b>내 프로필</b> 탭: 받은 지원금, 게임 손익, 월세·세금 합계와 프로필 사진이에요. 사진은 순위·지도 도장에 모두에게 보여요.']],
+  shop: ['상점', '현금으로 사는 것들', [
+    '<b>✏️ 닉네임 변경권</b>: 100조원. 사면 바로 닉네임을 바꿀 수 있고, 소식에 바뀐 이름이 올라가요.',
+    '<b>🎰 게임</b>: 총자산의 10%·25%·50%·올인 중에서 걸어요. 한 판 최대 10억이에요.',
+    '<b>홀짝</b>: 맞히면 1.95배, 확률 50%예요.',
+    '<b>룰렛</b>: 20칸, 0배부터 대박 10배까지. 평균은 홀짝과 같은 0.975배라 오래 하면 조금씩 잃어요.']],
+};
 function renderHelp(b) {
-  b.innerHTML = `<div class="shead"><div><h3>게임 규칙</h3><small>일주일에 한 판, 월요일마다 새 시즌</small></div></div>
-  <ul class="rules">
-    <li><span>1</span><span><b>24시간 쉬지 않는 코인식 시장</b>이에요. 평소엔 잔잔하게 숨죽이다가 <b>30초마다 종목 7개</b>가 14초에 걸쳐 다다다닥 폭발(일반 ±12~35%, 🔥메가 ±40~85%, 🌪️개미털기 휩소)해요. 변동률은 2시간마다(짝수 시) 초기화돼요.</span></li>
-    <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
-    <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
-    <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
-    <li><span>5</span><span><b>🚀 레버리지</b>: 5·10·25·50·100배로 롱(오르면 이득)이나 숏(내리면 이득)을 걸어요. 100배면 1% 움직일 때 100% 수익, 반대로 약 1% 움직이면 즉시 청산 💀. 공매도는 만기 없이 상환할 때까지 유지되고, 증거금이 바닥나면 자동 반대매매돼요.</span></li>
-    <li><span>6</span><span>모든 포지션은 <b>공개</b>예요. 순위표와 친구 이름을 누르면 주식·레버리지·공매도가 다 보여요.</span></li>
-    <li><span>7</span><span><b>2시간마다 2억원</b> 지원금이 자동으로 들어와요(짝수 시 정각). 앱을 안 열어도 쌓여요.</span></li>
-    <li><span>8</span><span><b>부동산</b>: 서울 건물을 사면 <b>1시간마다 가치의 0.1%가 월세</b>로 들어오고, 유지비·재산세(10억 넘으면 종부세)가 빠져요. 살 때 취득세 4%, 팔 때 양도세 22%. 남의 건물은 50%를 내고 파괴, 파괴된 건물은 2배로 강제 매입할 수 있어요.</span></li>
-    <li><span>9</span><span><b>게임</b> 탭에서 홀짝(1.95배)과 룰렛(최대 10배)으로 돈을 불릴 수 있어요. 걸 금액은 총자산의 10%·25%·50%·🔥100% 올인.</span></li>
-    <li><span>10</span><span>시장은 멈추지 않고, 월요일 0시에 새 시즌으로 넘어가면서 그 주 1등이 정해져요.</span></li>
-  </ul>
-  <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>${S.fb && S.mode === 'live' ? '<button class="cta soft" type="button" id="logoutBtn">로그아웃</button>' : ''}`;
+  const [t, sub, items] = HELP[S.tab] || HELP.home;
+  b.innerHTML = `<div class="shead"><div><h3>${t} 도움말</h3><small>${sub}</small></div></div>
+  <ul class="rules">${items.map((x, i) => `<li><span>${i + 1}</span><span>${x}</span></li>`).join('')}</ul>
+  <button class="cta soft" type="button" id="sheetX2">닫기</button>`;
 }
 function renderReveal(b, sh) {
   const { from, to } = sh; const n = to - from; const I = S.SE.index; const ic = I[to] / I[from] - 1;
@@ -2992,6 +3016,7 @@ document.addEventListener('click', e => {
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
     case 'boardBtn': openBoard(); break;
+    case 'sheetX2': closeSheet(); break;
     case 'posOpen': openSheet('pos'); break;
     case 'shopGame': S.shopView = 'game'; renderShop(); window.scrollTo(0, 0); break;
     case 'shopBack': S.shopView = null; renderShop(); break;
