@@ -313,6 +313,11 @@ body.shake{animation:shake .45s}
 .dbar{position:fixed;left:0;right:0;bottom:0;z-index:36;padding:10px var(--gut-r) calc(10px + env(safe-area-inset-bottom,0px)) var(--gut-l);background:rgba(255,255,255,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
 .dbar .in{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .cta.lev{background:linear-gradient(135deg,#ff3d6e,#ff9f1c);color:#fff}
+.levdir{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.levdir button{padding:11px 0;border-radius:12px;background:var(--paper);font-weight:800;font-size:14px;color:var(--dim)}
+.levdir button[aria-pressed="true"][data-levd="long"]{background:var(--up);color:#fff}
+.levdir button[aria-pressed="true"][data-levd="short"]{background:var(--down);color:#fff}
+.fab .sd{font-weight:900;opacity:1} .fab .sd.up{color:#ff7a85} .fab .sd.down{color:#7fb0ff} .fab .sd.flat{color:#fff}
 .levx{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .levx button{padding:10px 0;border-radius:12px;background:var(--paper);font-weight:900;font-size:15px;color:var(--dim)}
 .levx button[aria-pressed="true"]{background:linear-gradient(135deg,#ff3d6e,#ff9f1c);color:#fff}
@@ -804,7 +809,8 @@ function estVal(bid, k) {
 const estOf = bid => { const e = S.estates[bid]; return e && e.season === S.season.sid && e.owner ? e : null; };
 const myEstates = p => ESTATES.filter(b => { const e = estOf(b.id); return e && e.owner === p.id; });
 const LEVS = [2, 5, 10, 20];
-const levVal = (o, price) => Math.max(0, o.m + o.q * (price - o.e));
+const levVal = (o, price) => Math.max(0, o.m + (o.d || 1) * o.q * (price - o.e));
+const levSide = o => (o.d || 1) < 0 ? '숏' : '롱';
 const levROE = (o, price) => levVal(o, price) / o.m - 1;
 function worth(p, k) {
   if (!p) return 0; let v = (p.cash || 0) + BONUS * pendingOf(p);
@@ -840,9 +846,10 @@ function renderHeader() {
   const fab = $('#fab');
   if (!S.me) { fab.hidden = true; return; }
   const w = worth(S.me, S.tick), roi = roiOf(S.me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
+  if (S.sessBase == null) S.sessBase = w;
   const sig = String(rk);
   fab.hidden = false;
-  fab.innerHTML = `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · ${activePlayers().length}명 중</span><span class="v num">${won(w)}</span></span><span class="c num ${cls(roi)}">${pctTxt(roi)}</span>`;
+  fab.innerHTML = `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · 접속 후 <b class="sd ${cls(w - (S.sessBase ?? w))}">${signWon(w - (S.sessBase ?? w))}</b></span><span class="v num">${won(w)}</span></span><span class="c num ${cls(roi)}">${pctTxt(roi)}</span>`;
   if (fab.dataset.sig && fab.dataset.sig !== sig) { fab.classList.remove('bump'); void fab.offsetWidth; fab.classList.add('bump'); }
   fab.dataset.sig = sig;
 }
@@ -1153,13 +1160,22 @@ const boom = () => { confetti(['#f2414f', '#ff9f1c', '#ffd23f', '#3a3346']); doc
 const buzz = (ms = 40) => { try { if (navigator.vibrate && navigator.userActivation && navigator.userActivation.isActive) navigator.vibrate(ms); } catch {} };
 let liquidating = false;
 async function checkLiquidation() {
-  if (!S.me || !S.me.lev || liquidating || S.saving) return;
+  if (!S.me || liquidating || S.saving) return;
+  // 공매도 반대매매: 가격이 진입가의 거의 2배가 돼서 증거금이 바닥나면 자동 상환
+  const burnt = Object.entries(S.me.shorts || {}).filter(([sym, o]) => SM[sym] && o.q * (2 * o.e - px(sym, S.tick)) <= o.q * o.e * .03);
+  if (burnt.length) {
+    liquidating = true; const b0 = S.me; const me2 = JSON.parse(JSON.stringify(b0)); burnt.forEach(([sym]) => delete me2.shorts[sym]);
+    const ok2 = await saveMe(me2, b0); liquidating = false;
+    if (ok2) { burnt.forEach(([sym]) => addFeed({ kind: 'liq', sym, x: 1, d: -1 })); toast(`💀 ${burnt.map(([sym]) => SM[sym].n).join(', ')} 공매도 반대매매!`); boom(); renderAll(); }
+    return;
+  }
+  if (!S.me.lev) return;
   const dead = Object.entries(S.me.lev).filter(([sym, o]) => SM[sym] && levVal(o, px(sym, S.tick)) <= o.m * .03);
   if (!dead.length) return;
   liquidating = true; const before = S.me; const me = JSON.parse(JSON.stringify(before));
   dead.forEach(([sym]) => { me.levPnl = (me.levPnl || 0) - me.lev[sym].m; delete me.lev[sym]; });
   const ok = await saveMe(me, before); liquidating = false;
-  if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
+  if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x, d: o.d || 1 })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
 }
 function holdingAlerts() {
   if (!S.me) return;
@@ -1289,7 +1305,7 @@ function renderWallet() {
   }
   const lv = Object.entries(m.lev || {}).filter(([s]) => SM[s]);
   if (lv.length) { h += `<div class="sec"><div class="sec-h"><h2>🚀 레버리지</h2><small>약 1/배수만큼 떨어지면 청산</small></div><div class="slist">`;
-    lv.forEach(([s, o]) => { const st = SM[s], pr = px(s, k), r = levROE(o, pr); h += `<button class="pos" type="button" data-quick="levclose" data-sym="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="tag rv">${o.x}배</span></b><small class="dim num">${o.q.toLocaleString()}주 · 진입 ${won(o.e)}</small></span><span class="r num"><b>${won(levVal(o, pr))}</b><br><small class="${cls(r)}" style="font-size:15px;font-weight:900">${pctTxt(r)}</small></span></button>`; });
+    lv.forEach(([s, o]) => { const st = SM[s], pr = px(s, k), r = levROE(o, pr); h += `<button class="pos" type="button" data-quick="levclose" data-sym="${s}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="tag rv">${o.x}배 ${levSide(o)}</span></b><small class="dim num">${o.q.toLocaleString()}주 · 진입 ${won(o.e)}</small></span><span class="r num"><b>${won(levVal(o, pr))}</b><br><small class="${cls(r)}" style="font-size:15px;font-weight:900">${pctTxt(r)}</small></span></button>`; });
     h += `</div></div>`; }
   const est = myEstates({ id: S.uid });
   if (est.length) { h += `<div class="sec"><div class="sec-h"><h2>🏢 부동산</h2><small>시간당 순수익 ${signWon(rentPerHour())}</small></div><div class="slist">`;
@@ -1316,9 +1332,9 @@ function feedText(f) {
     case 'est_destroy': return EM[f.est] ? ['up', '💥', `누군가 <b>${esc(EM[f.est].n)}</b>을(를) 파괴했어요!`] : null;
     case 'est_restore': return EM[f.est] ? ['gold', '🔧', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 복구했어요`] : null;
     case 'est_force': return EM[f.est] ? ['up', '🏴', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 강제 매입했어요!`] : null;
-    case 'lev': return st ? ['up', '🚀', `<b>${nm}</b>님이 ${esc(st.n)} <b>${f.x}배 롱</b> 진입!`] : null;
+    case 'lev': return st ? [f.d < 0 ? 'down' : 'up', f.d < 0 ? '📉' : '🚀', `<b>${nm}</b>님이 ${esc(st.n)} <b>${f.x}배 ${f.d < 0 ? '숏' : '롱'}</b> 진입!`] : null;
     case 'levclose': return st ? [f.amt >= 0 ? 'up' : 'down', f.amt >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(st.n)} 레버리지 정리 <b class="${f.amt >= 0 ? 'up' : 'down'}">${pctTxt(f.amt)}</b>`] : null;
-    case 'liq': return st ? ['down', '💀', `<b>${nm}</b>님 ${esc(st.n)} <b>${f.x}배 롱 청산</b>당했어요`] : null;
+    case 'liq': return st ? ['down', '💀', `<b>${nm}</b>님 ${esc(st.n)} <b>${f.x > 1 ? f.x + '배 ' + (f.d < 0 ? '숏' : '롱') + ' 청산' : '공매도 반대매매'}</b>당했어요`] : null;
     case 'spy': return ['gold', '🕵️', `누군가 <b>${esc(nameOf(f.target))}</b>님의 지갑을 엿봤어요`];
     default: return null;
   }
@@ -1508,7 +1524,8 @@ function renderQuickSheet(b, sh) {
   const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0;
   b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>현재가 <b class="num" id="livePrice">${won(p)}</b> <span class="num ${cls(c)}" id="livePct">${pctTxt(c)}</span> · 보유 ${my.toLocaleString()}주</small></div></div>
     <div class="seg">${[['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']].map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
-    ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 롱 · ${o.q.toLocaleString()}주 · 진입 ${won(o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
+    ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${o.q.toLocaleString()}주 · 진입 ${won(o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
+    <div class="levdir" id="levdir" ${sh.m === 'lev' ? '' : 'hidden'}><button type="button" data-levd="long" aria-pressed="${sh.dir !== 'short'}">📈 롱 (오르면 이득)</button><button type="button" data-levd="short" aria-pressed="${sh.dir === 'short'}">📉 숏 (내리면 이득)</button></div>
     <div class="levx" id="levx" ${sh.m === 'lev' ? '' : 'hidden'}>${LEVS.map(x => `<button type="button" data-levx="${x}" aria-pressed="${(sh.x || 10) === x}">${x}배</button>`).join('')}</div>
     <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="numeric" min="0" value="${sh.q || ''}" placeholder="몇 주?" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
     <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-frac="${f}">${l}</button>`).join('')}</div>
@@ -1560,12 +1577,12 @@ function updateTradeEst() {
   if (sh.m === 'cover') { const o = (S.me.shorts || {})[sh.sym]; const v = o ? Math.max(0, q * (2 * o.e - p)) : 0; line = `<span>돌려받을 금액 <b class="num">${won(Math.max(0, v - fee))}</b></span>`; }
   est.innerHTML = line + `<span class="num">최대 ${mx.toLocaleString()}주</span>`;
   const btn = $('#doTrade');
-  btn.textContent = S.saving ? '처리 중…' : { buy: '매수하기', sell: '매도하기', short: '🎯 공매도 걸기', cover: '공매도 상환하기', lev: `🚀 ${sh.x || 10}배 롱 진입`, levclose: '레버리지 청산하기' }[sh.m];
-  btn.className = 'cta ' + (sh.m === 'lev' ? 'buy' : sh.m === 'levclose' ? 'sell' : sh.m);
+  btn.textContent = S.saving ? '처리 중…' : { buy: '매수하기', sell: '매도하기', short: '🎯 공매도 걸기', cover: '공매도 상환하기', lev: sh.dir === 'short' ? `📉 ${sh.x || 10}배 숏 진입` : `🚀 ${sh.x || 10}배 롱 진입`, levclose: '레버리지 청산하기' }[sh.m];
+  btn.className = 'cta ' + (sh.m === 'lev' ? (sh.dir === 'short' ? 'sell' : 'buy') : sh.m === 'levclose' ? 'sell' : sh.m);
   if (sh.m === 'levclose') { const i = $('#qty'); const all = maxQty('levclose', sh.sym); if (i && +i.value !== all) { i.value = all; sh.q = all; } }
   btn.disabled = S.saving || !(sh.m === 'levclose' ? maxQty('levclose', sh.sym) : q) || q > mx;
-  const lx = $('#levx'); if (lx) lx.hidden = sh.m !== 'lev';
-  $('#tradeHint').textContent = { lev: `가격이 1% 오르면 수익은 ${sh.x || 10}%! 대신 약 ${Math.round(100 / (sh.x || 10))}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 2초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 손실은 증거금까지만. 누가 걸었는지는 비밀이에요.', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
+  const lx = $('#levx'); if (lx) lx.hidden = sh.m !== 'lev'; const ld = $('#levdir'); if (ld) ld.hidden = sh.m !== 'lev';
+  $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${sh.x || 10}%! 대신 약 ${Math.round(100 / (sh.x || 10))}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${sh.x || 10}%! 대신 약 ${Math.round(100 / (sh.x || 10))}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 2초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가의 2배 가까이 오르면 자동 반대매매돼요. 누가 걸었는지는 비밀이에요.', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
 }
 async function doTrade() {
   const sh = S.sheet; const q = sh.q, sym = sh.sym, m = sh.m, p = px(sym, S.tick);
@@ -1577,20 +1594,21 @@ async function doTrade() {
   if (m === 'short') { const o = me.shorts[sym] || { q: 0, e: 0 }; me.shorts[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q) }; me.cash -= amt + fee; }
   if (m === 'cover') { const o = me.shorts[sym]; me.cash += Math.max(0, q * (2 * o.e - p) - fee); o.q -= q; if (!o.q) delete me.shorts[sym]; }
   me.lev ||= {};
-  if (m === 'lev') { const x = sh.x || 10, o = me.lev[sym]; const mg = amt / x;
-    if (o) { const val = levVal(o, p); me.lev[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q), m: val + mg, x: Math.round((o.q + q) * p / (val + mg)) }; }
-    else me.lev[sym] = { q, e: p, m: mg, x }; me.cash -= mg + fee; }
+  if (m === 'lev') { const x = sh.x || 10, d = sh.dir === 'short' ? -1 : 1, o = me.lev[sym]; const mg = amt / x;
+    if (o && (o.d || 1) !== d) { toast(`반대쪽(${levSide(o)}) 포지션을 먼저 청산해 주세요`); return; }
+    if (o) { const val = levVal(o, p); me.lev[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q), m: val + mg, x: Math.round((o.q + q) * p / (val + mg)), d }; }
+    else me.lev[sym] = { q, e: p, m: mg, x, d }; me.cash -= mg + fee; }
   if (m === 'levclose') { const o = me.lev[sym]; me.cash += Math.max(0, levVal(o, p) - Math.ceil(o.q * p * FEE)); me.levPnl = (me.levPnl || 0) + levVal(o, p) - o.m; delete me.lev[sym]; }
   me.cash = Math.round(me.cash);
   S.saving = true; updateTradeEst();
   const ok = await saveMe(me, before);
   S.saving = false;
   if (ok) {
-    if (m === 'lev') addFeed({ kind: 'lev', sym, amt, x: sh.x || 10 });
+    if (m === 'lev') addFeed({ kind: 'lev', sym, amt, x: sh.x || 10, d: sh.dir === 'short' ? -1 : 1 });
     else if (m === 'levclose') { const o = before.lev[sym], r = levROE(o, p); addFeed({ kind: 'levclose', sym, amt: r }); if (r > .5) { confetti(); buzz(80); } }
     else if (m !== 'cover') addFeed({ kind: m, sym, amt });
     if (m === 'sell' && before.cost && before.cost[sym] && p / before.cost[sym] - 1 >= .1) { confetti(); buzz(60); }
-    toast({ buy: `🛒 ${SM[sym].n} ${q.toLocaleString()}주 매수!`, sell: `💸 ${SM[sym].n} ${q.toLocaleString()}주 매도!`, short: `🎯 ${SM[sym].n} 공매도 진입`, cover: '공매도 상환 완료', lev: `🚀 ${SM[sym].n} ${sh.x || 10}배 롱!`, levclose: `${SM[sym].n} 레버리지 청산 ${m === 'levclose' ? pctTxt(levROE(before.lev[sym], p)) : ''}` }[m]);
+    toast({ buy: `🛒 ${SM[sym].n} ${q.toLocaleString()}주 매수!`, sell: `💸 ${SM[sym].n} ${q.toLocaleString()}주 매도!`, short: `🎯 ${SM[sym].n} 공매도 진입`, cover: '공매도 상환 완료', lev: `${sh.dir === 'short' ? '📉' : '🚀'} ${SM[sym].n} ${sh.x || 10}배 ${sh.dir === 'short' ? '숏' : '롱'}!`, levclose: `${SM[sym].n} 레버리지 청산 ${m === 'levclose' ? pctTxt(levROE(before.lev[sym], p)) : ''}` }[m]);
     sh.q = 0; if (sh.type === 'quick') closeSheet(); renderAll(); if (S.sheet) renderSheet();
   } else updateTradeEst();
 }
@@ -1645,7 +1663,7 @@ function renderHelp(b) {
     <li><span>2</span><span>뉴스가 터지면 종목이 크게 출렁여요. 지난 뉴스가 사실이었는지는 소식 탭 팩트체크에서 볼 수 있어요.</span></li>
     <li><span>3</span><span>업종 뉴스가 뜨면 그 업종이 통째로 움직여요. 반도체는 11종목이나 돼요.</span></li>
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
-    <li><span>5</span><span><b>🚀 레버리지</b>: 2·5·10·20배로 롱을 걸 수 있어요. 10배면 1% 오를 때 10% 수익, 약 10% 떨어지면 청산 💀.</span></li>
+    <li><span>5</span><span><b>🚀 레버리지</b>: 2·5·10·20배로 롱(오르면 이득)이나 숏(내리면 이득)을 걸어요. 10배면 1% 움직일 때 10%, 반대로 약 10% 움직이면 청산 💀. 공매도는 만기 없이 상환할 때까지 유지되고, 증거금이 바닥나면 자동 반대매매돼요.</span></li>
     <li><span>5</span><span><b>공매도</b>는 내릴 때 돈을 벌어요. 누가 걸었는지는 비밀.</span></li>
     <li><span>6</span><span>친구 지갑은 <b>대표 종목 하나</b>만 보여요. 하루 한 번 🕵️ <b>엿보기</b>로 한 명의 지갑을 다 볼 수 있어요.</span></li>
     <li><span>7</span><span><b>12시간마다 2,000만원</b> 지원금이 자동으로 들어와요(0시, 12시). 앱을 안 열어도 쌓여요.</span></li>
@@ -1842,6 +1860,7 @@ document.addEventListener('click', e => {
   if (t.dataset.stock) { if (S.sheet) closeSheet(); openDetail(t.dataset.stock); return; }
   if (t.hasAttribute('data-player')) { openSheet('player', { id: t.dataset.player }); return; }
   if (t.hasAttribute('data-join')) { openSheet('join'); return; }
+  if (t.dataset.levd) { S.sheet.dir = t.dataset.levd; S.sheet.q = 0; renderSheet(); return; }
   if (t.dataset.levx) { S.sheet.x = +t.dataset.levx; S.sheet.q = 0; renderSheet(); return; }
   if (t.dataset.m) { S.sheet.m = t.dataset.m; S.sheet.q = 0; renderSheet(); return; }
   if (t.dataset.step) { const i = $('#qty'); i.value = Math.max(0, (Math.floor(+i.value) || 0) + +t.dataset.step); updateTradeEst(); return; }
