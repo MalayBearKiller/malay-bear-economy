@@ -568,7 +568,7 @@ body.noscroll{overflow:hidden}
 <div class="wrap">
   <div class="top">
     <span class="brand"><img class="bear" src="bear.jpg" alt="말레이곰" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2732%27 fill=%27%23f6d78b%27/%3E%3Ccircle cx=%2715%27 cy=%2717%27 r=%278%27 fill=%27%232b211c%27/%3E%3Ccircle cx=%2749%27 cy=%2717%27 r=%278%27 fill=%27%232b211c%27/%3E%3Ccircle cx=%2715%27 cy=%2717%27 r=%273.5%27 fill=%27%237a5a40%27/%3E%3Ccircle cx=%2749%27 cy=%2717%27 r=%273.5%27 fill=%27%237a5a40%27/%3E%3Cellipse cx=%2732%27 cy=%2735%27 rx=%2722%27 ry=%2720%27 fill=%27%232b211c%27/%3E%3Cellipse cx=%2732%27 cy=%2744%27 rx=%2712%27 ry=%279%27 fill=%27%23e9b96e%27/%3E%3Cellipse cx=%2732%27 cy=%2739.5%27 rx=%274.6%27 ry=%273.2%27 fill=%27%23120c09%27/%3E%3Ccircle cx=%2723%27 cy=%2730%27 r=%273%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2741%27 cy=%2730%27 r=%273%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2723.7%27 cy=%2730.5%27 r=%271.6%27 fill=%27%23120c09%27/%3E%3Ccircle cx=%2741.7%27 cy=%2730.5%27 r=%271.6%27 fill=%27%23120c09%27/%3E%3Cpath d=%27M27 47.5q5 3.2 10 0%27 stroke=%27%23120c09%27 stroke-width=%271.8%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E'"><span class="logo">곰스피</span>
-    <button class="gamebtn" id="gameBtn" type="button" aria-label="게임하러 가기">🎰 게임</button></span>
+    <button class="gamebtn" id="gameBtn" type="button" aria-label="게임하러 가기" hidden>🎰 게임</button></span>
     <button class="boardbtn" id="boardBtn" type="button" hidden>💬 건의<i class="dot" id="feedDot" hidden></i></button>
     <button class="helpbtn" id="helpBtn" type="button" aria-label="규칙 보기">?</button>
   </div>
@@ -2453,6 +2453,7 @@ function goTab(name) {
   S.sub = 'wallet';
   ['home', 'market', 'invest', 'shop'].forEach(n => $('#tab-' + n).hidden = n !== name);
   const bb = $('#boardBtn'); if (bb) bb.hidden = name !== 'invest';
+  const gb = $('#gameBtn'); if (gb) gb.hidden = name !== 'shop';
   $('#assetSeg').hidden = true; $('#tab-wallet').hidden = name !== 'assets';
   document.querySelectorAll('#assetSeg [data-sub]').forEach(x => x.setAttribute('aria-pressed', x.dataset.sub === S.sub));
   renderAll(); window.scrollTo({ top: 0 });
