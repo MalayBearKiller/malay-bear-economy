@@ -2332,7 +2332,7 @@ function drawChart(cv, arr, o = {}) {
 }
 
 /* ───────── sheets ───────── */
-function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('#sheetWrap'); w.classList.toggle('center', type === 'quick'); w.hidden = false; renderSheet(); setTimeout(() => { const q = $('#qty'); if (type === 'quick' && q) q.focus(); const n = $('#nick'); if (type === 'join' && n) { n.focus(); n.select(); } }, 60); }
+function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('#sheetWrap'); w.classList.toggle('center', type === 'quick'); w.hidden = false; renderSheet(); setTimeout(() => { const n = $('#nick'); if (type === 'join' && n) { n.focus(); n.select(); } }, 60); }
 function closeSheet() { const t = S.sheet && S.sheet.type; S.sheet = null; $('#sheetWrap').hidden = true; if (t === 'reveal') maybeJoin(); }
 function renderSheet() {
   const b = $('#sheetBody'); const sh = S.sheet; if (!sh) return;
