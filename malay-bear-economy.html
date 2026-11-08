@@ -2344,7 +2344,7 @@ function renderWallet() {
     est.forEach(b => { const e = estOf(b.id), v = estVal(b.id, k); h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : 'var(--violet)'}">${e.destroyed ? '💥' : ICON[b.t]}</span><span class="sname"><b>${esc(b.n)}</b><small>${e.destroyed ? '<span class="up">파괴됨 · 복구 필요</span>' : '시간당 월세 +' + won(v * RENT)}</small></span><span class="sprice"><div class="p num">${won(e.destroyed ? 0 : v)}</div></span></button>`; });
     h += `</div></div>`; }
   if (S.wsub === 'profile') {
-  h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div><div>받은 월세<b class="num up">${won(m.rentTotal || 0)}</b></div><div>낸 유지비·세금<b class="num down">${won(m.taxTotal || 0)}</b></div></div>`;
+  h += `<div class="info"><div>받은 월세<b class="num up">${won(m.rentTotal || 0)}</b></div><div>낸 유지비·세금<b class="num down">${won(m.taxTotal || 0)}</b></div></div>`;
   h += `<div class="sec"><div class="sec-h"><h2>프로필</h2></div>
     <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)} <span class="lvtag">LV.${lvOf(m)}</span></b><small>사진은 모두에게 보여요 · 레벨은 상점에서 올려요</small></span></div>
     <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button><button type="button" id="bannerBtn">🖼️ 순위 배경 바꾸기</button><button type="button" id="bannerDel" ${m.banner ? '' : 'disabled'}>배경 지우기</button>
@@ -2789,7 +2789,7 @@ function renderProfile() {
       return `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : ownerColor(id)}">${e.destroyed ? '💥' : ICON[b.t]}</span><span class="sname"><b>${esc(b.n)}</b><small>${esc(b.gu)}${e.destroyed ? ' · <span class="up">파괴됨</span>' : ''}</small></span><span class="sprice"><div class="p num">${man(v)}원</div></span></button>`; }).join('') || '<div class="empty">건물이 없어요.</div>';
     if (est.length && canAtk) body = `<p class="hint" style="margin:0 0 8px">건물을 누르면 💣 소형·🚀 대형 공격이나 🏴 강제 매입을 할 수 있어요.</p>` + body;
   } else {
-    body = `<div class="info"><div>현금<b class="num">${won(p.cash || 0)}</b></div><div>누적 수익률<b class="num ${cls(roi)}">${pctTxt(roi)}</b></div><div>받은 지원금<b class="num">${won(BONUS * earnedOf(p))}</b></div><div>게임 손익<b class="num ${cls(p.casino || 0)}">${signWon(p.casino || 0)}</b></div><div>받은 월세<b class="num up">${won(p.rentTotal || 0)}</b></div><div>건물<b class="num">${myEstates(p).length}채</b></div></div>`;
+    body = `<div class="info"><div>현금<b class="num">${won(p.cash || 0)}</b></div><div>누적 수익률<b class="num ${cls(roi)}">${pctTxt(roi)}</b></div><div>받은 월세<b class="num up">${won(p.rentTotal || 0)}</b></div><div>건물<b class="num">${myEstates(p).length}채</b></div></div>`;
   }
   const st0 = d.scrollTop;
   d.innerHTML = `<div class="in"><div class="dtop"><button class="back" type="button" id="profBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>프로필</b></div>
@@ -2895,7 +2895,7 @@ const HELP = {
     '<b>주식</b> 탭: 보유 주식과 달러, 주식 레버리지·공매도를 평균단가 대비 손익과 함께 보여줘요.',
     '<b>코인</b> 탭: 보유 코인과 코인 레버리지·공매도예요. 레버리지를 누르면 바로 청산 창이 떠요.',
     '<b>부동산</b> 탭: 내 건물과 시간당 순수익이에요. 파괴된 건물은 가치가 멈춘 채로 보여요.',
-    '<b>내 프로필</b> 탭: 받은 지원금, 게임 손익, 월세·세금 합계와 프로필 사진이에요. 사진은 순위·지도 도장에 모두에게 보여요.']],
+    '<b>내 프로필</b> 탭: 월세·세금 합계와 프로필 사진·순위 배경이에요. 사진은 순위·지도 도장에 모두에게 보여요.']],
   shop: ['상점', '현금으로 사는 것들', [
     '<b>⭐ 레벨업</b>: 첫 레벨업은 100원이고 올릴 때마다 가격이 1.14배가 돼요. LV.100은 약 4,300만원, LV.200은 한 번에 약 21조원이에요. 레벨은 순위와 프로필에 보여요.',
     '<b>✏️ 닉네임 변경권</b>: 100조원. 사면 바로 닉네임을 바꿀 수 있고, 소식에 바뀐 이름이 올라가요.',
