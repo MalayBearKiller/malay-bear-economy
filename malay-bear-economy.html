@@ -78,7 +78,11 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .idxmini .lab{font-size:13px;font-weight:800;color:var(--dim);margin-right:8px}
 .idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
 .idxmini > .num{font-size:17px;font-weight:900}
-.idxmini.mine b{font-size:22px}
+.mycard{padding:14px 16px}
+.mycard .mc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mycard small{display:block;font-size:12.5px;font-weight:700;color:var(--dim)}
+.mycard b{display:block;font-size:20px;font-weight:900;letter-spacing:-.03em;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mycard .mc-rest{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--dim)}
 .movers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:-12px}
 .mover{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:18px;background:var(--paper);min-width:0}
 .mover .mv-main{display:flex;flex-direction:column;gap:6px;text-align:left;min-width:0}
@@ -1182,7 +1186,7 @@ function syncTime() {
 /* ───────── header ───────── */
 function renderHeader() {
   const fab = $('#fab');
-  if (!S.me) { fab.hidden = true; return; }
+  fab.hidden = true; return; // 하단 총자산 박스는 안 보여요 (홈 맨 위 카드로 옮겼어요)
   const w = worth(S.me, S.tick), w0 = worthPrev(S.me, S.tick), d2 = w - w0, r2 = w0 > 0 ? d2 / w0 : 0;
   const roi = roiOf(S.me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
   const allCash = isAllCash(S.me);
@@ -1217,8 +1221,14 @@ function renderHome() {
   const Ik = indexNow(); const ic = Ik / index24() - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
   // 곰스피 지수 카드는 나중에 쓸 수 있게 남겨두고, 참가한 사람에겐 그 자리에 내 총자산을 보여줘요
   const idxCard = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>`;
-  const myW = S.me ? worth(S.me, k) : 0, myRoi = S.me ? roiOf(S.me, myW) : 0;
-  let h = S.me ? `<div class="card idxmini mine"><div><span class="lab">내 총자산</span><b class="num">${won(myW)}</b></div><span class="num ${cls(myRoi)}">${pctTxt(myRoi)}</span></div>` : idxCard;
+  let h = idxCard;
+  if (S.me) {
+    const me = S.me, myW = worth(me, k), shares = Object.values(me.hold || {}).reduce((a, q) => a + q, 0);
+    const nLev = Object.keys(me.lev || {}).filter(s2 => SM[s2]).length, nSh = Object.keys(me.shorts || {}).filter(s2 => SM[s2]).length;
+    const nEst = myEstates({ id: S.uid }).filter(b => !estOf(b.id).destroyed).length;
+    const rest = [shares ? `주식 ${shares.toLocaleString()}주` : '', nLev ? `레버리지 ${nLev}개` : '', nSh ? `공매도 ${nSh}개` : '', nEst ? `건물 ${nEst}채` : ''].filter(Boolean).join(' · ') || '보유 자산 없음';
+    h = `<div class="card mycard"><div class="mc-row"><div><small>총자산</small><b class="num">${won(myW)}</b></div><div><small>현금</small><b class="num">${won(me.cash)}</b></div></div><p class="mc-rest">${rest}</p></div>`;
+  }
 
   h = rescueCard() + posHUD() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
