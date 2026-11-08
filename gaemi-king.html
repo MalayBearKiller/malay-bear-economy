@@ -202,18 +202,38 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .assetseg{grid-template-columns:repeat(3,1fr);margin-bottom:14px}
 .estsum{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px}
 .estsum b{display:block;font-size:17px;font-weight:800}
-.mapwrap{overflow-x:auto;overscroll-behavior-x:contain;margin-inline:calc(-1 * var(--gut-l)) calc(-1 * var(--gut-r));padding:0 var(--gut-r) 0 var(--gut-l);scrollbar-width:none}
-.mapwrap::-webkit-scrollbar{display:none}
-.seoul{width:980px;height:auto;display:block;max-width:none}
-.seoul .dn{font-size:22px;font-weight:800;fill:var(--faint);opacity:.55;text-anchor:middle}
-.seoul .rv{font-size:20px;font-weight:800;fill:#7aa8e8;text-anchor:middle;letter-spacing:.3em}
-.pin{cursor:pointer}
-.pin .hit{fill:transparent}
-.pin .pi{text-anchor:middle}
-.pin .pl{font-size:12.5px;font-weight:800;fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:var(--paper);stroke-width:4px}
-.pin.mine .pl{fill:var(--violet)}
-.pin.broken .pl{fill:var(--up)}
-.pin:active{opacity:.6}
+.mapbox{position:relative;margin-inline:calc(-1 * var(--gut-l)) calc(-1 * var(--gut-r))}
+.seoul{width:100%;height:min(70vh,520px);display:block;background:#e8f1fb;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.seoul path.gu{stroke:#fff;stroke-width:2.2;vector-effect:non-scaling-stroke;transition:fill .2s}
+.seoul path.gu.mine{stroke:var(--violet);stroke-width:2.5}
+.seoul .gl text{text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px;pointer-events:none}
+.seoul .gn{font-size:15px;font-weight:800;fill:var(--ink)}
+.seoul .gc{font-size:11.5px;font-weight:700;fill:var(--violet)}
+.seoul.zoomed .gn{fill:var(--faint);font-size:17px} .seoul.zoomed .gc{display:none}
+.seoul .pin{cursor:pointer}
+.seoul .pin .hit{fill:transparent}
+.seoul .pin .pi{text-anchor:middle;font-size:16px}
+.seoul .pin .pl{font-size:12.5px;font-weight:800;fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3.5px}
+.seoul .pin .pv{font-size:11px;font-weight:700;fill:var(--dim);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px}
+.seoul .pin .fn{font-size:12.5px;font-weight:900;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:rgba(0,0,0,.25);stroke-width:2px}
+.seoul .pin.broken .pl{fill:var(--up)}
+.seoul:not(.zoomed) .pin:not(.owned){display:none}
+.seoul:not(.zoomed) .pin .pl,.seoul:not(.deep) .pin .pv{display:none}
+.seoul:not(.zoomed) .pin .flag,.seoul:not(.zoomed) .pin .pi{display:none}
+.seoul:not(.zoomed) .pin.owned circle:not(.hit){r:6px}
+.seoul:not(.zoomed) .gn{font-size:11px}
+.seoul:not(.zoomed) .gc{display:none}
+.mapctl{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:12px;display:flex;flex-direction:column;gap:6px}
+.mapctl button{width:40px;height:40px;border-radius:12px;background:var(--bg);box-shadow:0 2px 8px rgba(23,22,31,.15);font-size:20px;font-weight:800}
+.mapinfo{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(23,22,31,.78);color:#fff;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:99px;pointer-events:none;white-space:nowrap}
+.owner-tag{color:#fff;padding:1px 7px;border-radius:7px;font-size:11.5px;font-weight:800}
+.brag{color:var(--violet);font-weight:800}
+.ownercard{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;background:var(--oc);color:#fff;box-shadow:0 8px 24px rgba(23,22,31,.15)}
+.ownercard .ava{box-shadow:0 0 0 3px #fff}
+.ownercard small{display:block;font-size:12.5px;font-weight:700;opacity:.85}
+.ownercard b{display:block;font-size:24px;font-weight:900;line-height:1.2;letter-spacing:-.02em;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.ownercard.free{background:var(--paper);color:var(--ink)}
+.ownercard.free b{font-size:17px;text-shadow:none}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;font-weight:700;color:var(--dim)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;box-shadow:0 0 0 1.5px var(--ink)}
 .legend i.lb{background:#ffe1e1;box-shadow:0 0 0 1.5px var(--up)}
@@ -438,8 +458,8 @@ body.noscroll{overflow:hidden}
 (() => {
 'use strict';
 /* ───────── constants ───────── */
-const FEE = 0.003, CASH0 = 10_000_000, NT = 21;
-const BONUS = 2_000_000, MAXBET = 2_000_000, MINBET = 10_000;
+const FEE = 0.003, CASH0 = 10_000_000_000, NT = 21;
+const BONUS = 2_000_000_000, MAXBET = 2_000_000_000, MINBET = 10_000_000;
 const WHEEL = [0, 1.5, 0, 0.5, 2, 0, 1, 0.5, 4, 0]; // EV 0.95
 const COIN_PAY = 1.95;
 const H = 3600e3, D = 86400e3, KST = 9 * H, TICK_H = [12, 18, 22];
@@ -499,36 +519,68 @@ const NEWS = {
   bio:  { u: ['신약 임상 결과 기대감', '해외 허가 획득 임박설', '대형 위탁생산 계약'], d: ['임상 일정 지연 공지', '경쟁 약품 출시', '허가 심사 보완 요구'] },
 };
 const SECTOR_NEWS = { u: '업종 전반에 외국인 매수세 유입', d: '업종 전반에 차익 실현 매물 출회' };
-// Seoul buildings: value in 원 (game money), vol = how jumpy the price is
+// Seoul buildings. v0 = Monday value, min = floor the price never drops below (원). t = icon type.
+const B = (id, n, gu, t, lat, lon, v0, min, vol) => ({ id, n, gu, t, lat, lon, v0, min, vol });
 const ESTATES = [
-  { id: 'LWT', n: '롯데월드타워', a: '잠실', lat: 37.5126, lon: 127.1025, v0: 80e6, vol: .03 },
-  { id: 'COEX', n: '코엑스', a: '삼성동', lat: 37.5126, lon: 127.0590, v0: 52e6, vol: .03 },
-  { id: 'B63', n: '63빌딩', a: '여의도', lat: 37.5198, lon: 126.9402, v0: 45e6, vol: .03 },
-  { id: 'TPL', n: '타워팰리스', a: '도곡', lat: 37.4880, lon: 127.0530, v0: 42e6, vol: .03 },
-  { id: 'IFC', n: '여의도 IFC', a: '여의도', lat: 37.5251, lon: 126.9256, v0: 40e6, vol: .035 },
-  { id: 'NST', n: 'N서울타워', a: '남산', lat: 37.549, lon: 126.982, v0: 38e6, vol: .025 },
-  { id: 'APG', n: '압구정 현대아파트', a: '압구정', lat: 37.524, lon: 127.036, v0: 36e6, vol: .035 },
-  { id: 'HNH', n: '한남더힐', a: '한남', lat: 37.531, lon: 127.01, v0: 34e6, vol: .03 },
-  { id: 'BNP', n: '반포 아파트', a: '반포', lat: 37.5050, lon: 126.9950, v0: 33e6, vol: .035 },
-  { id: 'GBT', n: '강남역 빌딩', a: '강남', lat: 37.4979, lon: 127.0276, v0: 30e6, vol: .04 },
-  { id: 'GHM', n: '광화문 오피스', a: '광화문', lat: 37.584, lon: 126.968, v0: 28e6, vol: .025 },
-  { id: 'DDP', n: '동대문 DDP', a: '동대문', lat: 37.577, lon: 127.018, v0: 26e6, vol: .035 },
-  { id: 'MYD', n: '명동 상가', a: '명동', lat: 37.567, lon: 126.992, v0: 22e6, vol: .04 },
-  { id: 'MKD', n: '목동 아파트', a: '목동', lat: 37.5300, lon: 126.8750, v0: 20e6, vol: .03 },
-  { id: 'SEO', n: '서울역 빌딩', a: '서울역', lat: 37.556, lon: 126.952, v0: 18e6, vol: .035 },
-  { id: 'DMC', n: '상암 DMC', a: '상암', lat: 37.5790, lon: 126.8900, v0: 16e6, vol: .045 },
-  { id: 'MKG', n: '마곡 연구단지', a: '마곡', lat: 37.5600, lon: 126.8300, v0: 14e6, vol: .05 },
-  { id: 'SSC', n: '성수 카페거리', a: '성수', lat: 37.548, lon: 127.052, v0: 12e6, vol: .06 },
-  { id: 'HDC', n: '홍대 상가', a: '홍대', lat: 37.5563, lon: 126.9236, v0: 9e6, vol: .06 },
-  { id: 'ITW', n: '이태원 펍거리', a: '이태원', lat: 37.536, lon: 126.984, v0: 8e6, vol: .07 },
-  { id: 'KDE', n: '건대 상권', a: '건대', lat: 37.5404, lon: 127.0700, v0: 7e6, vol: .07 },
-  { id: 'NOW', n: '노원 아파트', a: '노원', lat: 37.64, lon: 127.062, v0: 6e6, vol: .05 },
-  { id: 'GSN', n: '가산 디지털단지', a: '가산', lat: 37.4800, lon: 126.8820, v0: 5e6, vol: .06 },
-  { id: 'SLB', n: '신림 원룸촌', a: '신림', lat: 37.4842, lon: 126.9297, v0: 3e6, vol: .08 },
+  B('LWT', '롯데월드타워', '송파구', 'tower', 37.5126, 127.1025, 4.2e12, 3e12, .025),
+  B('LWD', '롯데월드', '송파구', 'mall', 37.5098, 127.0975, 1.5e12, 1.1e12, .03),
+  B('JSS', '잠실종합운동장', '송파구', 'stadium', 37.5152, 127.0730, 1.1e12, 8e11, .03),
+  B('ELS', '잠실엘스 (한 채)', '송파구', 'apt', 37.5110, 127.0820, 2.6e9, 1.8e9, .04),
+  B('HEL', '헬리오시티 (한 채)', '송파구', 'apt', 37.4960, 127.1080, 2.2e9, 1.5e9, .04),
+  B('COEX', '코엑스', '강남구', 'mall', 37.5125, 127.0588, 1.2e12, 1e12, .025),
+  B('GBC', '현대 GBC', '강남구', 'tower', 37.5160, 127.0650, 3e12, 2.2e12, .035),
+  B('GFC', '강남파이낸스센터', '강남구', 'office', 37.5003, 127.0365, 1.1e12, 8e11, .025),
+  B('APG', '압구정 현대 (한 채)', '강남구', 'apt', 37.5300, 127.0286, 6.5e9, 4.5e9, .04),
+  B('EUN', '은마아파트 (한 채)', '강남구', 'apt', 37.4995, 127.0640, 2.6e9, 2e9, .045),
+  B('TPL', '타워팰리스 펜트하우스', '강남구', 'apt', 37.4880, 127.0530, 9e9, 6e9, .035),
+  B('GRS', '가로수길 꼬마빌딩', '강남구', 'small', 37.5205, 127.0228, 1.2e10, 5e9, .05),
+  B('GNS', '강남역 꼬마빌딩', '강남구', 'small', 37.4995, 127.0300, 6e9, 3e9, .05),
+  B('SSC', '삼성 서초사옥', '서초구', 'office', 37.4969, 127.0265, 7.5e11, 6e11, .025),
+  B('SSG', '신세계백화점 강남점', '서초구', 'mall', 37.5045, 127.0045, 1.5e12, 1.1e12, .03),
+  B('BXI', '반포자이 (한 채)', '서초구', 'apt', 37.5080, 127.0110, 4.2e9, 3e9, .035),
+  B('ARP', '아크로리버파크 (한 채)', '서초구', 'apt', 37.5135, 126.9967, 5e9, 3.5e9, .035),
+  B('RWB', '래미안원베일리 (한 채)', '서초구', 'apt', 37.5105, 127.0025, 5.5e9, 4e9, .035),
+  B('B63', '63빌딩', '영등포구', 'tower', 37.5198, 126.9402, 6e11, 5e11, .03),
+  B('IFC', '여의도 IFC', '영등포구', 'office', 37.5251, 126.9256, 4e12, 3e12, .025),
+  B('PK1', '파크원', '영등포구', 'office', 37.5285, 126.9320, 2.5e12, 1.8e12, .03),
+  B('HDS', '더현대 서울', '영등포구', 'mall', 37.5228, 126.9300, 8e11, 6e11, .035),
+  B('NST', 'N서울타워', '용산구', 'tower', 37.5512, 126.9882, 3e11, 2.5e11, .03),
+  B('IPK', '용산 아이파크몰', '용산구', 'mall', 37.5293, 126.9648, 1e12, 7e11, .03),
+  B('HNH', '한남더힐 (한 채)', '용산구', 'apt', 37.5340, 127.0060, 9e9, 6e9, .035),
+  B('N1H', '나인원한남 (한 채)', '용산구', 'apt', 37.5380, 127.0090, 1.2e10, 8e9, .035),
+  B('ITW', '이태원 상가건물', '용산구', 'small', 37.5345, 126.9946, 5e9, 2e9, .06),
+  B('DDP', '동대문 DDP', '중구', 'mall', 37.5665, 127.0092, 5e11, 4e11, .03),
+  B('LDB', '롯데백화점 본점', '중구', 'mall', 37.5647, 126.9816, 1.2e12, 9e11, .03),
+  B('SSQ', '서울스퀘어', '중구', 'office', 37.5557, 126.9729, 1e12, 8e11, .025),
+  B('EJR', '을지로 노포건물', '중구', 'small', 37.5660, 126.9910, 3.5e9, 1.5e9, .06),
+  B('KYB', '교보생명빌딩', '종로구', 'office', 37.5707, 126.9781, 8e11, 6e11, .025),
+  B('SKK', '성균관대', '종로구', 'univ', 37.5878, 126.9930, 8e11, 6e11, .02),
+  B('SNU', '서울대', '관악구', 'univ', 37.4600, 126.9520, 2e12, 1.6e12, .02),
+  B('SLR', '신림 원룸건물', '관악구', 'small', 37.4842, 126.9297, 2.5e9, 1e9, .07),
+  B('YSU', '연세대', '서대문구', 'univ', 37.5658, 126.9386, 1.8e12, 1.4e12, .02),
+  B('EWU', '이화여대', '서대문구', 'univ', 37.5618, 126.9468, 7e11, 5e11, .02),
+  B('KUU', '고려대', '성북구', 'univ', 37.5894, 127.0322, 1.6e12, 1.2e12, .02),
+  B('SGU', '서강대', '마포구', 'univ', 37.5509, 126.9410, 6e11, 4.5e11, .02),
+  B('HIU', '홍익대', '마포구', 'univ', 37.5509, 126.9250, 5e11, 4e11, .025),
+  B('HDB', '홍대 상가건물', '마포구', 'small', 37.5560, 126.9205, 7e9, 3e9, .06),
+  B('YNB', '연남동 꼬마빌딩', '마포구', 'small', 37.5625, 126.9255, 4.5e9, 2e9, .06),
+  B('MBC', '상암 MBC', '마포구', 'office', 37.5794, 126.8915, 4e11, 3e11, .03),
+  B('HYU', '한양대', '성동구', 'univ', 37.5576, 127.0453, 9e11, 7e11, .02),
+  B('SSD', '성수동 카페건물', '성동구', 'small', 37.5446, 127.0560, 6e9, 2.5e9, .06),
+  B('KKU', '건국대', '광진구', 'univ', 37.5420, 127.0790, 6e11, 4.5e11, .02),
+  B('KHU', '경희대', '동대문구', 'univ', 37.5967, 127.0518, 6e11, 4.5e11, .02),
+  B('CAU', '중앙대', '동작구', 'univ', 37.5050, 126.9571, 5e11, 4e11, .02),
+  B('GCD', '고척스카이돔', '구로구', 'stadium', 37.4982, 126.8671, 3e11, 2.4e11, .03),
+  B('MDS', '목동 신시가지 (한 채)', '양천구', 'apt', 37.5300, 126.8750, 2e9, 1.4e9, .04),
+  B('MGR', '마곡 R&D센터', '강서구', 'office', 37.5600, 126.8300, 2e11, 1.5e11, .035),
+  B('SGJ', '상계주공 (한 채)', '노원구', 'apt', 37.6550, 127.0620, 8e8, 5e8, .05),
 ];
 const EM = Object.fromEntries(ESTATES.map(e => [e.id, e]));
-const RENT = .02; // per 12h, of current value
-const mapXY = e => [Math.round((e.lon - 126.80) / .38 * 1000), Math.round((37.70 - e.lat) / .27 * 640)];
+const RENT = .005; // per 12h, of current value
+const ICON = { tower: '🏙️', mall: '🏬', office: '🏢', apt: '🏠', univ: '🎓', stadium: '🏟️', small: '🏪' };
+const MAP = { lon0: 126.76, lat0: 37.715, k: 2000, x: 0, y: 30, w: 866, h: 715 };
+const mapXY = e => [(e.lon - MAP.lon0) * MAP.k, (MAP.lat0 - e.lat) * MAP.k * 1.26];
+const DISTRICTS = [{"n":"강동구","d":"M710,397L718,398L723,391L729,387L752,376L779,368L790,363L814,348L821,349L832,348L838,345L835,354L836,362L840,367L842,375L843,383L848,395L847,416L851,419L850,428L851,434L847,435L842,431L835,435L829,434L817,437L811,435L791,463L791,475L783,484L780,493L776,493L774,500L773,506L771,505L722,478L725,472L731,452L721,446L703,439L708,429L712,414L712,401L710,397Z","c":[778,420]},{"n":"송파구","d":"M618,486L630,489L639,489L653,487L669,481L682,479L690,463L703,439L721,446L731,452L725,472L722,478L771,505L773,506L773,510L769,513L766,518L764,527L766,535L775,540L780,541L784,538L788,541L802,545L807,548L804,557L804,563L801,573L798,577L788,580L783,599L783,603L777,608L768,608L762,616L753,612L746,611L746,620L755,626L750,630L742,630L735,626L735,632L729,637L729,631L725,624L708,593L709,590L702,578L696,571L689,565L678,559L641,547L633,545L624,536L619,499L617,496L618,486Z","c":[715,536]},{"n":"강남구","d":"M597,476L618,486L617,496L619,499L624,536L633,545L641,547L678,559L689,565L696,571L702,578L709,590L708,593L725,624L729,631L729,637L719,644L718,653L711,650L708,646L697,643L691,651L681,653L677,646L674,640L661,629L653,617L653,611L641,612L632,617L630,612L625,611L623,615L609,617L607,627L598,628L592,628L574,606L567,585L552,588L547,575L525,517L521,497L518,491L508,479L526,460L534,454L544,451L576,467L578,463L582,467L597,476Z","c":[610,556]},{"n":"서초구","d":"M508,479L518,491L521,497L525,517L547,575L552,588L567,585L574,606L592,628L598,628L607,627L609,617L623,615L625,611L630,612L632,617L641,612L653,611L653,617L661,629L674,640L677,646L673,653L674,658L672,659L669,666L666,668L661,677L661,686L652,690L649,697L634,694L628,696L628,700L633,703L632,707L627,710L625,720L627,723L618,725L616,728L606,725L600,725L588,729L584,725L579,723L577,717L564,704L556,702L555,697L561,688L559,684L560,676L557,671L558,663L558,658L554,654L551,646L554,640L547,635L536,653L525,659L517,661L506,661L502,656L497,644L495,643L491,631L480,631L477,633L479,640L478,644L471,646L461,654L459,649L461,636L458,630L453,625L449,617L447,608L450,558L454,549L446,543L445,539L444,518L449,515L459,514L463,517L480,507L492,499L496,494L500,486L508,479Z","c":[546,615]},{"n":"관악구","d":"M447,608L449,617L453,625L458,630L461,636L459,649L461,654L450,658L446,667L437,674L432,681L426,681L413,686L412,695L410,697L403,698L401,701L391,701L375,706L369,706L363,710L361,707L361,699L355,692L346,686L346,680L342,674L331,664L329,658L318,655L314,655L313,646L310,640L312,636L307,633L301,618L306,615L308,607L303,604L304,597L286,601L283,598L291,587L296,587L311,581L318,576L333,574L337,564L340,561L347,566L353,566L357,569L367,569L378,564L388,568L392,572L398,570L407,566L406,572L409,581L407,590L425,611L438,608L447,608Z","c":[376,631]},{"n":"동작구","d":"M444,518L445,539L446,543L454,549L450,558L447,608L438,608L425,611L407,590L409,581L406,572L407,566L398,570L392,572L388,568L378,564L367,569L357,569L353,566L347,566L340,561L337,564L333,574L318,576L311,581L296,587L291,587L309,558L324,555L326,544L335,517L338,516L336,508L349,509L368,505L385,498L391,505L399,510L413,517L444,518Z","c":[389,550]},{"n":"영등포구","d":"M264,422L286,438L297,443L343,456L354,458L371,475L378,481L380,489L385,498L368,505L349,509L336,508L338,516L335,517L326,544L324,555L309,558L291,587L285,585L277,576L272,557L271,541L272,530L265,520L243,507L244,493L245,485L248,483L258,477L261,471L264,472L267,465L267,459L259,439L257,439L255,432L264,422Z","c":[304,498]},{"n":"금천구","d":"M283,598L286,601L304,597L303,604L308,607L306,615L301,618L307,633L312,636L310,640L313,646L314,655L318,655L329,658L331,664L342,674L331,683L326,690L324,697L320,700L313,700L307,706L302,716L290,715L290,710L283,705L282,702L282,692L281,688L275,686L276,679L272,668L269,670L263,668L262,662L257,659L257,651L261,643L244,617L237,605L231,588L234,586L242,583L245,584L256,593L262,600L274,603L282,602L283,598Z","c":[287,648]},{"n":"구로구","d":"M134,528L142,528L148,536L157,543L165,539L164,535L174,535L175,529L182,527L184,523L190,522L195,526L200,524L204,532L209,532L211,536L216,535L222,537L229,535L231,527L241,513L243,507L265,520L272,530L271,541L272,557L277,576L285,585L291,587L283,598L282,602L274,603L262,600L256,593L245,584L242,583L234,586L239,579L236,576L230,578L230,574L220,565L214,571L207,575L200,584L194,586L192,592L188,595L178,594L176,597L175,614L163,610L155,611L148,605L143,609L133,608L128,610L124,604L124,595L123,589L124,585L131,580L130,574L120,570L113,566L110,559L110,554L115,555L122,552L124,546L127,544L130,534L129,529L134,528Z","c":[198,563]},{"n":"강서구","d":"M200,361L199,370L201,373L217,383L240,403L264,422L255,432L257,439L254,439L246,428L232,431L226,429L213,419L209,437L212,446L211,457L212,474L182,479L165,482L153,457L154,454L150,443L145,444L144,437L140,434L138,443L128,446L113,446L105,444L103,440L91,441L84,447L82,454L74,459L72,449L74,444L68,443L68,438L62,437L58,432L44,432L35,426L26,426L20,414L14,409L21,408L23,405L38,393L38,387L33,379L40,380L45,377L49,372L48,368L50,363L63,353L71,354L70,346L72,340L76,339L82,327L86,325L83,319L83,315L79,308L78,301L81,294L84,293L85,286L88,285L95,288L116,311L125,320L138,326L186,358L200,361Z","c":[133,395]},{"n":"양천구","d":"M128,446L138,443L140,434L144,437L145,444L150,443L154,454L153,457L165,482L182,479L212,474L211,457L212,446L209,437L213,419L226,429L232,431L246,428L254,439L257,439L259,439L267,459L267,465L264,472L261,471L258,477L248,483L245,485L244,493L243,507L241,513L231,527L229,535L222,537L216,535L211,536L209,532L204,532L200,524L195,526L190,522L184,523L182,527L175,529L174,535L164,535L165,539L157,543L148,536L142,528L134,528L132,522L133,516L131,508L135,499L135,491L141,482L139,474L135,474L128,461L128,446Z","c":[197,486]},{"n":"마포구","d":"M290,355L287,359L294,364L324,381L336,384L341,389L338,395L337,401L358,410L366,407L398,404L402,406L407,401L410,407L408,409L409,419L412,424L408,426L405,432L401,434L399,444L387,457L374,461L371,475L354,458L343,456L297,443L286,438L264,422L240,403L217,383L201,373L199,370L200,361L200,358L208,358L211,356L215,359L220,354L226,353L236,348L238,341L238,337L242,331L245,323L249,320L263,335L271,342L275,344L280,352L287,358L290,355Z","c":[304,402]},{"n":"서대문구","d":"M385,277L390,280L391,285L390,296L392,300L398,301L397,309L401,318L401,322L398,335L404,341L396,345L391,350L417,383L423,393L418,394L411,399L407,401L402,406L398,404L366,407L358,410L337,401L338,395L341,389L336,384L324,381L294,364L287,359L290,355L309,332L317,333L316,339L329,337L332,329L336,329L340,326L340,321L342,315L352,306L366,300L367,289L369,285L374,285L378,277L385,277Z","c":[362,354]},{"n":"은평구","d":"M428,215L423,221L403,225L398,233L389,234L388,242L386,249L383,252L385,256L386,266L384,275L385,277L378,277L374,285L369,285L367,289L366,300L352,306L342,315L340,321L340,326L336,329L332,329L329,337L316,339L317,333L309,332L290,355L287,358L280,352L275,344L271,342L263,335L249,320L254,312L259,313L255,319L259,326L267,326L271,324L278,326L284,322L282,315L288,309L286,304L287,298L285,289L288,287L288,272L286,265L291,249L294,248L299,242L297,236L302,231L302,225L297,215L306,206L305,199L308,193L309,185L299,180L301,177L312,184L327,182L335,177L342,171L353,169L358,166L365,154L371,150L379,148L380,152L387,158L393,158L398,164L399,173L404,175L408,187L413,188L422,199L422,205L428,215Z","c":[342,247]},{"n":"노원구","d":"M696,244L687,247L684,251L677,254L663,247L656,246L647,249L627,257L620,258L615,261L608,261L593,246L584,235L580,229L567,218L572,213L574,204L585,184L594,194L596,181L593,168L592,156L587,144L587,136L582,123L582,113L585,102L588,83L586,78L593,72L598,71L607,73L614,70L623,59L630,59L639,54L648,54L653,60L657,69L674,72L677,81L670,91L668,97L671,104L673,112L675,113L676,120L672,130L677,141L676,147L657,157L670,159L672,164L669,171L674,182L680,183L685,182L700,184L708,195L709,208L706,220L695,229L695,233L691,239L696,244Z","c":[635,165]},{"n":"도봉구","d":"M586,78L588,83L585,102L582,113L582,123L587,136L587,144L592,156L593,168L596,181L594,194L585,184L574,204L572,213L567,218L561,211L558,204L553,201L550,192L539,183L533,177L525,173L515,173L511,170L509,165L512,148L515,142L516,129L521,121L517,114L512,107L508,97L501,96L501,83L502,77L500,72L502,58L508,49L513,49L516,42L523,41L528,46L534,46L540,43L543,47L544,54L547,63L549,66L556,64L568,57L570,61L575,64L582,60L586,78Z","c":[549,123]},{"n":"강북구","d":"M501,83L501,96L508,97L512,107L517,114L521,121L516,129L515,142L512,148L509,165L511,170L515,173L525,173L533,177L539,183L550,192L553,201L558,204L561,211L567,218L580,229L584,235L578,240L572,250L564,257L558,265L545,274L545,266L537,265L529,268L523,262L514,258L506,255L501,250L499,244L500,237L484,232L477,224L472,221L471,216L467,216L455,208L453,205L457,196L451,187L454,181L452,171L447,165L443,159L444,154L454,147L461,136L470,133L472,126L472,115L470,101L468,97L472,94L480,86L491,82L501,83Z","c":[506,187]},{"n":"성북구","d":"M434,218L439,212L447,209L453,205L455,208L467,216L471,216L472,221L477,224L484,232L500,237L499,244L501,250L506,255L514,258L523,262L529,268L537,265L545,266L545,274L558,265L564,257L572,250L578,240L584,235L593,246L608,261L615,261L620,258L627,257L628,280L625,273L621,273L622,280L615,283L608,284L603,294L599,293L588,297L585,294L580,306L572,306L565,309L562,319L557,322L542,341L531,352L528,350L521,351L517,343L514,342L502,346L498,342L498,334L496,330L489,324L486,316L475,316L473,319L467,319L457,316L452,312L448,307L447,299L454,298L460,294L456,279L458,270L458,260L450,255L446,239L443,235L443,223L438,224L434,218Z","c":[520,282]},{"n":"중랑구","d":"M627,257L647,249L656,246L663,247L677,254L684,251L687,247L696,244L707,245L718,252L718,256L719,267L718,274L721,278L720,285L712,297L712,299L721,309L720,312L711,314L705,324L703,335L687,338L690,343L690,352L686,358L686,363L683,366L667,374L651,369L641,368L641,352L638,344L627,325L623,306L624,301L629,294L630,290L628,280L627,257Z","c":[670,302]},{"n":"동대문구","d":"M531,352L542,341L557,322L562,319L565,309L572,306L580,306L585,294L588,297L599,293L603,294L608,284L615,283L622,280L621,273L625,273L628,280L630,290L629,294L624,301L623,306L627,325L638,344L641,352L641,368L628,398L626,396L603,392L601,391L580,372L569,365L560,365L550,372L544,373L531,368L531,352Z","c":[595,342]},{"n":"광진구","d":"M641,368L651,369L667,374L683,366L686,363L693,370L691,373L688,392L687,398L705,398L710,397L712,401L712,414L708,429L703,439L690,463L682,479L669,481L653,487L639,489L630,489L618,486L597,476L618,430L632,399L628,398L641,368Z","c":[658,431]},{"n":"성동구","d":"M531,368L544,373L550,372L560,365L569,365L580,372L601,391L603,392L626,396L628,398L632,399L618,430L597,476L582,467L578,463L576,467L544,451L534,454L526,460L514,451L503,449L501,443L501,438L503,428L508,427L518,414L519,408L523,404L530,403L532,395L537,390L538,385L531,385L531,368Z","c":[567,420]},{"n":"용산구","d":"M501,438L501,443L503,449L514,451L526,460L508,479L500,486L496,494L492,499L480,507L463,517L459,514L449,515L444,518L413,517L399,510L391,505L385,498L380,489L378,481L371,475L374,461L387,457L399,444L401,434L405,432L408,426L412,424L409,419L416,412L429,413L437,415L439,410L445,414L452,415L455,413L460,419L465,419L475,430L481,423L490,424L493,422L494,432L499,438L501,438Z","c":[445,467]},{"n":"중구","d":"M531,368L531,385L538,385L537,390L532,395L530,403L523,404L519,408L518,414L508,427L503,428L501,438L499,438L494,432L493,422L490,424L481,423L475,430L465,419L460,419L455,413L452,415L445,414L439,410L437,415L429,413L416,412L409,419L408,409L410,407L407,401L411,399L418,394L423,393L417,383L422,377L430,374L440,374L462,377L478,376L487,373L516,373L525,368L531,368Z","c":[476,397]},{"n":"종로구","d":"M428,215L434,218L438,224L443,223L443,235L446,239L450,255L458,260L458,270L456,279L460,294L454,298L447,299L448,307L452,312L457,316L467,319L473,319L475,316L486,316L489,324L496,330L498,334L498,342L502,346L514,342L517,343L521,351L528,350L531,352L531,368L525,368L516,373L487,373L478,376L462,377L440,374L430,374L422,377L417,383L391,350L396,345L404,341L398,335L401,322L401,318L397,309L398,301L392,300L390,296L391,285L390,280L385,277L384,275L386,266L385,256L383,252L386,249L388,242L389,234L398,233L403,225L423,221L428,215Z","c":[440,311]}];
 const AVA_COLORS = ['#ffd23f', '#9be7c4', '#c7b8ff', '#ffb3c7', '#a8d8ff', '#ffcf9e', '#d9f27c'];
 
 /* ───────── deterministic RNG ───────── */
@@ -595,10 +647,10 @@ function buildSeason(sid) {
   const secIndex = {}; Object.keys(SECTORS).forEach(sec => { const list = STOCKS.filter(s => s.s === sec); secIndex[sec] = []; for (let k = 0; k <= NT; k++) secIndex[sec].push(list.reduce((a, s) => a + prices[s.id][k] / s.p0, 0) / list.length); });
   const ewalk = {};
   ESTATES.forEach(e => {
-    const W = rng('estate1:' + sid + ':' + e.id); const L = new Float64Array(MIN + 1); const sd = e.vol * .06;
+    const W = rng('estate2:' + sid + ':' + e.id); const L = new Float64Array(MIN + 1); const sd = e.vol * .06;
     for (let m = 1; m <= MIN; m++) {
       let z = gauss(W) * sd;
-      if (W() < .004) z += (W() < .5 ? 1 : -1) * (.03 + W() * .08);
+      if (W() < .004) z += (W() < .5 ? 1 : -1) * (.03 + W() * .08) * (e.vol / .03);
       L[m] = L[m - 1] * .9995 + z;
     }
     ewalk[e.id] = L;
@@ -635,9 +687,15 @@ const LS = {
 /* ───────── helpers ───────── */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const won = n => Math.round(n).toLocaleString('ko-KR') + '원';
-const man = n => Math.round(n / 10000).toLocaleString('ko-KR') + '만';
-const signWon = n => (n > 0 ? '+' : n < 0 ? '-' : '') + Math.abs(Math.round(n)).toLocaleString('ko-KR') + '원';
+// 조/억/만 단위 (1억 이상), 그 아래는 콤마
+function krwUnits(n, short) {
+  n = Math.abs(Math.round(n)); const jo = Math.floor(n / 1e12), eok = Math.floor(n % 1e12 / 1e8), mn = Math.floor(n % 1e8 / 1e4);
+  const parts = []; if (jo) parts.push(jo.toLocaleString('ko-KR') + '조'); if (eok) parts.push(eok.toLocaleString('ko-KR') + '억'); if (mn && !jo && !(short && eok >= 100)) parts.push(mn.toLocaleString('ko-KR') + '만');
+  return parts.length ? parts.join(' ') : n.toLocaleString('ko-KR');
+}
+const won = n => (Math.abs(n) >= 1e8 ? krwUnits(n) : Math.round(Math.abs(n)).toLocaleString('ko-KR')) + '원';
+const man = n => krwUnits(n, true);
+const signWon = n => (n > 0 ? '+' : n < 0 ? '-' : '') + won(Math.abs(n));
 const cls = v => v > 0.00001 ? 'up' : v < -0.00001 ? 'down' : 'flat';
 const pctTxt = v => (v > 0 ? '▲' : v < 0 ? '▼' : '') + Math.abs(v * 100).toFixed(1) + '%';
 const LIVE_MS = 2000;
@@ -672,7 +730,8 @@ const EV = { step: -1, map: {} };
 function estAt(bid, t) {
   const L = S.SE.ewalk[bid]; const rel = Math.max(0, t - S.season.start); const MIN = L.length - 1;
   const m = Math.min(MIN - 1, Math.floor(rel / 60e3)); const f = Math.min(1, (rel - m * 60e3) / 60e3);
-  return Math.max(10000, Math.round(EM[bid].v0 * Math.exp(L[m] + f * (L[m + 1] - L[m])) / 10000) * 10000);
+  const b = EM[bid], raw = b.v0 * Math.exp(L[m] + f * (L[m + 1] - L[m]));
+  return Math.round(Math.max(b.min, raw) / 1e6) * 1e6;
 }
 function estVal(bid, k) {
   if (!isLive(k)) return estAt(bid, tOf(k));
@@ -742,7 +801,7 @@ function renderHome() {
 
   h = bonusCard() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
-    h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">1,000만원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
+    h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">100억원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
   if (S.mode === 'demo') h += `<p class="hint" style="margin-top:-10px">연습 모드예요. 연습봇 셋과 겨뤄요. 로그인하면 친구들과 같이 해요.</p>`;
   if (S.readOnly) h += `<p class="hint" style="margin-top:-10px">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
@@ -770,6 +829,8 @@ function renderHome() {
         if (p.id === S.uid) { const n = Object.keys(p.hold || {}).filter(x => SM[x]).length; info = n ? `보유 ${n}종목` : '아직 현금만'; }
         else if (spiedOn(p.id)) info = '오늘 엿봄 · 전부 공개';
         else { const t = topHolding(p, k), l = lockedCount(p); info = `${t ? '대표 ' + esc(SM[t].n) : '현금 대기'}${l ? ` · 비공개 ${l}` : ''}`; }
+        const own = myEstates(p).filter(b => !estOf(b.id).destroyed).sort((a, b) => estVal(b.id, k) - estVal(a.id, k));
+        if (own.length) info = `🏢 <b class="brag">${esc(own[0].n.replace(/ \(한 채\)$/, ''))}${own.length > 1 ? ` 외 ${own.length - 1}` : ''}</b> 건물주 · ` + info;
         h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}" type="button" data-player="${esc(p.id)}"><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
           <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${mv}<small>${info}</small></span>
           <span class="r num"><b>${man(p.w)}</b><small class="${cls(roi)}">${pctTxt(roi)}</small></span></button>`;
@@ -810,7 +871,7 @@ const pendingOf = p => Math.max(0, earnedOf(p) - paidOf(p));
 function bonusCard() {
   if (!S.me || S.readOnly) return '';
   const n = earnedOf(S.me);
-  return `<div class="card bonus"><span class="t"><b>${seasonOver() ? '이번 시즌 지원금 끝' : '다음 지원금 200만원'}</b><small>${seasonOver() ? `이번 주 ${n}번 받았어요` : `<span class="num" id="bonusCd">${hms(nextSlotAt(now()) - now())}</span> 뒤 자동 지급 · 지금까지 ${n}번`}</small></span><span class="bonus-amt num">${man(BONUS * n)}원</span></div>`;
+  return `<div class="card bonus"><span class="t"><b>${seasonOver() ? '이번 시즌 지원금 끝' : '다음 지원금 20억원'}</b><small>${seasonOver() ? `이번 주 ${n}번 받았어요` : `<span class="num" id="bonusCd">${hms(nextSlotAt(now()) - now())}</span> 뒤 자동 지급 · 지금까지 ${n}번`}</small></span><span class="bonus-amt num">${man(BONUS * n)}원</span></div>`;
 }
 let crediting = false;
 async function autoCredit() {
@@ -821,7 +882,7 @@ async function autoCredit() {
   const before = S.me; const me = JSON.parse(JSON.stringify(before));
   const n = earnedOf(before); me.cash += BONUS * due; me.bonusN = n; me.inflow = CASH0 + BONUS * n;
   const ok = await saveMe(me, before); crediting = false;
-  if (ok) { toast(due > 1 ? `지원금 ${due}번 밀린 거 ${man(BONUS * due)}원이 들어왔어요` : '지원금 200만원이 들어왔어요'); renderAll(); }
+  if (ok) { toast(due > 1 ? `지원금 ${due}번 밀린 거 ${man(BONUS * due)}원이 들어왔어요` : '지원금 20억원이 들어왔어요'); renderAll(); }
 }
 
 async function creditRent() {
@@ -836,7 +897,7 @@ async function creditRent() {
 
 /* ───────── real estate ───────── */
 async function saveEstate(bid, doc) {
-  if (S.mode === 'demo') { S.estates[bid] = doc; LS.set('demoEst:' + S.season.sid, Object.fromEntries(Object.entries(S.estates).filter(([, e]) => !e.bot))); return true; }
+  if (S.mode === 'demo') { S.estates[bid] = doc; LS.set('demoEst3:' + S.season.sid, Object.fromEntries(Object.entries(S.estates).filter(([, e]) => !e.bot))); return true; }
   try { await S.db.doc('estates/' + bid).set(doc); S.estates[bid] = doc; return true; } catch { toast('부동산 정보를 저장하지 못했어요.'); return false; }
 }
 function estState(bid) {
@@ -848,57 +909,131 @@ function estPrice(bid, action) {
   const e = estOf(bid), v = estVal(bid, S.tick);
   return { buy: v, sell: v, destroy: Math.round(v * .5), restore: e && e.destroyed ? Math.round(e.destroyed.value * .5) : 0, force: e && e.destroyed ? e.destroyed.value * 2 : 0 }[action];
 }
+const ZOOM_PINS = 2.2;
+function ownerColor(uid) { return uid === S.uid ? 'var(--violet)' : avaColor(uid); }
+function pinsSVG() {
+  const zoom = MAP.w0 / S.mapV.w;
+  return ESTATES.map(b => {
+    const [x, y] = mapXY(b); const e = estOf(b.id); const broken = e && e.destroyed; const owned = !!e;
+    const col = broken ? '#ffe1e1' : owned ? ownerColor(e.owner) : '#fff';
+    const flag = owned ? `<g class="flag" transform="translate(0,-34)"><rect x="-${(nameOf(e.owner).length * 7 + 30) / 2}" y="-15" width="${nameOf(e.owner).length * 7 + 30}" height="24" rx="12" fill="${broken ? 'var(--up)' : ownerColor(e.owner)}" stroke="var(--ink)" stroke-width="1.5"/><text y="2" class="fn">${e.owner === S.uid ? '👑 ' : ''}${esc(e.owner === S.uid ? '내 건물' : nameOf(e.owner))}</text></g>` : '';
+    return `<g class="pin${owned ? ' owned' : ''}${broken ? ' broken' : ''}" data-estate="${b.id}" data-x="${x}" data-y="${y}" role="button" tabindex="0" aria-label="${esc(b.n)}">
+      <circle r="22" class="hit"/><circle r="15" fill="${col}" stroke="${broken ? 'var(--up)' : 'var(--ink)'}" stroke-width="2" ${broken ? 'stroke-dasharray="4 3"' : ''}/>
+      <text class="pi" y="6">${broken ? '💥' : ICON[b.t]}</text>${flag}
+      <text class="pl" y="31">${esc(b.n.replace(/ \(한 채\)$/, ''))}</text><text class="pv" y="45">${man(e && e.destroyed ? e.destroyed.value : estVal(b.id, S.tick))}</text></g>`;
+  }).join('');
+}
+function districtSVG() {
+  const mine = new Set(myEstates({ id: S.uid }).map(b => b.gu));
+  const counts = {}; ESTATES.forEach(b => counts[b.gu] = (counts[b.gu] || 0) + 1);
+  return DISTRICTS.map((d, i) => `<path class="gu${mine.has(d.n) ? ' mine' : ''}" data-gu="${d.n}" d="${d.d}" style="fill:${mine.has(d.n) ? 'var(--violet-bg)' : ['#f3f2f8', '#eceaf4', '#f6f5fa', '#e9e7f1'][i % 4]}"/>`).join('') +
+    DISTRICTS.map(d => `<g class="gl" data-x="${d.c[0]}" data-y="${d.c[1]}"><text class="gn" y="0">${d.n}</text>${counts[d.n] ? `<text class="gc" y="18">건물 ${counts[d.n]}</text>` : ''}</g>`).join('');
+}
+function applyMapView() {
+  const svg = $('#seoulMap'); if (!svg) return; const v = S.mapV;
+  svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+  const cw = svg.clientWidth || 343; const u = v.w / cw; const zoom = MAP.w0 / v.w;
+  svg.classList.toggle('zoomed', zoom >= ZOOM_PINS); svg.classList.toggle('deep', zoom >= 4);
+  svg.querySelectorAll('.pin').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u})`));
+  svg.querySelectorAll('.gl').forEach(g => g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${u * (zoom >= ZOOM_PINS ? 1.1 : 1)})`));
+  const zi = $('#zoomInfo'); if (zi) zi.textContent = zoom >= ZOOM_PINS ? '건물을 눌러 사고팔아요' : '구를 누르면 확대돼요';
+}
+const mapAR = () => { const svg = $('#seoulMap'); return svg && svg.clientWidth ? svg.clientHeight / svg.clientWidth : 1.39; };
+function clampView(v) {
+  const w = Math.max(MAP.w0 / 12, Math.min(MAP.w0, v.w)), h = w * mapAR();
+  const ymin = Math.min(MAP.y0 - h * .2, MAP.y0 + MAP.h0 / 2 - h / 2), ymax = Math.max(MAP.y0 + MAP.h0 - h * .8, MAP.y0 + MAP.h0 / 2 - h / 2);
+  return { w, h, x: Math.max(MAP.x0 - w * .2, Math.min(MAP.x0 + MAP.w0 - w * .8, v.x)), y: Math.max(ymin, Math.min(ymax, v.y)) };
+}
+function zoomAt(f, cx, cy, animate) {
+  const v = S.mapV; const nw = v.w / f, nh = v.h / f;
+  const target = clampView({ x: cx - (cx - v.x) / f, y: cy - (cy - v.y) / f, w: nw, h: nh });
+  if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { S.mapV = target; applyMapView(); return; }
+  const from = { ...v }, t0 = performance.now();
+  const step = t => { const k = Math.min(1, (t - t0) / 320), e = 1 - Math.pow(1 - k, 3);
+    S.mapV = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, w: from.w + (target.w - from.w) * e, h: from.h + (target.h - from.h) * e }; applyMapView(); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function zoomToGu(name) {
+  const path = document.querySelector(`#seoulMap path[data-gu="${name}"]`); if (!path) return;
+  const bb = path.getBBox(); let w = Math.max(bb.width * 1.1, bb.height * 1.1 / mapAR()); w = Math.max(w, MAP.w0 / 12);
+  const target = clampView({ w, x: bb.x + bb.width / 2 - w / 2, y: bb.y + bb.height / 2 - w * mapAR() / 2 });
+  const from = { ...S.mapV }; S.mapV = from; const t0 = performance.now();
+  const step = t => { const k = Math.min(1, (t - t0) / 380), e = 1 - Math.pow(1 - k, 3);
+    S.mapV = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, w: from.w + (target.w - from.w) * e, h: from.h + (target.h - from.h) * e }; applyMapView(); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function bindMap(svg) {
+  const pts = new Map(); let drag = null, moved = 0;
+  const toMap = (cx, cy) => { const r = svg.getBoundingClientRect(), v = S.mapV; return [v.x + (cx - r.left) / r.width * v.w, v.y + (cy - r.top) / r.height * v.h]; };
+  svg.addEventListener('pointerdown', e => { try { svg.setPointerCapture(e.pointerId); } catch {} pts.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; drag = { v: { ...S.mapV }, pts: new Map(pts) }; });
+  svg.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId) || !drag) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+    const r = svg.getBoundingClientRect();
+    if (pts.size === 1) { const [x0, y0] = drag.pts.get(e.pointerId) || [e.clientX, e.clientY]; const dx = e.clientX - x0, dy = e.clientY - y0; moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+      S.mapV = clampView({ ...drag.v, x: drag.v.x - dx / r.width * drag.v.w, y: drag.v.y - dy / r.height * drag.v.h }); applyMapView(); }
+    else if (pts.size === 2) { const [a, b] = [...pts.values()], [a0, b0] = [...drag.pts.values()]; if (!a0 || !b0) return;
+      const d = Math.hypot(a[0] - b[0], a[1] - b[1]), d0 = Math.hypot(a0[0] - b0[0], a0[1] - b0[1]); moved = 99;
+      const f = d / d0; const cx = (a0[0] + b0[0]) / 2, cy = (a0[1] + b0[1]) / 2; const mx = drag.v.x + (cx - r.left) / r.width * drag.v.w, my = drag.v.y + (cy - r.top) / r.height * drag.v.h;
+      S.mapV = clampView({ w: drag.v.w / f, h: drag.v.h / f, x: mx - (mx - drag.v.x) / f, y: my - (my - drag.v.y) / f }); applyMapView(); }
+  });
+  const up = e => {
+    pts.delete(e.pointerId);
+    if (pts.size === 0 && drag && moved < 8) {
+      const el = document.elementFromPoint(e.clientX, e.clientY); const pin = el && el.closest('.pin'); const gu = el && el.closest('[data-gu]');
+      const zoomed = MAP.w0 / S.mapV.w >= ZOOM_PINS;
+      if (pin && (zoomed || pin.classList.contains('owned'))) openSheet('estate', { bid: pin.dataset.estate });
+      else if (gu) zoomToGu(gu.dataset.gu);
+    }
+    drag = pts.size ? { v: { ...S.mapV }, pts: new Map(pts) } : null;
+  };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  svg.addEventListener('wheel', e => { e.preventDefault(); const [mx, my] = toMap(e.clientX, e.clientY); zoomAt(e.deltaY < 0 ? 1.25 : .8, mx, my); }, { passive: false });
+}
 function renderEstate() {
   const el = $('#tab-estate'); const k = S.tick;
-  const pins = ESTATES.map(b => {
-    const [x, y] = mapXY(b); const st = estState(b.id); const e = estOf(b.id);
-    const r = 9 + Math.sqrt(b.v0 / 3e6) * 2.4;
-    const col = st === 'free' ? '#ffffff' : st.startsWith('mine') ? 'var(--violet)' : avaColor(e.owner);
-    const broken = st.endsWith('Broken');
-    return `<g class="pin${broken ? ' broken' : ''}${st.startsWith('mine') ? ' mine' : ''}" data-estate="${b.id}" transform="translate(${x},${y})" role="button" tabindex="0" aria-label="${esc(b.n)}">
-      <circle r="${r + 7}" class="hit"/><circle r="${r}" fill="${broken ? '#ffe1e1' : col}" stroke="${broken ? 'var(--up)' : 'var(--ink)'}" stroke-width="2.5" ${broken ? 'stroke-dasharray="4 3"' : ''}/>
-      <text class="pi" y="${r * .38}" font-size="${r * 1.05}">${broken ? '💥' : '🏢'}</text>
-      <text class="pl" y="${r + 16}">${esc(b.n.length > 6 ? b.n.slice(0, 6) + '…' : b.n)}</text></g>`;
-  }).join('');
-  const river = [[126.80, 37.585], [126.85, 37.575], [126.89, 37.556], [126.93, 37.536], [126.965, 37.519], [127.00, 37.515], [127.04, 37.527], [127.07, 37.535], [127.10, 37.528], [127.13, 37.538], [127.18, 37.545]].map(([lo, la]) => mapXY({ lon: lo, lat: la }).join(',')).join(' ');
-  const dist = [['강서', 126.84, 37.555], ['마포', 126.91, 37.565], ['종로', 126.98, 37.59], ['성북', 127.03, 37.605], ['노원', 127.08, 37.625], ['영등포', 126.90, 37.515], ['용산', 126.975, 37.535], ['성동', 127.04, 37.555], ['광진', 127.085, 37.548], ['구로', 126.86, 37.49], ['관악', 126.95, 37.47], ['서초', 127.01, 37.475], ['강남', 127.055, 37.495], ['송파', 127.11, 37.50]];
+  if (!MAP.w0) Object.assign(MAP, { x0: MAP.x, y0: MAP.y, w0: MAP.w, h0: MAP.h });
+  if (!el.querySelector('#seoulMap')) {
+    el.innerHTML = `<div class="card estsum" id="estSum"></div>
+      <div class="mapbox"><svg id="seoulMap" class="seoul" viewBox="0 30 866 715" role="img" aria-label="서울 부동산 지도"><g id="gDist"></g><g id="gPins"></g></svg>
+        <div class="mapctl"><button type="button" id="zoomIn" aria-label="확대">+</button><button type="button" id="zoomOut" aria-label="축소">−</button><button type="button" id="zoomReset" aria-label="서울 전체 보기">⤢</button></div>
+        <div class="mapinfo" id="zoomInfo">구를 누르면 확대돼요</div></div>
+      <div class="sec"><div class="sec-h"><h2>건물 ${ESTATES.length}</h2><small>비싼 순</small></div><div class="slist" id="estList"></div></div>
+      <p class="hint">건물 값은 주식처럼 움직이지만 정해진 최저가 아래로는 안 내려가요. 내 건물은 12시간마다 가치의 0.5%를 임대료로 줘요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
+    bindMap($('#seoulMap'));
+  }
+  if (!S.mapV) { const h = MAP.w * mapAR(); S.mapV = { x: MAP.x, y: MAP.y + MAP.h / 2 - h / 2, w: MAP.w, h }; }
   const mineList = myEstates({ id: S.uid });
-  let h = `<div class="card estsum"><div><span class="dim" style="font-size:13px;font-weight:700">내 부동산</span><b class="num">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0))}</b></div>
-    <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">12시간 임대료</span><b class="num up">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k) * RENT), 0))}</b></div></div>
-    <div class="mapwrap"><svg class="seoul" viewBox="0 120 1000 440" role="img" aria-label="서울 부동산 지도">
-      <rect y="120" width="1000" height="440" rx="28" fill="var(--paper)"/>
-      <polyline points="${river}" fill="none" stroke="#cfe3ff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="${mapXY({ lon: 126.975, lat: 37.51 })[0]}" y="${mapXY({ lon: 126.975, lat: 37.51 })[1] + 14}" class="rv">한강</text>
-      ${dist.map(([n, lo, la]) => { const [x, y] = mapXY({ lon: lo, lat: la }); return `<text x="${x}" y="${y}" class="dn">${n}</text>`; }).join('')}
-      ${pins}</svg></div>
-    <div class="legend"><span><i style="background:#fff"></i>빈 건물</span><span><i style="background:var(--violet)"></i>내 건물</span><span><i style="background:#ffd23f"></i>친구 건물</span><span><i class="lb"></i>파괴됨</span></div>
-    <div class="sec"><div class="sec-h"><h2>건물 ${ESTATES.length}</h2><small>지도를 옆으로 밀어 보세요</small></div><div class="slist">`;
+  $('#estSum').innerHTML = `<div><span class="dim" style="font-size:13px;font-weight:700">내 부동산 ${mineList.length}곳</span><b class="num">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0))}</b></div>
+    <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">12시간 임대료</span><b class="num up">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k) * RENT), 0))}</b></div>`;
+  if (!S.liveOnly || !$('#gDist').childElementCount) $('#gDist').innerHTML = districtSVG();
+  $('#gPins').innerHTML = pinsSVG();
+  applyMapView();
+  let h = '';
   ESTATES.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).forEach(b => {
     const st = estState(b.id), e = estOf(b.id), v = e && e.destroyed ? e.destroyed.value : estVal(b.id, k), c = estVal(b.id, k) / estAt(b.id, S.season.start) - 1;
-    const who = st === 'free' ? '매물' : st.startsWith('mine') ? '내 건물' : esc(nameOf(e.owner));
-    h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : st.startsWith('mine') ? 'var(--violet)' : st === 'free' ? '#9a98ad' : avaColor(e.owner)}">${st.endsWith('Broken') ? '💥' : '🏢'}</span>
-      <span class="sname"><b>${esc(b.n)}</b><small>${esc(b.a)} · ${who}${st.endsWith('Broken') ? ' · <span class="up">파괴됨</span>' : ''}</small></span>
+    const who = st === 'free' ? '<span class="dim">매물</span>' : `<b class="owner-tag" style="background:${e.destroyed ? 'var(--up)' : ownerColor(e.owner)}">${e.owner === S.uid ? '👑 내 건물' : esc(nameOf(e.owner))}</b>`;
+    h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : st === 'free' ? '#9a98ad' : ownerColor(e.owner)}">${st.endsWith('Broken') ? '💥' : ICON[b.t]}</span>
+      <span class="sname"><b>${esc(b.n)}</b><small>${esc(b.gu)} · ${who}${st.endsWith('Broken') ? ' <span class="up">파괴됨</span>' : ''}</small></span>
       <span class="sprice"><div class="p num">${man(v)}원</div><div class="c num ${e && e.destroyed ? 'flat' : cls(c)}">${e && e.destroyed ? '멈춤' : pctTxt(c)}</div></span></button>`;
   });
-  h += `</div></div><p class="hint">건물 가격은 주식처럼 움직이고, 내 건물은 12시간마다 가치의 2%를 임대료로 줘요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
-  const mw = el.querySelector('.mapwrap'), sl = mw ? mw.scrollLeft : null;
-  el.innerHTML = h;
-  const mw2 = el.querySelector('.mapwrap'); if (mw2) mw2.scrollLeft = sl ?? 260;
+  $('#estList').innerHTML = h;
 }
 function renderEstateSheet(b, sh) {
   const bd = EM[sh.bid], k = S.tick, st = estState(bd.id), e = estOf(bd.id);
   const v = estVal(bd.id, k), frozen = e && e.destroyed ? e.destroyed.value : null, c = v / estAt(bd.id, S.season.start) - 1;
-  const owner = !e ? '없음 (매물)' : e.owner === S.uid ? '나' : esc(nameOf(e.owner));
   const can = S.me && !S.readOnly && !seasonOver();
   const act = { free: ['buy', '매입하기', 'buy'], mine: ['sell', '매각하기', 'sell'], mineBroken: ['restore', '복구하기 (50%)', 'cover'], other: ['destroy', '💥 파괴하기 (50%)', 'short'], otherBroken: ['force', '강제 매입 (2배)', 'buy'] }[st];
   const price = estPrice(bd.id, act[0]); const confirm = sh.confirm === act[0];
-  b.innerHTML = `<div class="shead"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : 'var(--violet)'}">${st.endsWith('Broken') ? '💥' : '🏢'}</span><div><h3>${esc(bd.n)}</h3><small>${esc(bd.a)} · 주인 ${owner}</small></div></div>
+  const ownerCard = e ? `<div class="ownercard" style="--oc:${e.destroyed ? 'var(--up)' : ownerColor(e.owner)}">${ava({ id: e.owner, name: nameOf(e.owner), bot: (S.players[e.owner] || {}).bot }, true)}<div><small>${e.destroyed ? '파괴된 건물의 주인' : '이 건물의 주인'}</small><b>${e.owner === S.uid ? '👑 ' : ''}${esc(nameOf(e.owner))}</b><small>${won(e.paid || 0)}에 매입 · ${timeAgo(e.at || Date.now())}</small></div></div>`
+    : `<div class="ownercard free"><div><small>주인 없음</small><b>지금 사면 지도에 내 이름이 걸려요</b></div></div>`;
+  b.innerHTML = `<div class="shead"><span class="logo-b" style="background:${st.endsWith('Broken') ? 'var(--up)' : 'var(--violet)'}">${st.endsWith('Broken') ? '💥' : ICON[bd.t]}</span><div><h3>${esc(bd.n)}</h3><small>${esc(bd.gu)} · 최저가 ${man(bd.min)}원</small></div></div>
+    ${ownerCard}
     <div class="bigp"><div class="p num" id="estPrice">${won(frozen ?? v)}</div><div class="c num">${frozen ? '<span class="up">파괴되어 가치가 멈췄어요</span>' : `<span class="${cls(c)}">이번 주 ${pctTxt(c)}</span>`}</div></div>
     <canvas class="chart" id="estChart" aria-label="${esc(bd.n)} 가격 차트"></canvas>
     <div class="info"><div>12시간 임대료<b class="num">${won(v * RENT)}</b></div><div>${frozen ? '지금 시세' : '파괴 비용'}<b class="num">${won(frozen ? v : v * .5)}</b></div></div>
     ${can ? `<button class="cta ${act[2]}" type="button" id="estAct" ${(S.me.cash < price && act[0] !== 'sell') || S.saving ? 'disabled' : ''}>${confirm ? `한 번 더 누르면 ${won(price)} 결제` : `${act[1]} · ${won(price)}`}</button>
       ${S.me.cash < price && act[0] !== 'sell' ? `<p class="hint">현금이 ${won(price - S.me.cash)} 부족해요.</p>` : ''}` : `<p class="hint">${seasonOver() ? '시즌이 끝나서 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}
-    <p class="hint">${{ free: '사면 12시간마다 가치의 2%가 임대료로 들어와요.', mine: '친구가 50%를 내면 파괴할 수 있어요. 파괴되면 가치가 멈추고 임대료도 끊겨요.', mineBroken: '복구하지 않으면 누군가 2배 가격으로 강제 매입할 수 있어요.', other: '파괴하면 가치가 멈추고 주인의 총자산에서 빠져요. 파괴한 사람은 익명이에요.', otherBroken: '강제 매입하면 건물이 바로 복구되고 내 것이 돼요. 낸 돈은 시장으로 사라져요.' }[st]}</p>`;
+    <p class="hint">${{ free: '사면 12시간마다 가치의 0.5%가 임대료로 들어오고, 지도와 순위표에 내 이름이 걸려요.', mine: '친구가 50%를 내면 파괴할 수 있어요. 파괴되면 가치가 멈추고 임대료도 끊겨요.', mineBroken: '복구하지 않으면 누군가 2배 가격으로 강제 매입할 수 있어요.', other: '파괴하면 가치가 멈추고 주인의 총자산에서 빠져요. 파괴한 사람은 익명이에요.', otherBroken: '강제 매입하면 건물이 바로 복구되고 내 것이 돼요. 낸 돈은 시장으로 사라져요.' }[st]}</p>`;
   requestAnimationFrame(() => { const cv = $('#estChart'); if (!cv) return; const arr = []; for (let i = 0; i <= k; i++) arr.push(estAt(bd.id, tickTime(S.season.start, i))); drawChart(cv, arr, { live: frozen || k >= NT ? null : { x: liveX(), v } }); });
 }
 async function estAction() {
@@ -935,7 +1070,7 @@ function confetti(colors) {
   requestAnimationFrame(step);
 }
 const boom = () => { confetti(['#f2414f', '#ff9f1c', '#ffd23f', '#3a3346']); document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); };
-const buzz = (ms = 40) => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch {} };
+const buzz = (ms = 40) => { try { if (navigator.vibrate && navigator.userActivation && navigator.userActivation.isActive) navigator.vibrate(ms); } catch {} };
 function holdingAlerts() {
   if (!S.me) return;
   for (const sym of Object.keys(S.me.hold || {})) {
@@ -952,11 +1087,11 @@ function wheelBg() { const cols = ['#6a4cf5', '#f5f5f9']; return 'conic-gradient
 function renderCasino() {
   const el = $('#tab-casino');
   if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 게임을 할 수 없어요.' : '참가하면 게임을 할 수 있어요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
-  const bet = Math.min(S.bet || 500000, MAXBET);
+  const bet = Math.min(S.bet || 5e8, MAXBET);
   const mx = Math.min(MAXBET, S.me.cash);
-  const bets = [[100000, '10만'], [500000, '50만'], [1000000, '100만'], [2000000, '200만']];
+  const bets = [[1e8, '1억'], [5e8, '5억'], [1e9, '10억'], [2e9, '20억']];
   let h = `<div class="card bal"><span class="dim" style="font-weight:700;font-size:13px">현금</span><b class="num">${won(S.me.cash)}</b></div>
-    <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>한 판 최대 200만원</small></div>
+    <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>한 판 최대 20억원</small></div>
     <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${bet === v}" ${v > S.me.cash ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>
     <div class="card game"><div><h3>홀짝</h3><p class="desc">맞히면 1.95배. 50% 확률.</p></div>
       <div class="coin" id="coin">${C.coinFace}</div>
@@ -973,7 +1108,7 @@ function renderCasino() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function playCasino(game, choice) {
   if (!S.me || S.saving || C.busy || seasonOver()) { if (seasonOver()) toast('시즌이 끝나서 게임도 닫혔어요'); return; }
-  const bet = Math.min(S.bet || 500000, MAXBET);
+  const bet = Math.min(S.bet || 5e8, MAXBET);
   if (bet > S.me.cash) { toast('현금이 부족해요'); return; }
   C.busy = true; let mult, label;
   if (game === 'coin') {
@@ -995,7 +1130,7 @@ async function playCasino(game, choice) {
   const msg = net > 0 ? `<b class="up">+${won(net)}</b> ${mult}배!` : net < 0 ? `<b class="down">-${won(-net)}</b> ${mult ? mult + '배' : '꽝'}` : '본전';
   if (game === 'coin') C.coinMsg = ok ? `${C.coinFace} · ${msg}` : ''; else C.wheelMsg = ok ? msg : '';
   C.busy = false;
-  if (ok && (mult >= 2 || (mult === 0 && bet >= 1000000))) addFeed({ kind: 'casino', game: label, mult, amt: net });
+  if (ok && (mult >= 2 || (mult === 0 && bet >= 1e9))) addFeed({ kind: 'casino', game: label, mult, amt: net });
   renderAll();
 }
 
@@ -1026,7 +1161,7 @@ function renderMarket() {
 /* ───────── wallet ───────── */
 function renderWallet() {
   const el = $('#tab-wallet');
-  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 지갑이 없어요.' : '참가하면 1,000만원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
+  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 지갑이 없어요.' : '참가하면 100억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
   const k = S.tick, m = S.me;
   let inv = 0; Object.entries(m.hold || {}).forEach(([s, q]) => inv += q * px(s, k));
   let h = `<div class="cards2"><div class="card stat"><div class="lab">💵 현금</div><div class="v num">${won(m.cash)}</div></div><div class="card stat"><div class="lab">📦 주식</div><div class="v num">${won(inv)}</div></div></div>`;
@@ -1045,16 +1180,16 @@ function renderWallet() {
   }
   const est = myEstates({ id: S.uid });
   if (est.length) { h += `<div class="sec"><div class="sec-h"><h2>🏢 부동산</h2><small>12시간마다 임대료</small></div><div class="slist">`;
-    est.forEach(b => { const e = estOf(b.id), v = estVal(b.id, k); h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : 'var(--violet)'}">${e.destroyed ? '💥' : '🏢'}</span><span class="sname"><b>${esc(b.n)}</b><small>${e.destroyed ? '<span class="up">파괴됨 · 복구 필요</span>' : '임대료 ' + won(v * RENT)}</small></span><span class="sprice"><div class="p num">${won(e.destroyed ? 0 : v)}</div></span></button>`; });
+    est.forEach(b => { const e = estOf(b.id), v = estVal(b.id, k); h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : 'var(--violet)'}">${e.destroyed ? '💥' : ICON[b.t]}</span><span class="sname"><b>${esc(b.n)}</b><small>${e.destroyed ? '<span class="up">파괴됨 · 복구 필요</span>' : '임대료 ' + won(v * RENT)}</small></span><span class="sprice"><div class="p num">${won(e.destroyed ? 0 : v)}</div></span></button>`; });
     h += `</div></div>`; }
   h += `<div class="info"><div>받은 지원금<b class="num">${won(BONUS * earnedOf(m))}</b></div><div>게임 손익<b class="num ${cls(m.casino || 0)}">${signWon(m.casino || 0)}</b></div><div>받은 임대료<b class="num up">${won(m.rentTotal || 0)}</b></div></div>`;
-  h += `<p class="hint">수익률은 시드 1,000만원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
+  h += `<p class="hint">수익률은 시드 100억원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
   el.innerHTML = h;
 }
 
 /* ───────── feed ───────── */
 function feedText(f) {
-  const st = f.sym && SM[f.sym]; const nm = esc(nameOf(f.uid)); const size = f.amt < 1.5e6 ? '살짝' : f.amt < 4e6 ? '꽤' : '왕창';
+  const st = f.sym && SM[f.sym]; const nm = esc(nameOf(f.uid)); const size = f.amt < 1.5e9 ? '살짝' : f.amt < 4e9 ? '꽤' : '왕창';
   if ((f.kind === 'buy' || f.kind === 'sell' || f.kind === 'short') && !st) return null;
   if (f.kind === 'casino' && typeof f.amt !== 'number') return null;
   switch (f.kind) {
@@ -1359,9 +1494,9 @@ async function doSpy(id) {
 function renderJoinSheet(b) {
   const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '') || '존버의신';
   b.innerHTML = `<div class="rv-head"><span class="k">NEW SEASON</span><h3>이번 주 1등은 누구?</h3></div>
-    <p class="hint" style="text-align:center">1,000만원으로 시작해요. 일요일 밤 10시 마지막 라운드가 끝났을 때 총자산 1등이 우승이에요. 12시간마다 200만원 지원금이 자동으로 들어와요.</p>
+    <p class="hint" style="text-align:center">100억원으로 시작해요. 일요일 밤 10시 마지막 라운드가 끝났을 때 총자산 1등이 우승이에요. 12시간마다 20억원 지원금이 자동으로 들어와요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
-    <button class="cta" type="button" id="joinBtn">1,000만원 받고 참가하기</button>`;
+    <button class="cta" type="button" id="joinBtn">100억원 받고 참가하기</button>`;
 }
 async function doJoin() {
   const inputEl = $('#nick');
@@ -1380,9 +1515,9 @@ function renderHelp(b) {
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
     <li><span>5</span><span><b>공매도</b>는 내릴 때 돈을 벌어요. 누가 걸었는지는 비밀.</span></li>
     <li><span>6</span><span>친구 지갑은 <b>대표 종목 하나</b>만 보여요. 하루 한 번 🕵️ <b>엿보기</b>로 한 명의 지갑을 다 볼 수 있어요.</span></li>
-    <li><span>7</span><span><b>12시간마다 200만원</b> 지원금이 자동으로 들어와요(0시, 12시). 앱을 안 열어도 쌓여요.</span></li>
-    <li><span>8</span><span><b>부동산</b>: 서울 건물을 사면 12시간마다 가치의 2%가 임대료로 들어와요. 남의 건물은 50%를 내고 파괴, 파괴된 건물은 2배로 강제 매입할 수 있어요.</span></li>
-    <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 한 판 최대 200만원.</span></li>
+    <li><span>7</span><span><b>12시간마다 20억원</b> 지원금이 자동으로 들어와요(0시, 12시). 앱을 안 열어도 쌓여요.</span></li>
+    <li><span>8</span><span><b>부동산</b>: 서울 건물을 사면 12시간마다 가치의 0.5%가 임대료로 들어와요. 남의 건물은 50%를 내고 파괴, 파괴된 건물은 2배로 강제 매입할 수 있어요.</span></li>
+    <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 한 판 최대 20억원.</span></li>
     <li><span>10</span><span>일요일 22시 마지막 라운드 결과로 이번 주 1등이 정해져요.</span></li>
   </ul>
   <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>${S.fb && S.mode === 'live' ? '<button class="cta soft" type="button" id="logoutBtn">로그아웃</button>' : ''}`;
@@ -1431,7 +1566,7 @@ let saveChain = Promise.resolve();
 function saveMe(me, before) {
   S.me = me; S.players[S.uid] = me;
   const run = async () => {
-    if (S.mode === 'demo') { LS.set('demo2:' + S.season.sid, me); return true; }
+    if (S.mode === 'demo') { LS.set('demo3:' + S.season.sid, me); return true; }
     try { await S.db.doc('players/' + S.uid).set(me); return true; }
     catch (e) {
       S.me = before || null; if (before) S.players[S.uid] = before; else delete S.players[S.uid];
@@ -1445,7 +1580,7 @@ function saveMe(me, before) {
 }
 function addFeed(f) {
   const item = { ...f, uid: S.uid, season: S.season.sid, ts: Date.now() };
-  if (S.mode === 'demo') { S.feed.unshift(item); LS.set('demoFeed2:' + S.season.sid, S.feed.filter(x => !x.bot)); return; }
+  if (S.mode === 'demo') { S.feed.unshift(item); LS.set('demoFeed3:' + S.season.sid, S.feed.filter(x => !x.bot)); return; }
   S.db.collection('feed').add(item).catch(() => {});
 }
 
@@ -1463,21 +1598,21 @@ function makeBots() {
 }
 function loadDemo() {
   S.uid = 'me'; S.players = makeBots();
-  const me = LS.get('demo2:' + S.season.sid, null); if (me && me.season === S.season.sid) { S.players.me = me; S.me = me; } else S.me = null;
+  const me = LS.get('demo3:' + S.season.sid, null); if (me && me.season === S.season.sid) { S.players.me = me; S.me = me; } else S.me = null;
   const bf = Object.entries(S.players).filter(([id]) => id !== 'me').flatMap(([id, p], i) => [
     { kind: 'join', uid: id, season: S.season.sid, ts: S.season.start + (i + 1) * 7 * 60e3, bot: true },
     ...Object.entries(p.hold).map(([s, q], j) => ({ kind: 'buy', uid: id, sym: s, amt: q * SM[s].p0, season: S.season.sid, ts: S.season.start + (i + 1) * 9 * 60e3 + j * 60e3, bot: true })),
     ...Object.keys(p.shorts).map(s => ({ kind: 'short', uid: id, sym: s, season: S.season.sid, ts: S.season.start + (i + 2) * 11 * 60e3, bot: true })),
   ]);
-  S.feed = [...LS.get('demoFeed2:' + S.season.sid, []), ...bf].sort((a, b) => b.ts - a.ts);
+  S.feed = [...LS.get('demoFeed3:' + S.season.sid, []), ...bf].sort((a, b) => b.ts - a.ts);
   const TR = rng('talk:' + S.season.sid); const LINES = ['이거 다음 라운드 간다', '물렸다… 존버합니다', '찌라시 믿고 들어갔다가 망함ㅋㅋ', '공매도 각 아님?', '외국인 들어온다던데', '여기서 더 사는 건 욕심인가', '오늘 점심장에 손절함', '평단 낮추는 중', '이 가격이면 줍줍', '큰손 이벤트 여기 아니냐'];
   const botTalk = []; let c0 = 0;
   STOCKS.forEach(st => { if (TR() < .45) { const n = 1 + Math.floor(TR() * 3); for (let i = 0; i < n; i++) { const bi = Math.floor(TR() * 3); botTalk.push({ id: 'bt' + (c0++), bot: true, sym: st.id, uid: 'bot' + bi, text: pick(TR, LINES), ts: now() - Math.floor(TR() * 36e5 * 20), season: S.season.sid, likes: TR() < .5 ? { ['bot' + ((bi + 1) % 3)]: true } : {} }); } } });
   Object.values(S.players).forEach(p => { if (!p.bot) return; p.votes = {}; STOCKS.forEach(st => { if (TR() < .5) p.votes[st.id] = { k: S.tick, sid: S.season.sid, d: TR() < .55 ? 'up' : 'down' }; }); });
   S.talk = [...LS.get('demoTalk', []), ...botTalk];
   const ER = rng('est:' + S.season.sid); const bots = ['bot0', 'bot1', 'bot2']; const est = {};
-  ESTATES.forEach(b => { if (ER() < .3) est[b.id] = { season: S.season.sid, owner: bots[Math.floor(ER() * 3)], paid: b.v0, at: S.season.start, destroyed: ER() < .25 ? { value: Math.round(b.v0 * (.9 + ER() * .2) / 10000) * 10000, at: S.season.start, by: 'bot0' } : null, bot: true }; });
-  S.estates = { ...est, ...LS.get('demoEst:' + S.season.sid, {}) };
+  ESTATES.forEach(b => { if (ER() < .3 && b.v0 <= 1.5e10) est[b.id] = { season: S.season.sid, owner: bots[Math.floor(ER() * 3)], paid: b.v0, at: S.season.start, destroyed: ER() < .25 ? { value: Math.round(b.v0 * (.9 + ER() * .2) / 10000) * 10000, at: S.season.start, by: 'bot0' } : null, bot: true }; });
+  S.estates = { ...est, ...LS.get('demoEst3:' + S.season.sid, {}) };
 }
 function startDemo() { S.mode = 'demo'; S.loaded = true; loadDemo(); renderAll(); if (!maybeReveal()) maybeJoin(); autoCredit(); }
 
@@ -1541,7 +1676,7 @@ function startLive(db, uid) {
   db.collection('feed').orderBy('ts', 'desc').limit(40).onSnapshot(snap => { S.feed = snap.docs.map(d => d.data()); renderAll(); }, () => {});
 }
 async function boot() {
-  syncTime(); S.lastLive = liveStep(now()); S.bet = LS.get('bet', 500000); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
+  syncTime(); S.lastLive = liveStep(now()); S.bet = LS.get('bet3', 5e8); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
   const cfg = window.FIREBASE_CONFIG;
   if (cfg && cfg.apiKey) { bootFirebase(cfg); return; }
   let db = null, user = null;
@@ -1554,12 +1689,13 @@ async function boot() {
 
 /* ───────── events ───────── */
 document.addEventListener('click', e => {
+  if (e.target.closest('#seoulMap')) return;
   const pin = e.target.closest('[data-estate]'); if (pin) { openSheet('estate', { bid: pin.dataset.estate }); return; }
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { goTab(t.dataset.tab); return; }
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
-  if (t.dataset.bet) { S.bet = +t.dataset.bet; LS.set('bet', S.bet); renderCasino(); return; }
+  if (t.dataset.bet) { S.bet = +t.dataset.bet; LS.set('bet3', S.bet); renderCasino(); return; }
   if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
   if (t.dataset.filter) { S.filter = t.dataset.filter; renderMarket(); return; }
   if (t.dataset.vote) { castVote(t.dataset.vote); return; }
@@ -1578,6 +1714,9 @@ document.addEventListener('click', e => {
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
     case 'estAct': estAction(); break;
+    case 'zoomIn': zoomAt(1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
+    case 'zoomOut': zoomAt(1 / 1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
+    case 'zoomReset': { const h = MAP.w0 * mapAR(); S.mapV = { x: MAP.x0, y: MAP.y0 + MAP.h0 / 2 - h / 2, w: MAP.w0, h }; applyMapView(); break; }
     case 'googleBtn': t.disabled = true; S.fb.signIn().catch(() => toast('로그인하지 못했어요. 다시 시도해 주세요.')).finally(() => { t.disabled = false; }); break;
     case 'demoBtn': $('#login').hidden = true; document.body.classList.remove('noscroll'); startDemo(); break;
     case 'logoutBtn': S.fb.signOut().then(() => location.reload()); break;
