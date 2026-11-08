@@ -129,10 +129,14 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .ava{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:var(--ink);flex:none}
 .ava.lg{width:52px;height:52px;font-size:20px}
 .ava.ph{background-size:cover;background-position:center;background-color:var(--paper)}
-.fxcard{display:flex;align-items:baseline;gap:10px;padding:14px 16px}
-.fxcard span{font-weight:700;color:var(--dim);font-size:13.5px}
-.fxcard b{font-size:20px;font-weight:900}
-.fxcard small{color:var(--dim);font-weight:700;margin-left:auto}
+.fxrate{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;margin-bottom:8px}
+.fx-l{min-width:0}.fx-l small{display:block;font-size:12.5px;font-weight:700;color:var(--dim)}.fx-l b{display:block;font-size:24px;font-weight:900;white-space:nowrap}
+.fx-l span{display:block;font-size:12px;font-weight:700;color:var(--dim);white-space:nowrap}
+.fx-c{font-size:18px;font-weight:900;text-align:right;white-space:nowrap}.fx-c small{display:block;font-size:11px;font-weight:700;color:var(--dim)}
+.fxbar{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--dim);margin:0 4px 10px;white-space:nowrap}
+.fxtrack{position:relative;flex:1;height:6px;border-radius:99px;background:linear-gradient(90deg,var(--down-bg),var(--up-bg))}
+.fxtrack i{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%)}
+.fxcard{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px}.fxcard .fx-l b{font-size:19px}
 .posbtn{background:var(--violet);color:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:800}
 .estbtns{display:flex;flex-direction:column;gap:8px}
 .shopgame{display:flex;align-items:center;gap:12px;padding:16px;width:100%;text-align:left;margin-bottom:14px;background:var(--violet-bg)}
@@ -1722,11 +1726,15 @@ function renderInvest() {
   if (body.dataset.sub !== S.inv) { body.innerHTML = ''; body.dataset.sub = S.inv; }
   if (S.inv === 'estate') { renderEstList(body); return; }
   if (S.inv === 'fx') {
-    const fp = px('USD', k), fc = nowChg('USD'), held = (S.me && (S.me.hold || {}).USD) || 0;
-    body.innerHTML = `<div class="sec"><div class="sec-h"><h2>환율</h2>${posBtn || '<small>1달러 = 900~1,900원 사이</small>'}</div>
+    const fp = px('USD', k), fc = nowChg('USD'), held = (S.me && (S.me.hold || {}).USD) || 0, avg = held ? ((S.me.cost || {}).USD || fp) : 0;
+    const val = held * fp, pnl = held ? (fp - avg) * held : 0, pct = avg ? fp / avg - 1 : 0, pos = Math.max(0, Math.min(100, (fp - 900) / 10));
+    body.innerHTML = `<div class="sec"><div class="sec-h"><h2>환율</h2>${posBtn}</div>
+      <div class="card fxrate"><div class="fx-l"><small>1달러</small><b class="num">${PW('USD', fp)}</b></div><span class="fx-c num ${cls(fc)}">${pctTxt(fc)}<small>2시간</small></span></div>
+      <div class="fxbar"><span>900</span><div class="fxtrack"><i style="left:${pos}%"></i></div><span>1,900</span></div>
       <div class="slist">${stockRow(USD)}</div></div>
-      ${held ? `<div class="card fxcard"><span>내 달러</span><b class="num">${QT('USD', held)}</b><small class="num">≈ ${won(held * fp)}</small></div>` : ''}
-      <p class="hint">달러를 사 두면 환율이 오를 때 원화 가치가 올라요. 1달러 단위로 사고팔아요. 2시간 변동률 ${pctTxt(fc)}.</p>`;
+      ${held ? `<div class="card fxcard"><div class="fx-l"><small>내 달러</small><b class="num">${QT('USD', held)}</b><span class="num">${won(val)} · 평단 ${PW('USD', avg)}</span></div>
+        <span class="ws-pnl"><small class="num amt ${cls(pnl)}">${signWon(pnl)}</small><b class="num pct ${cls(pnl)}">${pctTxt(pct)}</b></span></div>` : ''}
+      <p class="hint">환율이 오를 때 달러를 갖고 있으면 원화 가치가 올라요. 1달러 단위로 사고팔고, 수수료는 0.3%예요.</p>`;
     return;
   }
   if (S.inv === 'stock') {
@@ -1829,7 +1837,7 @@ function stockRow(s) {
   const pos = lv ? `<span class="postag ${(lv.d || 1) < 0 ? 'short' : 'long'}">${lv.x}배 ${levSide(lv)}</span>` : sq ? `<span class="postag short">공매도</span>` : '';
   const mp = myPositions().filter(x => x.sym === s.id); const rowPnl = mp.reduce((a, x) => a + x.pnl, 0), rowP = mp.reduce((a, x) => a + x.principal, 0);
   const hl = haltLeft(s.id) > 0;
-  const sub = (hl ? '<span class="postag short">⛔ 거래정지</span> ' : '') + pos + (q ? `<span class="mine">${QT(s.id, q)} 보유</span>` : pos ? '' : catName(s)) + (mp.length ? ` <b class="rowpnl ${cls(rowPnl)}">${signWon(rowPnl)} (${pctTxt(rowP ? rowPnl / rowP : 0)})</b>` : '') + (tc ? ` · 💬${tc}` : '');
+  const sub = (hl ? '<span class="postag short">⛔ 거래정지</span> ' : '') + pos + (q ? `<span class="mine">${QT(s.id, q)} 보유</span>` : pos ? '' : catName(s)) + (mp.length && !s.fx ? ` <b class="rowpnl ${cls(rowPnl)}">${signWon(rowPnl)} (${pctTxt(rowP ? rowPnl / rowP : 0)})</b>` : '') + (tc ? ` · 💬${tc}` : '');
   const fl = LV.flash && LV.flash[s.id] ? ' f' + LV.flash[s.id] : '';
   const off = seasonOver() || S.readOnly;
   return `<div class="srow${fl ? ' row' + fl.trim() : ''}"><button class="srow-main" type="button" data-stock="${s.id}">${badge(s)}<span class="sname"><b class="${lv ? ((lv.d || 1) < 0 ? 'hot-short' : 'hot-long') : sq ? 'hot-short' : ''}">${esc(s.n)}</b><small>${sub}</small></span>
