@@ -985,32 +985,8 @@ function estVal(bid, k) {
 const estOf = bid => { const e = S.estates[bid]; return e && e.owner ? e : null; };
 const myEstates = p => ESTATES.filter(b => { const e = estOf(b.id); return e && e.owner === p.id; });
 const LEVS = [5, 10, 25, 50, 100];
-const PK_MEM = {};
-const levMaxDrop = x => 1 / ((x || 25) * 1.12);
-function ensurePeak(sym, o, price) {
-  const d = o.d || 1, k = (sym || '') + ':' + o.e + ':' + o.q + ':' + (o.x || 1) + ':' + d;
-  let pk = PK_MEM[k];
-  if (pk == null) {
-    pk = o.pk || o.e;
-    if (sym && !o.bot && S.season) {
-      const tNow = now(), tFrom = o.at ? Math.max(o.at, tNow - 300e3) : (tNow - 90e3);
-      for (let t = tFrom; t <= tNow; t += 2000) {
-        const p = tickRound(priceAt(sym, t));
-        pk = d > 0 ? Math.max(pk, p) : Math.min(pk, p);
-      }
-    }
-  }
-  pk = d > 0 ? Math.max(pk, o.e, price) : Math.min(pk, o.e, price);
-  PK_MEM[k] = o.pk = pk;
-  return pk;
-}
-// 고점 자동 불타기(트레일링 청산): 오를 때는 레버리지 수익을 그대로 먹고, 익절 안 하고 버티다가 고점(pk) 대비 1/(1.12*x) 꼬라박으면 원금까지 전액 청산!
-function levVal(o, price, sym) {
-  const d = o.d || 1, pk = ensurePeak(sym, o, price);
-  const peakVal = Math.max(0, o.m + d * o.q * (pk - o.e));
-  const dropPct = Math.max(0, d * (pk - price) / pk);
-  return Math.max(0, peakVal * (1 - dropPct / levMaxDrop(o.x || 25)));
-}
+// 레버리지 평가액: 진입가 기준. 진입가보다 유리하면 수익, 불리하면 손실(증거금 6% 남으면 청산)
+const levVal = (o, price) => Math.max(0, o.m + (o.d || 1) * o.q * (price - o.e));
 const levSide = o => (o.d || 1) < 0 ? '숏' : '롱';
 const levROE = (o, price, sym) => levVal(o, price, sym) / o.m - 1;
 function worth(p, k) {
@@ -1184,8 +1160,8 @@ function myPositions(me) {
   });
   Object.entries(me.lev || {}).filter(([s]) => SM[s]).forEach(([s, o]) => {
     const p = px(s, k), d = o.d || 1, value = Math.max(0, levVal(o, p, s) - Math.ceil(o.q * p * FEE));
-    const pk = ensurePeak(s, o, p), mxD = levMaxDrop(o.x || 25), liqP = pk * (1 - d * mxD), dist = Math.max(0, d * (p - liqP) / p);
-    out.push({ sym: s, kind: 'lev', label: `${d < 0 ? '📉' : '🚀'}${o.x}배 ${levSide(o)}`, mode: 'levclose', principal: o.m, value, dist, distMax: mxD });
+    const liqP = o.e - d * (o.m * .94) / o.q, dist = Math.max(0, d * (p - liqP) / p);
+    out.push({ sym: s, kind: 'lev', label: `${d < 0 ? '📉' : '🚀'}${o.x}배 ${levSide(o)}`, mode: 'levclose', principal: o.m, value, dist, distMax: .94 / (o.x || 25) });
   });
   Object.entries(me.shorts || {}).filter(([s]) => SM[s]).forEach(([s, o]) => {
     const p = px(s, k), value = Math.max(0, o.q * (2 * o.e - p) - Math.ceil(o.q * p * FEE)), liqP = o.e * 1.35;
