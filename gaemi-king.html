@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>MPL 주식 리그</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -895,7 +897,7 @@ function drawChart(cv, arr, o = {}) {
 }
 
 /* ───────── sheets ───────── */
-function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('#sheetWrap'); w.classList.toggle('center', type === 'quick'); w.hidden = false; renderSheet(); setTimeout(() => { const q = $('#qty'); if (type === 'quick' && q) q.focus(); }, 60); }
+function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('#sheetWrap'); w.classList.toggle('center', type === 'quick'); w.hidden = false; renderSheet(); setTimeout(() => { const q = $('#qty'); if (type === 'quick' && q) q.focus(); const n = $('#nick'); if (type === 'join' && n) { n.focus(); n.select(); } }, 60); }
 function closeSheet() { const t = S.sheet && S.sheet.type; S.sheet = null; $('#sheetWrap').hidden = true; if (t === 'reveal') maybeJoin(); }
 function renderSheet() {
   const b = $('#sheetBody'); const sh = S.sheet; if (!sh) return;
@@ -1121,14 +1123,15 @@ async function doSpy(id) {
   if (ok) { addFeed({ kind: 'spy', target: id }); toast('🕵️ 지갑을 열어봤어요'); renderAll(); renderSheet(); }
 }
 function renderJoinSheet(b) {
-  const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '');
+  const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '') || '존버의신';
   b.innerHTML = `<div class="rv-head"><span class="k">NEW SEASON</span><h3>이번 주 1등은 누구?</h3></div>
     <p class="hint" style="text-align:center">1,000만원으로 시작해요. 일요일 밤 10시 마지막 라운드가 끝났을 때 총자산 1등이 우승이에요. 12시간마다 200만원 지원금이 자동으로 들어와요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
     <button class="cta" type="button" id="joinBtn">1,000만원 받고 참가하기</button>`;
 }
 async function doJoin() {
-  const nick = ($('#nick').value || '').trim().slice(0, 10); if (!nick) { toast('닉네임을 적어주세요'); return; }
+  const inputEl = $('#nick');
+  const nick = ((inputEl && inputEl.value) || '').trim().slice(0, 10) || '존버의신';
   LS.set('nick', nick);
   const me = { name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, bonusN: 0, joined: Date.now(), hold: {}, cost: {}, shorts: {}, spy: null, casino: 0, ts: Date.now() };
   S.saving = true; const ok = await saveMe(me, S.me); S.saving = false;
