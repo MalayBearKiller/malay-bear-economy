@@ -132,6 +132,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .back-link{font-weight:800;color:var(--violet);font-size:14px;padding:4px 0;margin-bottom:10px}
 .minimap{margin-top:4px;padding:10px}.minimap svg{width:100%;max-width:300px;height:auto;display:block;margin:auto}
 .lvtag{font-size:13px;font-weight:800;color:#fff;background:var(--violet);border-radius:8px;padding:2px 7px;vertical-align:3px}
+.lvmax{margin:-4px 0 14px}
 .lvitem{margin-bottom:12px;background:var(--gold-bg)}
 .lrow .who small.lv{color:var(--violet);font-weight:800}
 .shopitem{display:flex;align-items:center;gap:12px;padding:14px 16px}
@@ -2431,6 +2432,17 @@ async function levelUp() {
   S.saving = true; const ok = await saveMe(me, before); S.saving = false;
   if (ok) { toast(`⭐ LV.${lv + 1} 달성!`); confetti(); buzz(60); renderAll(); }
 }
+// 현금으로 갈 수 있는 데까지 한 번에 올리기 (두 번 눌러야 결제)
+function lvMaxPlan(cash, lv) { let n = lv, spent = 0; while (n < 100000) { const c = lvCost(n); if (spent + c > cash) break; spent += c; n++; } return { to: n, spent }; }
+async function levelMax() {
+  if (!S.me || S.saving || S.readOnly) return;
+  const lv = lvOf(S.me), plan = lvMaxPlan(S.me.cash, lv); if (plan.to <= lv) { toast('현금이 부족해요'); return; }
+  if (!S.lvArm || Date.now() - S.lvArm > 4000) { S.lvArm = Date.now(); renderShop(); return; }
+  S.lvArm = 0;
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - plan.spent); me.lv3 = plan.to;
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false;
+  if (ok) { toast(`⭐ LV.${plan.to} 달성! (${plan.to - lv}레벨 · ${won(plan.spent)})`); confetti(); buzz(80); renderAll(); }
+}
 // 🛍️ 상점
 function renderShop() {
   const el = $('#tab-shop');
@@ -2438,8 +2450,9 @@ function renderShop() {
     if (!el.querySelector('#tab-casino')) el.innerHTML = `<button type="button" class="back-link" id="shopBack">← 상점으로</button><section class="sec" id="tab-casino" style="gap:18px"></section>`;
     if (!C.busy) renderCasino(); return;
   }
-  const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv);
+  const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv), plan = S.me ? lvMaxPlan(S.me.cash, lv) : { to: lv, spent: 0 }, armed = S.lvArm && Date.now() - S.lvArm < 4000;
   el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 가격이 1.14배가 돼요</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
+    ${plan.to > lv + 1 ? `<button type="button" class="cta ${armed ? 'buy' : 'soft'} lvmax" id="lvMax" ${S.saving || S.readOnly ? 'disabled' : ''}>${armed ? `한 번 더 누르면 LV.${plan.to}까지 · ${won(plan.spent)} 결제` : `⏫ 최대한 올리기 · LV.${plan.to}까지 ${won(plan.spent)}`}</button>` : ''}
 <div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
     <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
 }
@@ -3116,6 +3129,7 @@ document.addEventListener('click', e => {
     case 'sheetX2': closeSheet(); break;
     case 'posOpen': openSheet('pos'); break;
     case 'lvUp': levelUp(); break;
+    case 'lvMax': levelMax(); break;
     case 'shopGame': case 'gameBtn': S.shopView = 'game'; goTab('shop'); break;
     case 'shopBack': S.shopView = null; renderShop(); break;
     case 'boardBack': closeBoard(); break;
