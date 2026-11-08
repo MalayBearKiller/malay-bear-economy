@@ -51,7 +51,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .logo i{font-style:normal;color:var(--violet)}
 .round{font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--violet-bg);color:var(--violet)}
 #homeMap{margin-top:-10px}
-#homeMap .seoul{height:calc(100vh - 190px);max-height:560px;min-height:320px}
+#homeMap .seoul{height:calc(100vh - 250px);height:calc(100dvh - 250px);min-height:300px}
 .boardbtn{margin-left:auto;position:relative;height:34px;padding:0 12px;border-radius:99px;font-weight:800;font-size:13.5px;background:var(--paper);color:var(--ink)}
 .boardbtn .dot{position:absolute;top:2px;right:2px}
 .invseg{margin-bottom:14px}
@@ -1670,7 +1670,7 @@ function renderHome() {
     }
   }
   h += `</div>`;
-  } else h += `<div class="sec-h">${hsw}<small>구마다 땅주인 도장이 찍혀요</small></div>`;
+  } else h = `<div class="sec-h">${hsw}<small>구마다 땅주인 도장이 찍혀요</small></div>`; // 지도 볼 때는 위 카드들 없이 지도만
   if (!el.querySelector('#homeDyn')) el.innerHTML = '<div id="homeDyn" style="display:contents"></div><div id="homeMap" hidden></div>';
   $('#homeDyn').innerHTML = h;
   const hm = $('#homeMap'); hm.hidden = S.homeView !== 'map';
@@ -2942,7 +2942,7 @@ document.addEventListener('click', e => {
   if (t.dataset.estpg) { S.estPage = (S.estPage || 0) + +t.dataset.estpg; renderInvest(); return; }
   if (t.dataset.inv) { S.inv = t.dataset.inv; renderInvest(); window.scrollTo({ top: 0 }); return; }
   if (t.dataset.boardtab) { S.board = t.dataset.boardtab; renderBoard(); return; }
-  if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); if (S.homeView === 'map') { const sw = document.querySelector('#homeDyn .hswitch'); if (sw) window.scrollTo(0, sw.getBoundingClientRect().top + window.scrollY - 12); } return; }
+  if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); window.scrollTo(0, 0); return; }
   if (t.dataset.eqsec) { S.eqSec = t.dataset.eqsec; renderAll(); return; }
   if (t.dataset.homesec) { S.homeSec = t.dataset.homesec; renderAll(); return; }
   if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
