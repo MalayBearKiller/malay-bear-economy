@@ -745,8 +745,19 @@ const isEq = id => !!(SM[id] && SM[id].eq);
 const EQ_EPOCH = Date.parse('2026-11-02T00:00:00+09:00');
 const EQ_OCT = [[7 * 864e5, .09], [864e5, .03], [72e5, .011], [6e5, .0045], [6e4, .0016], [5e3, .0005]];
 function vnoise(key, x) { const i = Math.floor(x), f = x - i, a = seedOf(key + i) / 2147483648 - 1, b = seedOf(key + (i + 1)) / 2147483648 - 1, u = f * f * (3 - 2 * f); return a + (b - a) * u; }
+// v2: 실제 주식처럼 매초 조금씩 움직이게 짧은 흔들림을 더했어요. EQ_V2부터 10분에 걸쳐 서서히 켜져서 그 전 가격은 그대로예요.
+const EQ_V2 = 1794164880000, EQ_FAST = [[72e5, .11], [18e5, .06], [6e5, .03], [6e4, .012], [1e4, .005], [2e3, .0025]];
+// 가끔 급등·급락 한 방: 15분 구간마다 14% 확률로 ±8~30%까지 치솟았다가(또는 꺼졌다가) 제자리로
+function eqSurge(sym, rel) {
+  const W = 9e5, w = Math.floor(rel / W), h = seedOf('eqs1:' + sym + ':' + w); if (h % 100 >= 14) return 0;
+  const amp = (.08 + ((h >>> 8) % 1000) / 1000 * .22) * (((h >>> 18) % 10) < 6 ? 1 : -1), st = ((h >>> 20) % 300) * 1000, dur = (4 + (h >>> 26) % 6) * 6e4, x = (rel - w * W - st) / dur;
+  return x > 0 && x < 1 ? Math.log(1 + amp) * Math.pow(Math.sin(Math.PI * x), 1.5) : 0;
+}
 function eqAt(sym, t) { const e = SM[sym]; let w = 0; const rel = t - EQ_EPOCH;
-  if (e.fx) { for (const [per, amp] of FX_OCT) w += amp * vnoise('fx1:' + sym + ':' + per + ':', rel / per); return Math.round((1400 + 500 * Math.tanh(w)) * 10) / 10; } for (const [per, amp] of EQ_OCT) w += amp * vnoise('eq1:' + sym + ':' + per + ':', rel / per); return Math.max(1, tickRound(e.p0 * Math.exp(w))); }
+  if (e.fx) { for (const [per, amp] of FX_OCT) w += amp * vnoise('fx1:' + sym + ':' + per + ':', rel / per); return Math.round((1400 + 500 * Math.tanh(w)) * 10) / 10; } for (const [per, amp] of EQ_OCT) w += amp * vnoise('eq1:' + sym + ':' + per + ':', rel / per);
+  const fade = Math.max(0, Math.min(1, (t - EQ_V2) / 6e5)); if (fade) { for (const [per, amp] of EQ_FAST) w += fade * amp * vnoise('eq2:' + sym + ':' + per + ':', rel / per); w += fade * eqSurge(sym, rel); }
+
+  return Math.max(1, tickRound(e.p0 * Math.exp(w))); }
 const COIN = {
   MSFT: ['BTC', '비트코인', 'major', 102.389],
   AAPL: ['ETH', '이더리움', 'major', 67.2948],
