@@ -2274,22 +2274,14 @@ function renderShop() {
   el.innerHTML = `<div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
     <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
 }
+// 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
+const brag = f => f && ((f.kind === 'liq' && (f.amt || 0) >= BIG_LIQ) || f.kind === 'tbag' || f.kind === 'est_buy' || f.kind === 'est_force' || f.kind === 'est_destroy' || (f.kind === 'atk' && f.bounty));
 function renderFeed() {
   const el = $('#tab-feed');
-  const items = S.feed.map(f => [f, feedText(f)]).filter(x => x[1]);
-  let h = `<div class="sec"><div class="sec-h"><h2>소식</h2><small>모든 거래 공개</small></div><div class="slist">`;
+  const items = S.feed.filter(brag).map(f => [f, feedText(f)]).filter(x => x[1]);
+  let h = `<div class="sec"><div class="sec-h"><h2>소식</h2><small>100억 청산 · 티배깅 · 건물</small></div><div class="slist">`;
   if (!items.length) h += `<div class="empty">아직 조용해요.</div>`;
   items.slice(0, 40).forEach(([f, [c, ic, tx]]) => { h += `<div class="fitem"><span class="ic ${c}">${ic}</span><span>${tx}</span><time>${timeAgo(f.ts)}</time></div>`; });
-  h += `</div></div><div class="sec"><div class="sec-h"><h2>뉴스 팩트체크</h2><small>출처별로 얼마나 맞았나</small></div><div class="slist">`;
-  if (!S.tick) h += `<div class="empty">첫 속보가 터지면 결과가 쌓여요.</div>`;
-  for (let k = S.tick; k >= 1; k--) {
-    S.SE.news[k].forEach(n => {
-      const c = n.sym ? chg(n.sym, k - 1, k) : null;
-      h += `<div class="fitem"><span class="ic">📰</span><span>${esc(newsTitle(n))}<br><small>${n.src} · ${tickLabel(k)}${c != null ? ` · <span class="num ${cls(c)}">${pctTxt(c)}</span>` : ''}</small></span><span class="verdict ${n.truth ? 't' : 'f'}">${n.truth ? '사실' : '가짜'}</span></div>`;
-    });
-    const sh = S.SE.shocks[k];
-    if (sh) { const c = chg(sh.sym, k - 1, k); h += `<div class="fitem"><span class="ic gold">⚡</span><span>큰손의 정체는 ${esc(SM[sh.sym].n)}<br><small>${tickLabel(k)} · <span class="num ${cls(c)}">${pctTxt(c)}</span></small></span><span class="verdict g">긴급</span></div>`; }
-  }
   h += `</div></div>`; el.innerHTML = h;
   if (items.length) { S.feedSeen = items[0][0].ts; LS.set('feedSeen', S.feedSeen); }
   $('#feedDot').hidden = true;
@@ -2301,7 +2293,7 @@ function renderAll() {
   if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, casino: renderCasino })[S.sub](); }
   else if (!(S.liveOnly && (S.tab === 'home' || S.tab === 'market' || S.tab === 'invest') && Date.now() - chipsTouchAt < 1500)) ({ home: renderHome, market: renderMarket, invest: renderInvest, shop: renderShop })[S.tab]();
   if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); }
-  const latest = S.feed.find(f => f.uid !== S.uid);
+  const latest = S.feed.find(f => f.uid !== S.uid && brag(f));
   $('#feedDot').hidden = S.board === 'feed' || !latest || latest.ts <= S.feedSeen;
   if (S.board && !S.liveOnly) renderBoard();
   if (S.sheet && (S.sheet.type === 'stock' || S.sheet.type === 'quick')) updateTradeEst();
