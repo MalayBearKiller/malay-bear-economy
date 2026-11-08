@@ -2407,11 +2407,11 @@ function drawChart(cv, arr, o = {}) {
   const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
   cv.width = w * dpr; cv.height = h * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
   const cs = getComputedStyle(document.documentElement); const tok = n => cs.getPropertyValue(n).trim();
-  const padT = 8, padB = o.padB ?? 22, padX = 6;
+  const L0 = o.live, padT = 8, padB = o.padB ?? (L0 ? 22 : 8), padX = 6; // 주간 차트(live)만 요일 표시, 나머지는 과거→현재 흐름만
   const base = o.base ?? arr[0];
   const L = o.live; const all = L ? [...arr, L.v] : arr;
   const lo = Math.min(...all, base), hi = Math.max(...all, base), span = hi - lo || 1;
-  const X = i => padX + (w - padX * 2) * i / NT, Y = v => padT + (h - padT - padB) * (1 - (v - lo) / span);
+  const n = L0 ? NT : Math.max(1, arr.length - 1), X = i => padX + (w - padX * 2) * i / n, Y = v => padT + (h - padT - padB) * (1 - (v - lo) / span);
   const col = all[all.length - 1] >= base ? tok('--up') : tok('--down');
   g.strokeStyle = tok('--faint'); g.lineWidth = 1.5; g.setLineDash([4, 5]); g.beginPath(); g.moveTo(padX, Y(base)); g.lineTo(w - padX, Y(base)); g.stroke(); g.setLineDash([]);
   g.beginPath(); arr.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); if (L) g.lineTo(X(L.x), Y(L.v));
