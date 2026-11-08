@@ -334,8 +334,8 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .costline{flex-basis:100%;font-size:12.5px;font-weight:600;color:var(--dim);padding-top:8px;border-top:1px solid var(--paper2)}
 .estsum b{display:block;font-size:17px;font-weight:800}
 .mapbox{position:relative;margin-inline:calc(-1 * var(--gut-l)) calc(-1 * var(--gut-r))}
-.seoul{width:100%;height:min(70vh,520px);display:block;background:#e8f1fb;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
-.seoul path.gu{stroke:#fff;stroke-width:2.2;vector-effect:non-scaling-stroke;transition:fill .2s}
+.seoul{width:100%;height:min(70vh,520px);display:block;background:#1e2a3f;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.seoul path.gu{stroke:#8a7a5c;stroke-width:1.4;vector-effect:non-scaling-stroke;transition:fill .2s}
 .seoul path.gu.mine{stroke:var(--violet);stroke-width:2.5}
 .seoul path.land{pointer-events:none;opacity:.3;stroke:#fff;stroke-width:2.2;vector-effect:non-scaling-stroke}
 .seoul path.land[opacity]{opacity:.16}
@@ -1959,7 +1959,7 @@ function districtSVG() {
       ? `<pattern id="land${i}" patternContentUnits="objectBoundingBox" width="1" height="1"><image href="${p.photo}" width="1" height="1" preserveAspectRatio="xMidYMid slice"/></pattern><path class="land" d="${d.d}" fill="url(#land${i})"/>`
       : `<path class="land" d="${d.d}" style="fill:${ownerColor(uid)}" opacity=".16"/>`;
   }).join('');
-  return DISTRICTS.map((d, i) => `<path class="gu${mine.has(d.n) ? ' mine' : ''}" data-gu="${d.n}" d="${d.d}" style="fill:${mine.has(d.n) ? 'var(--violet-bg)' : ['#f3f2f8', '#eceaf4', '#f6f5fa', '#e9e7f1'][i % 4]}"/>`).join('') + land +
+  return DISTRICTS.map((d, i) => `<path class="gu${mine.has(d.n) ? ' mine' : ''}" data-gu="${d.n}" d="${d.d}" style="fill:${mine.has(d.n) ? '#d9ccff' : ['#efe3c8', '#e6d6b4', '#f2e8d2', '#e9dcbe'][i % 4]}"/>`).join('') + land +
     DISTRICTS.map(d => { const wd = d.n.length * 12 + 10, wc = 54;
       return `<g class="gl${top[d.n] ? ' under' : ''}" data-x="${d.c[0]}" data-y="${d.c[1]}"><g class="gli"><rect class="glbg" x="${-wd / 2}" y="-12" width="${wd}" height="17" rx="8.5"/><text class="gn" y="1">${d.n}</text>${counts[d.n] ? `<rect class="glbg gcb" x="${-wc / 2}" y="7" width="${wc}" height="15" rx="7.5"/><text class="gc" y="18">건물 ${counts[d.n]}</text>` : ''}</g></g>`; }).join('');
 }
