@@ -72,7 +72,11 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .idxmini b{font-size:26px;font-weight:900;letter-spacing:-.03em;vertical-align:-2px}
 .idxmini > .num{font-size:17px;font-weight:900}
 .movers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:-12px}
-.mover{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:18px;background:var(--paper);text-align:left;min-width:0}
+.mover{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:18px;background:var(--paper);min-width:0}
+.mover .mv-main{display:flex;flex-direction:column;gap:6px;text-align:left;min-width:0}
+.mover .tbtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mover .tb{background:var(--bg)}
+.mover .tb.sell.lit{background:var(--down);color:#fff}
 .mover small{font-size:12px;font-weight:700;color:var(--dim)}
 .mover .mn{display:flex;align-items:center;gap:8px;min-width:0}
 .mover .mn .logo-b{width:30px;height:30px;font-size:11px;border-radius:9px}
@@ -900,7 +904,9 @@ function renderHome() {
   const Ik = indexNow(); const ic = Ik / index24() - 1, iw = Ik / 1000 - 1; const [mc, ml] = moodOf(ic);
   const ranked = STOCKS.map(x => ({ s: x, c: nowChg(x.id) })).sort((p, q) => q.c - p.c);
   const best = ranked[0], worst = ranked[ranked.length - 1];
-  const mover = (r, lab) => `<button class="mover ${cls(r.c)}" type="button" data-stock="${r.s.id}"><small>${lab}</small><span class="mn">${badge(r.s)}<b>${esc(r.s.n)}</b></span><span class="mc num">${pctTxt(r.c)}</span></button>`;
+  const mover = (r, lab) => { const off = seasonOver() || S.readOnly, ex = exitMode(r.s.id);
+    return `<div class="mover ${cls(r.c)}"><button class="mv-main" type="button" data-stock="${r.s.id}"><small>${lab}</small><span class="mn">${badge(r.s)}<b>${esc(r.s.n)}</b></span><span class="mc num">${pctTxt(r.c)}</span></button>
+      <span class="tbtns"><button class="tb buy" type="button" data-quick="buy" data-sym="${r.s.id}" ${off ? 'disabled' : ''}>매수</button><button class="tb sell${ex ? ' lit' : ''}" type="button" data-quick="${ex || 'sell'}" data-sym="${r.s.id}" ${off || !ex ? 'disabled' : ''}>매도</button></span></div>`; };
   let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
     <div class="movers">${mover(best, '🚀 2시간 최고')}${mover(worst, '📉 2시간 최저')}</div>`;
 
