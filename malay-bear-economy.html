@@ -123,6 +123,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .fxcard span{font-weight:700;color:var(--dim);font-size:13.5px}
 .fxcard b{font-size:20px;font-weight:900}
 .fxcard small{color:var(--dim);font-weight:700;margin-left:auto}
+.posbtn{background:var(--violet);color:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:800}
 .estbtns{display:flex;flex-direction:column;gap:8px}
 .shopitem{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .shopitem .si-ic{font-size:26px}
@@ -1680,14 +1681,15 @@ function renderInvest() {
   const el = $('#tab-invest'); const k = S.tick; if (!S.inv) S.inv = 'coin';
   const subs = [['stock', '주식'], ['coin', '코인'], ['estate', '부동산'], ['fx', '환율']];
   if (!el.querySelector('#invHud')) el.innerHTML = `<div id="invHud"></div><div class="seg invseg" id="invSeg" role="group" aria-label="투자 메뉴"></div><div id="invBody" class="sec" style="gap:18px"></div>`;
-  const hud = posHUD(); $('#invHud').innerHTML = hud; $('#invHud').style.marginBottom = hud ? '16px' : '0';
+  $('#invHud').innerHTML = ''; const nPos = S.me ? myPositions().filter(hudFilter()).length : 0;
+  const posBtn = nPos ? `<button type="button" class="posbtn" id="posOpen">📋 내 포지션 ${nPos}</button>` : '';
   $('#invSeg').innerHTML = subs.map(([v, l]) => `<button type="button" data-inv="${v}" aria-pressed="${S.inv === v}">${l}</button>`).join('');
   const body = $('#invBody');
   if (body.dataset.sub !== S.inv) { body.innerHTML = ''; body.dataset.sub = S.inv; }
   if (S.inv === 'estate') { renderEstList(body); return; }
   if (S.inv === 'fx') {
     const fp = px('USD', k), fc = nowChg('USD'), held = (S.me && (S.me.hold || {}).USD) || 0;
-    body.innerHTML = `<div class="sec"><div class="sec-h"><h2>환율</h2><small>1달러 = 900~1,900원 사이</small></div>
+    body.innerHTML = `<div class="sec"><div class="sec-h"><h2>환율</h2>${posBtn || '<small>1달러 = 900~1,900원 사이</small>'}</div>
       <div class="slist">${stockRow(USD)}</div></div>
       ${held ? `<div class="card fxcard"><span>내 달러</span><b class="num">${QT('USD', held)}</b><small class="num">≈ ${won(held * fp)}</small></div>` : ''}
       <p class="hint">달러를 사 두면 환율이 오를 때 원화 가치가 올라요. 1달러 단위로 사고팔아요. 2시간 변동률 ${pctTxt(fc)}.</p>`;
@@ -1698,7 +1700,7 @@ function renderInvest() {
     if (S.eqSec == null) S.eqSec = heldE.length ? 'mine' : Object.keys(SECTORS)[0];
     if (S.eqSec === 'mine' ? !heldE.length : !SECTORS[S.eqSec]) S.eqSec = Object.keys(SECTORS)[0];
     const secsE = [...(heldE.length ? [['mine', `보유 ${heldE.length}`]] : []), ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
-    const he = `<div class="sec"><div class="sec-h"><h2>주식</h2><small>잔잔한 안전자산 · 가격 높은 순</small></div>
+    const he = `<div class="sec"><div class="sec-h"><h2>주식</h2>${posBtn || '<small>가격 높은 순</small>'}</div>
       <div class="chips" role="group" aria-label="주식 분류">${secsE.map(([k2, l]) => `<button type="button" data-eqsec="${k2}" aria-pressed="${S.eqSec === k2}">${l}</button>`).join('')}</div>
       <div class="slist">${byPrice(S.eqSec === 'mine' ? heldE : EQ.filter(x => x.s === S.eqSec)).map(stockRow).join('')}</div></div>
       <p class="hint">주식은 코인보다 덜 거칠게 움직여요. 매수·매도·공매도·레버리지 모두 돼요. 거래정지는 없어요.</p>`;
@@ -1710,7 +1712,7 @@ function renderInvest() {
   if (S.homeSec == null) S.homeSec = held.length ? 'mine' : Object.keys(COIN_CATS)[0];
   if (S.homeSec === 'mine' ? !held.length : !COIN_CATS[S.homeSec]) S.homeSec = Object.keys(COIN_CATS)[0];
   const secs = [...(held.length ? [['mine', `보유 ${held.length}`]] : []), ...Object.entries(COIN_CATS).map(([k2, v]) => [k2, v.n])];
-  h += `<div class="sec"><div class="sec-h"><h2>코인</h2><small>가격 높은 순</small></div>
+  h += `<div class="sec"><div class="sec-h"><h2>코인</h2>${posBtn || '<small>가격 높은 순</small>'}</div>
     <div class="chips" role="group" aria-label="종목 분류">${secs.map(([k2, l]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${l}</button>`).join('')}</div>
     <div class="slist">${byPrice(S.homeSec === 'mine' ? held : STOCKS.filter(x => x.cc === S.homeSec)).map(stockRow).join('')}</div></div>`;
   const oldChips = body.querySelector('.chips'), sx = oldChips ? oldChips.scrollLeft : 0;
@@ -1741,7 +1743,7 @@ function myPositions(me) {
 // 투자 탭에서 지금 보는 시장(코인·주식·달러)의 포지션만 보여요
 const hudFilter = () => S.tab !== 'invest' ? () => true : S.inv === 'coin' ? x => !isEq(x.sym) : S.inv === 'stock' ? x => isEq(x.sym) && !SM[x.sym].fx : S.inv === 'fx' ? x => !!SM[x.sym].fx : () => false;
 function posHUD() {
-  const list = myPositions().filter(hudFilter()); if (!list.length) return '';
+  const list = myPositions().filter(hudFilter()).sort((a, b) => (a.kind === 'spot') - (b.kind === 'spot') || b.value - a.value); if (!list.length) return '';
   const P = list.reduce((a, x) => a + x.principal, 0), V = list.reduce((a, x) => a + x.value, 0), pnl = V - P, pct = P ? pnl / P : 0;
   const armed = S.closeAllAt && Date.now() - S.closeAllAt < 4000;
   const off = seasonOver() || S.readOnly || S.saving;
@@ -1777,7 +1779,7 @@ async function closePositions(filter) {
     toast(`${list.length > 1 ? `⚡ ${list.length}개 전부 정리` : `${SM[list[0].sym].n} 정리`} · ${signWon(pnl)} → 현금 ${man(got)}원`);
     if (pnl > 0) { confetti(); buzz(60); }
   }
-  renderAll();
+  renderAll(); if (S.sheet && S.sheet.type === 'pos') renderSheet();
 }
 const byPrice = arr => arr.slice().sort((a, b) => px(b.id, S.tick) * cf(b.id) - px(a.id, S.tick) * cf(a.id));
 function exitMode(id) {
@@ -2424,7 +2426,7 @@ function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('
 function closeSheet() { const t = S.sheet && S.sheet.type; S.sheet = null; $('#sheetWrap').hidden = true; if (t === 'reveal') maybeJoin(); }
 function renderSheet() {
   const b = $('#sheetBody'); const sh = S.sheet; if (!sh) return;
-  ({ estate: renderEstateSheet, stock: renderStockSheet, quick: renderQuickSheet, player: renderPlayerSheet, join: renderJoinSheet, rename: renderRenameSheet, help: renderHelp, reveal: renderReveal })[sh.type](b, sh);
+  ({ estate: renderEstateSheet, stock: renderStockSheet, quick: renderQuickSheet, player: renderPlayerSheet, join: renderJoinSheet, rename: renderRenameSheet, pos: b => { b.innerHTML = posHUD() || '<div class="empty">이 시장에는 포지션이 없어요.</div>'; }, help: renderHelp, reveal: renderReveal })[sh.type](b, sh);
 }
 function openDetail(sym) { S.chatJump = true; S.detail = sym; const d = $('#detail'); d.hidden = false; document.body.classList.add('noscroll'); renderDetail(); d.scrollTop = 0; }
 function closeDetail() { S.detail = null; $('#detail').hidden = true; document.body.classList.remove('noscroll'); }
@@ -2967,6 +2969,7 @@ document.addEventListener('click', e => {
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
     case 'boardBtn': openBoard(); break;
+    case 'posOpen': openSheet('pos'); break;
     case 'boardBack': closeBoard(); break;
     case 'boardSend': postBoard(); break;
     case 'photoBtn': pickPhoto(); break;
@@ -2975,7 +2978,7 @@ document.addEventListener('click', e => {
     case 'renameBtn': doRename(); break;
     case 'estAct': break;
     case 'rescueBtn': claimRescue(); break;
-    case 'closeAllBtn': if (S.closeAllAt && Date.now() - S.closeAllAt < 4000) closePositions(hudFilter()); else { S.closeAllAt = Date.now(); renderAll(); } break;
+    case 'closeAllBtn': if (S.closeAllAt && Date.now() - S.closeAllAt < 4000) closePositions(hudFilter()); else { S.closeAllAt = Date.now(); renderAll(); if (S.sheet && S.sheet.type === 'pos') renderSheet(); } break;
     case 'zoomIn': zoomAt(1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
     case 'zoomOut': zoomAt(1 / 1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
     case 'zoomReset': { const h = MAP.w0 * mapAR(); S.mapV = { x: MAP.x0, y: MAP.y0 + MAP.h0 / 2 - h / 2, w: MAP.w0, h }; applyMapView(); break; }
@@ -3015,7 +3018,7 @@ setInterval(() => {
     lqScan(); holdingAlerts(); checkLiquidation(); jumpAlerts();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
-    if (sh && sh.type === 'player') renderSheet();
+    if (sh && (sh.type === 'player' || sh.type === 'pos')) renderSheet();
     if (sh && sh.sym && (sh.type === 'stock' || sh.type === 'quick')) {
       const lp = $('#livePrice'), pc = $('#livePct'); const v = px(sh.sym, S.tick), c = nowChg(sh.sym);
       if (lp) lp.textContent = PW(sh.sym, v);
