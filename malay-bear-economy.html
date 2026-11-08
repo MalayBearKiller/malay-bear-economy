@@ -2007,6 +2007,13 @@ function renderEstList(host) {
   });
   $('#estList').innerHTML = h;
 }
+// 건물 그래프: 최근 24시간(15분 간격) + 지금 값. 시트가 열려 있으면 1초마다 다시 그려요
+function drawEstChart() {
+  const cv = $('#estChart'), sh = S.sheet; if (!cv || !sh || sh.type !== 'estate') return;
+  const e = estOf(sh.bid), t1 = now(), arr = [];
+  for (let t = t1 - 864e5; t < t1; t += 9e5) arr.push(estAt(sh.bid, Math.max(S.season.start, t)));
+  arr.push(e && e.destroyed ? e.destroyed.value : estVal(sh.bid, S.tick)); drawChart(cv, arr, {});
+}
 function renderEstateSheet(b, sh) {
   const bd = EM[sh.bid], k = S.tick, st = estState(bd.id), e = estOf(bd.id);
   const v = estVal(bd.id, k), frozen = e && e.destroyed ? e.destroyed.value : null, c = v / estAt(bd.id, S.season.start) - 1;
@@ -2023,7 +2030,7 @@ function renderEstateSheet(b, sh) {
     ${can ? `<button class="cta ${act[2]}" type="button" id="estAct" ${(S.me.cash < price && act[0] !== 'sell') || S.saving ? 'disabled' : ''}>${confirm ? `한 번 더 누르면 ${won(price)} 결제` : `${act[1]} · ${won(price)}`}</button>
       ${S.me.cash < price && act[0] !== 'sell' ? `<p class="hint">현금이 ${won(price - S.me.cash)} 부족해요.</p>` : ''}` : `<p class="hint">${seasonOver() ? '시즌이 끝나서 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}
     <p class="hint">${{ free: '사면 1시간마다 가치의 0.1%가 월세로 들어오고, 지도와 순위표에 내 이름이 걸려요.', mine: '친구가 50%를 내면 파괴할 수 있어요. 파괴되면 가치가 멈추고 월세도 끊겨요.', mineBroken: '복구하지 않으면 누군가 2배 가격으로 강제 매입할 수 있어요.', other: '파괴하면 가치가 멈추고 주인의 총자산에서 빠져요. 파괴한 사람은 익명이에요.', otherBroken: '강제 매입하면 건물이 바로 복구되고 내 것이 돼요. 낸 돈은 시장으로 사라져요.' }[st]}</p>`;
-  requestAnimationFrame(() => { const cv = $('#estChart'); if (!cv) return; const arr = []; for (let i = 0; i <= k; i++) arr.push(estAt(bd.id, tickTime(S.season.start, i))); drawChart(cv, arr, { live: frozen ? null : { x: liveX(), v } }); });
+  setTimeout(drawEstChart, 0);
 }
 async function estAction() {
   const sh = S.sheet; const bid = sh.bid; const st = estState(bid);
@@ -2327,7 +2334,7 @@ function renderAll() {
   renderHeader(); renderClock();
   if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, casino: renderCasino })[S.sub](); }
   else if (!(S.liveOnly && (S.tab === 'home' || S.tab === 'market' || S.tab === 'invest') && Date.now() - chipsTouchAt < 1500)) ({ home: renderHome, market: renderMarket, invest: renderInvest, shop: renderShop })[S.tab]();
-  if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); }
+  if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); drawEstChart(); }
   const latest = S.feed.find(f => f.uid !== S.uid && brag(f));
   $('#feedDot').hidden = S.board === 'feed' || !latest || latest.ts <= S.feedSeen;
   if (S.board && !S.liveOnly) renderBoard();
