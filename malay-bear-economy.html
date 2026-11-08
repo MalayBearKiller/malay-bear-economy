@@ -1701,7 +1701,7 @@ function renderInvest() {
     const he = `<div class="sec"><div class="sec-h"><h2>주식</h2><small>잔잔한 안전자산 · 가격 높은 순</small></div>
       <div class="chips" role="group" aria-label="주식 분류">${secsE.map(([k2, l]) => `<button type="button" data-eqsec="${k2}" aria-pressed="${S.eqSec === k2}">${l}</button>`).join('')}</div>
       <div class="slist">${byPrice(S.eqSec === 'mine' ? heldE : EQ.filter(x => x.s === S.eqSec)).map(stockRow).join('')}</div></div>
-      <p class="hint">주식은 코인과 달리 천천히 움직여요. 매수·매도만 할 수 있어요. 게임 끄기 전에 돈을 넣어두기 좋아요.</p>`;
+      <p class="hint">주식은 코인보다 덜 거칠게 움직여요. 매수·매도·공매도·레버리지 모두 돼요. 거래정지는 없어요.</p>`;
     const oc = body.querySelector('.chips'), ox = oc ? oc.scrollLeft : 0; body.innerHTML = he; const nc = body.querySelector('.chips'); if (nc && ox) nc.scrollLeft = ox;
     return;
   }
@@ -2566,7 +2566,7 @@ function renderQuickSheet(b, sh) {
   const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0;
   b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>현재가 <b class="num" id="livePrice">${PW(s.id, p)}</b> <span class="num ${cls(c)}" id="livePct">${pctTxt(c)}</span> · 보유 ${QT(s.id, my)}</small></div></div>
     <div class="sheetcash"><span>💵 내 현금</span><b class="num">${won(S.me ? S.me.cash : 0)}</b></div>
-    <div class="seg"${isEq(s.id) ? ' style="grid-template-columns:1fr 1fr"' : ''}>${(isEq(s.id) ? [['buy', '매수'], ['sell', '매도']] : [['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']]).map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
+    <div class="seg"${s.fx ? ' style="grid-template-columns:1fr 1fr"' : ''}>${(s.fx ? [['buy', '매수'], ['sell', '매도']] : [['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']]).map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
     ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${QT(s.id, o.q)} · 진입 ${PW(s.id, o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
     <div class="levdir" id="levdir" ${sh.m === 'lev' ? '' : 'hidden'}><button type="button" data-levd="long" aria-pressed="${sh.dir !== 'short'}">📈 롱 (오르면 이득)</button><button type="button" data-levd="short" aria-pressed="${sh.dir === 'short'}">📉 숏 (내리면 이득)</button></div>
     <div class="levx" id="levx" ${sh.m === 'lev' ? '' : 'hidden'}>${LEVS.map(x => `<button type="button" data-levx="${x}" aria-pressed="${(sh.x || 25) === x}">${x}배</button>`).join('')}</div>
