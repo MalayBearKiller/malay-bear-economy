@@ -134,6 +134,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .tbtns{display:flex;gap:4px;flex:none}
 .tb{font-size:12.5px;font-weight:800;padding:8px 9px;border-radius:10px}
 .tb.buy{background:var(--up-bg);color:var(--up)} .tb.sell{background:var(--down-bg);color:var(--down)}
+.tb.sell.lit{background:var(--down);color:#fff;box-shadow:0 2px 8px rgba(47,120,238,.35)}
 .tb:disabled{opacity:.3;cursor:default}
 .sprice .p{border-radius:6px;padding:0 3px;margin-right:-3px}
 .sprice .p.fu{animation:fu .9s} .sprice .p.fd{animation:fd .9s}
@@ -944,6 +945,13 @@ function renderHome() {
   el.innerHTML = h;
 }
 
+function exitMode(id) {
+  if (!S.me) return null;
+  if ((S.me.hold || {})[id]) return 'sell';
+  if ((S.me.lev || {})[id]) return 'levclose';
+  if ((S.me.shorts || {})[id]) return 'cover';
+  return null;
+}
 function stockRow(s) {
   const p = px(s.id, S.tick), c = nowChg(s.id);
   const q = S.me && S.me.hold && S.me.hold[s.id], sq = S.me && S.me.shorts && S.me.shorts[s.id];
@@ -953,7 +961,7 @@ function stockRow(s) {
   const off = seasonOver() || S.readOnly;
   return `<div class="srow${fl ? ' row' + fl.trim() : ''}"><button class="srow-main" type="button" data-stock="${s.id}">${badge(s)}<span class="sname"><b>${esc(s.n)}</b><small>${sub}</small></span>
     <span class="sprice"><div class="p num${fl}">${won(p)}</div><div class="c num ${cls(c)}">${pctTxt(c)}</div></span></button>
-    <span class="tbtns"><button class="tb buy" type="button" data-quick="buy" data-sym="${s.id}" ${off ? 'disabled' : ''}>매수</button><button class="tb sell" type="button" data-quick="sell" data-sym="${s.id}" ${off || (S.me && !q) ? 'disabled' : ''}>매도</button></span></div>`;
+    <span class="tbtns"><button class="tb buy" type="button" data-quick="buy" data-sym="${s.id}" ${off ? 'disabled' : ''}>매수</button>${(() => { const ex = exitMode(s.id); return `<button class="tb sell${ex ? ' lit' : ''}" type="button" data-quick="${ex || 'sell'}" data-sym="${s.id}" ${off || !ex ? 'disabled' : ''}>매도</button>`; })()}</span></div>`;
 }
 
 /* ───────── payout every 12h ───────── */
@@ -1509,7 +1517,7 @@ function renderDetail() {
   </div>
   <div class="dbar"><div class="in">
     <button class="cta buy" type="button" data-quick="buy" data-sym="${sym}" ${off ? 'disabled' : ''}>매수</button>
-    <button class="cta sell" type="button" data-quick="sell" data-sym="${sym}" ${off || !q ? 'disabled' : ''}>매도</button>
+    <button class="cta sell" type="button" data-quick="${exitMode(sym) || 'sell'}" data-sym="${sym}" ${off || !exitMode(sym) ? 'disabled' : ''}>매도</button>
     <button class="cta short" type="button" data-quick="${sh ? 'cover' : 'short'}" data-sym="${sym}" ${off ? 'disabled' : ''}>${sh ? '상환' : '공매도'}</button>
     <button class="cta lev" type="button" data-quick="lev" data-sym="${sym}" ${off ? 'disabled' : ''}>🚀 레버</button>
   </div></div>`;
