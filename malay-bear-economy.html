@@ -1641,7 +1641,7 @@ function renderHome() {
   if (S.homeView !== 'map') S.homeView = 'rank';
   const hsw = `<span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${S.homeView === 'rank'}">자산순위</button><button type="button" role="tab" data-homeview="map" aria-selected="${S.homeView === 'map'}">지도</button></span>`;
   if (S.homeView === 'rank') {
-  const RPG = 5, nRank = S.mode === 'loading' ? 0 : ranking(k).length, rPages = Math.max(1, Math.ceil(nRank / RPG));
+  const RPG = 6, nRank = S.mode === 'loading' ? 0 : ranking(k).length, rPages = Math.max(1, Math.ceil(nRank / RPG));
   S.rankPage = Math.max(0, Math.min(S.rankPage || 0, rPages - 1));
   h += `<div class="sec"><div class="sec-h">${hsw}<span class="rpager"><button type="button" data-rankpg="-1" aria-label="이전 순위" ${S.rankPage ? '' : 'disabled'}>◀</button><small class="num">${S.rankPage * RPG + 1}~${Math.min(nRank, (S.rankPage + 1) * RPG) || RPG}위</small><button type="button" data-rankpg="1" aria-label="다음 순위" ${S.rankPage < rPages - 1 ? '' : 'disabled'}>▶</button></span></div>`;
   if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
