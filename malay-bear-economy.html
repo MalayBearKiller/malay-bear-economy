@@ -2314,10 +2314,10 @@ function renderWallet() {
   const cashV = m.cash + BONUS * pendingOf(m);
   const parts = [['💵 현금', cashV, '#16b27e'], ['🇺🇸 달러', usdV, '#0f9d58'], ['📈 주식', eqV, '#2b2745'], ['🪙 코인', inv, '#6a4cf5'], ['🚀 레버리지', levV, '#f2414f'], ['🎯 공매도', shV, '#2f78ee'], ['🏢 부동산', estV, '#ff9f1c']];
   const tot = parts.reduce((a, x) => a + Math.max(0, x[1]), 0) || 1;
-  if (!['stock', 'coin', 'estate', 'profile'].includes(S.wsub)) S.wsub = 'stock';
+  if (!['stock', 'coin', 'estate', 'profile'].includes(S.wsub)) S.wsub = 'profile';
   const inSub = x => S.wsub === 'coin' ? !isEq(x) : isEq(x);
   let h = `<div class="card wsum"><div class="ws-top"><div><small>총자산</small><b class="num">${won(W)}</b></div>${rk ? `<span class="ws-rk">${rk}위</span>` : ''}</div></div>
-    <div class="seg" role="group" aria-label="내 자산 보기">${[['stock', '주식'], ['coin', '코인'], ['estate', '부동산'], ['profile', '내 프로필']].map(([v, l]) => `<button type="button" data-wsub="${v}" aria-pressed="${S.wsub === v}">${l}</button>`).join('')}</div>`;
+    <div class="seg" role="group" aria-label="내 자산 보기">${[['profile', '내 프로필'], ['stock', '주식'], ['coin', '코인'], ['estate', '부동산']].map(([v, l]) => `<button type="button" data-wsub="${v}" aria-pressed="${S.wsub === v}">${l}</button>`).join('')}</div>`;
   if (S.wsub === 'stock' || S.wsub === 'coin') {
   const hs = Object.entries(m.hold || {}).filter(([s]) => SM[s] && inSub(s));
   h += `<div class="sec"><div class="sec-h"><h2>${S.wsub === 'coin' ? '보유 코인' : '보유 주식·달러'}</h2><small>평균단가 대비</small></div><div class="slist">`;
@@ -2344,6 +2344,9 @@ function renderWallet() {
     est.forEach(b => { const e = estOf(b.id), v = estVal(b.id, k); h += `<button class="srow-main est-row" type="button" data-estate="${b.id}"><span class="logo-b" style="background:${e.destroyed ? 'var(--up)' : 'var(--violet)'}">${e.destroyed ? '💥' : ICON[b.t]}</span><span class="sname"><b>${esc(b.n)}</b><small>${e.destroyed ? '<span class="up">파괴됨 · 복구 필요</span>' : '시간당 월세 +' + won(v * RENT)}</small></span><span class="sprice"><div class="p num">${won(e.destroyed ? 0 : v)}</div></span></button>`; });
     h += `</div></div>`; }
   if (S.wsub === 'profile') {
+  h += `<div class="card wsum"><div class="sec-h" style="margin-bottom:4px"><h2 style="font-size:16px">내 자산 요약</h2><small>총자산 대비</small></div>
+    <div class="ws-bar">${parts.filter(x => x[1] > 0).map(x => `<i style="width:${(x[1] / tot * 100).toFixed(2)}%;background:${x[2]}"></i>`).join('')}</div>
+    <div class="ws-rows">${parts.filter((x, i) => i === 0 || x[1] > 0).map(x => `<div><span><i style="background:${x[2]}"></i>${x[0]}</span><b class="num">${won(x[1])}</b><small class="num">${(x[1] / tot * 100).toFixed(1)}%</small></div>`).join('')}</div></div>`;
   h += `<div class="info"><div>받은 월세<b class="num up">${won(m.rentTotal || 0)}</b></div><div>낸 유지비·세금<b class="num down">${won(m.taxTotal || 0)}</b></div></div>`;
   h += `<div class="sec"><div class="sec-h"><h2>프로필</h2></div>
     <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)} <span class="lvtag">LV.${lvOf(m)}</span></b><small>사진은 모두에게 보여요 · 레벨은 상점에서 올려요</small></span></div>
