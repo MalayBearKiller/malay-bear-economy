@@ -119,6 +119,10 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .ava{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:var(--ink);flex:none}
 .ava.lg{width:52px;height:52px;font-size:20px}
 .ava.ph{background-size:cover;background-position:center;background-color:var(--paper)}
+.fxcard{display:flex;align-items:baseline;gap:10px;padding:14px 16px}
+.fxcard span{font-weight:700;color:var(--dim);font-size:13.5px}
+.fxcard b{font-size:20px;font-weight:900}
+.fxcard small{color:var(--dim);font-weight:700;margin-left:auto}
 .shopitem{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .shopitem .si-ic{font-size:26px}
 .shopitem .si-t{flex:1;min-width:0}
@@ -733,11 +737,16 @@ const EQ = [
   { id: 'E_SKBP', a: 'SK바', n: 'SK바이오팜', s: 'bio', p0: 110000 },
 ].map(e => ({ ...e, eq: true, vol: .012, sens: .4 }));
 EQ.forEach(e => SM[e.id] = e);
+// 💵 달러: 주식처럼 사고팔아요. 환율은 900~1,900원 사이에서만 움직여요 (시각만으로 계산)
+const USD = { id: 'USD', a: '$', n: '미국 달러', s: 'plat', p0: 1400, eq: true, fx: true, vol: .01, sens: .3 };
+SM.USD = USD;
+const FX_OCT = [[7 * 864e5, .8], [864e5, .45], [72e5, .22], [6e5, .09], [6e4, .03], [5e3, .008]];
 const isEq = id => !!(SM[id] && SM[id].eq);
 const EQ_EPOCH = Date.parse('2026-11-02T00:00:00+09:00');
 const EQ_OCT = [[7 * 864e5, .09], [864e5, .03], [72e5, .011], [6e5, .0045], [6e4, .0016], [5e3, .0005]];
 function vnoise(key, x) { const i = Math.floor(x), f = x - i, a = seedOf(key + i) / 2147483648 - 1, b = seedOf(key + (i + 1)) / 2147483648 - 1, u = f * f * (3 - 2 * f); return a + (b - a) * u; }
-function eqAt(sym, t) { const e = SM[sym]; let w = 0; const rel = t - EQ_EPOCH; for (const [per, amp] of EQ_OCT) w += amp * vnoise('eq1:' + sym + ':' + per + ':', rel / per); return Math.max(1, tickRound(e.p0 * Math.exp(w))); }
+function eqAt(sym, t) { const e = SM[sym]; let w = 0; const rel = t - EQ_EPOCH;
+  if (e.fx) { for (const [per, amp] of FX_OCT) w += amp * vnoise('fx1:' + sym + ':' + per + ':', rel / per); return Math.round((1400 + 500 * Math.tanh(w)) * 10) / 10; } for (const [per, amp] of EQ_OCT) w += amp * vnoise('eq1:' + sym + ':' + per + ':', rel / per); return Math.max(1, tickRound(e.p0 * Math.exp(w))); }
 const COIN = {
   MSFT: ['BTC', '비트코인', 'major', 102.389],
   AAPL: ['ETH', '이더리움', 'major', 67.2948],
@@ -772,12 +781,12 @@ const COIN = {
 };
 const COIN_CATS = { major: { n: '메이저' }, l1: { n: '레이어1' }, defi: { n: '디파이·L2' }, meme: { n: '밈' } };
 STOCKS.forEach(s => { const c = COIN[s.id]; if (c) { s.a = c[0]; s.n = c[1]; s.cc = c[2]; s.cf = c[3]; } });
-const catName = s => s.cc ? COIN_CATS[s.cc].n : SECTORS[s.s].n;
+const catName = s => s.fx ? '환율' : s.cc ? COIN_CATS[s.cc].n : SECTORS[s.s].n;
 const cf = id => (SM[id] && SM[id].cf) || 1;
 const isCoin = id => !!(SM[id] && SM[id].cf);
-const PW = (id, p) => { const v = p * cf(id); return v < 100 ? (+v.toPrecision(4)).toLocaleString('ko-KR', { maximumFractionDigits: 8 }) + '원' : won(Math.round(v)); };
+const PW = (id, p) => { const v = p * cf(id); if (SM[id] && SM[id].fx) return v.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '원'; return v < 100 ? (+v.toPrecision(4)).toLocaleString('ko-KR', { maximumFractionDigits: 8 }) + '원' : won(Math.round(v)); };
 const coinNum = x => x >= 1000 ? Math.round(x).toLocaleString() : (+x.toPrecision(6)).toLocaleString('ko-KR', { maximumFractionDigits: 8 });
-const QT = (id, q) => isCoin(id) ? coinNum(q / cf(id)) + '개' : (q || 0).toLocaleString() + '주';
+const QT = (id, q) => SM[id] && SM[id].fx ? '$' + (q || 0).toLocaleString() : isCoin(id) ? coinNum(q / cf(id)) + '개' : (q || 0).toLocaleString() + '주';
 const qOut = (id, q) => isCoin(id) ? +(q / cf(id)).toPrecision(8) : q;
 const qIn = (id, v) => Math.max(0, isCoin(id) ? Math.round((parseFloat(v) || 0) * cf(id)) : Math.floor(+v || 0));
 const SRC = [ { k: '공시', rel: .85, w: .25 }, { k: '기사', rel: .65, w: .4 }, { k: '찌라시', rel: .45, w: .35 } ];
@@ -1646,7 +1655,14 @@ function renderInvest() {
   const body = $('#invBody');
   if (body.dataset.sub !== S.inv) { body.innerHTML = ''; body.dataset.sub = S.inv; }
   if (S.inv === 'estate') { renderEstList(body); return; }
-  if (S.inv === 'fx') { body.innerHTML = `<div class="empty">환율 시장을 준비하고 있어요. 곧 열려요.</div>`; return; }
+  if (S.inv === 'fx') {
+    const fp = px('USD', k), fc = nowChg('USD'), held = (S.me && (S.me.hold || {}).USD) || 0;
+    body.innerHTML = `<div class="sec"><div class="sec-h"><h2>환율</h2><small>1달러 = 900~1,900원 사이</small></div>
+      <div class="slist">${stockRow(USD)}</div></div>
+      ${held ? `<div class="card fxcard"><span>내 달러</span><b class="num">${QT('USD', held)}</b><small class="num">≈ ${won(held * fp)}</small></div>` : ''}
+      <p class="hint">달러를 사 두면 환율이 오를 때 원화 가치가 올라요. 1달러 단위로 사고팔아요. 2시간 변동률 ${pctTxt(fc)}.</p>`;
+    return;
+  }
   if (S.inv === 'stock') {
     const heldE = EQ.filter(x => exitMode(x.id));
     if (S.eqSec == null) S.eqSec = heldE.length ? 'mine' : Object.keys(SECTORS)[0];
@@ -1893,7 +1909,7 @@ function applyMapView() {
 }
 const mapAR = () => { const svg = $('#seoulMap'); return svg && svg.clientWidth ? svg.clientHeight / svg.clientWidth : 1.39; };
 function clampView(v) {
-  const w = Math.max(MAP.w0 / 40, Math.min(MAP.w0, v.w)), h = w * mapAR();
+  const w = Math.max(MAP.w0 / 120, Math.min(MAP.w0, v.w)), h = w * mapAR();
   const ymin = Math.min(MAP.y0 - h * .2, MAP.y0 + MAP.h0 / 2 - h / 2), ymax = Math.max(MAP.y0 + MAP.h0 - h * .8, MAP.y0 + MAP.h0 / 2 - h / 2);
   return { w, h, x: Math.max(MAP.x0 - w * .2, Math.min(MAP.x0 + MAP.w0 - w * .8, v.x)), y: Math.max(ymin, Math.min(ymax, v.y)) };
 }
@@ -2176,12 +2192,12 @@ function renderWallet() {
   const k = S.tick, m = S.me;
   // 한눈에 보는 내 자산: 총자산, 순위, 자산 구성
   const W = worth(m, k), rk = ranking(k).findIndex(p => p.id === S.uid) + 1;
-  let inv = 0; Object.entries(m.hold || {}).forEach(([s, q]) => { if (SM[s]) inv += q * px(s, k); });
+  let inv = 0, eqV = 0, usdV = 0; Object.entries(m.hold || {}).forEach(([s, q]) => { if (!SM[s]) return; const v = q * px(s, k); if (SM[s].fx) usdV += v; else if (SM[s].eq) eqV += v; else inv += v; });
   let levV = 0; Object.entries(m.lev || {}).forEach(([s, o]) => { if (SM[s] && !lqDead(S.uid, 'lev', s, o)) levV += levVal(o, px(s, k), s); });
   let shV = 0; Object.entries(m.shorts || {}).forEach(([s, o]) => { if (SM[s]) shV += Math.max(0, o.q * (2 * o.e - px(s, k))); });
   const estV = myEstates({ id: S.uid }).reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0);
   const cashV = m.cash + BONUS * pendingOf(m);
-  const parts = [['💵 현금', cashV, '#16b27e'], ['📦 주식', inv, '#6a4cf5'], ['🚀 레버리지', levV, '#f2414f'], ['🎯 공매도', shV, '#2f78ee'], ['🏢 부동산', estV, '#ff9f1c']];
+  const parts = [['💵 현금', cashV, '#16b27e'], ['🇺🇸 달러', usdV, '#0f9d58'], ['📈 주식', eqV, '#2b2745'], ['🪙 코인', inv, '#6a4cf5'], ['🚀 레버리지', levV, '#f2414f'], ['🎯 공매도', shV, '#2f78ee'], ['🏢 부동산', estV, '#ff9f1c']];
   const tot = parts.reduce((a, x) => a + Math.max(0, x[1]), 0) || 1;
   let h = `<div class="card wsum"><div class="ws-top"><div><small>총자산</small><b class="num">${won(W)}</b></div>${rk ? `<span class="ws-rk">${rk}위</span>` : ''}</div>
     <div class="ws-bar">${parts.filter(x => x[1] > 0).map(x => `<i style="width:${(x[1] / tot * 100).toFixed(2)}%;background:${x[2]}"></i>`).join('')}</div>
@@ -2482,7 +2498,7 @@ function renderQuickSheet(b, sh) {
     ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${QT(s.id, o.q)} · 진입 ${PW(s.id, o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
     <div class="levdir" id="levdir" ${sh.m === 'lev' ? '' : 'hidden'}><button type="button" data-levd="long" aria-pressed="${sh.dir !== 'short'}">📈 롱 (오르면 이득)</button><button type="button" data-levd="short" aria-pressed="${sh.dir === 'short'}">📉 숏 (내리면 이득)</button></div>
     <div class="levx" id="levx" ${sh.m === 'lev' ? '' : 'hidden'}>${LEVS.map(x => `<button type="button" data-levx="${x}" aria-pressed="${(sh.x || 25) === x}">${x}배</button>`).join('')}</div>
-    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="decimal" step="any" min="0" value="${sh.q ? qOut(s.id, sh.q) : ''}" placeholder="${isCoin(s.id) ? '몇 개?' : '몇 주?'}" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
+    <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="decimal" step="any" min="0" value="${sh.q ? qOut(s.id, sh.q) : ''}" placeholder="${isCoin(s.id) ? '몇 개?' : s.fx ? '몇 달러?' : '몇 주?'}" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
     <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-frac="${f}">${l}</button>`).join('')}</div>
     <div class="est" id="est"></div>
     <button class="cta" id="doTrade" type="button">매수하기</button>
