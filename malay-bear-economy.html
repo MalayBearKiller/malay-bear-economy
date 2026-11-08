@@ -1590,7 +1590,8 @@ function renderHome() {
     const me = S.me, myW = worth(me, k), shares = Object.values(me.hold || {}).reduce((a, q) => a + q, 0);
     const nLev = Object.keys(me.lev || {}).filter(s2 => SM[s2]).length, nSh = Object.keys(me.shorts || {}).filter(s2 => SM[s2]).length;
     const nEst = myEstates({ id: S.uid }).filter(b => !estOf(b.id).destroyed).length;
-    const rest = [shares ? `코인 ${Object.keys(me.hold || {}).filter(x => SM[x] && me.hold[x] > 0).length}종` : '', nLev ? `레버리지 ${nLev}개` : '', nSh ? `공매도 ${nSh}개` : '', nEst ? `건물 ${nEst}채` : ''].filter(Boolean).join(' · ') || '보유 자산 없음';
+    const hk = Object.keys(me.hold || {}).filter(x => SM[x] && me.hold[x] > 0), nCoin = hk.filter(x => !isEq(x)).length, nEq = hk.filter(x => isEq(x) && !SM[x].fx).length, usd = (me.hold || {}).USD || 0;
+    const rest = [nCoin ? `코인 ${nCoin}종` : '', nEq ? `주식 ${nEq}종` : '', usd ? `달러 ${QT('USD', usd)}` : '', nLev ? `레버리지 ${nLev}개` : '', nSh ? `공매도 ${nSh}개` : '', nEst ? `건물 ${nEst}채` : ''].filter(Boolean).join(' · ') || '보유 자산 없음';
     h = `<div class="card mycard"><div class="mc-row"><div><small>총자산</small><b class="num">${won(myW)}</b></div><div><small>현금</small><b class="num">${won(me.cash)}</b></div></div><p class="mc-rest">${rest}</p></div>`;
   }
 
