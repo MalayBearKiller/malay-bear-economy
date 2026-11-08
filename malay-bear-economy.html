@@ -743,9 +743,23 @@ function buildSeason(sid, start0) {
       return { id: s.id, d, mega: mega || rug, whip: whip || trap, rug, trap };
     });
   }
+  // 펌프 후 덤프: 2~5분 동안 8~20% 올려서 롱을 끌어들인 뒤 한 틱에 25~45% 폭락 (반대로 숏 스퀴즈도 절반).
+  // RUG_FROM 이후에만 생겨서, 배포 전 가격은 하나도 안 바뀌어요.
+  const rugs = {}; STOCKS.forEach(x => rugs[x.id] = []);
+  { const RR = rng('rug1:' + sid), seasonStartAbs = Date.parse(sid + 'T00:00:00+09:00');
+    for (let mm = 0; mm < MIN - 6; mm++) {
+      const r = RR(), i = Math.floor(RR() * STOCKS.length), r3 = RR(), r4 = RR(), r5 = RR(), r6 = RR();
+      if (r >= .33 || seasonStartAbs + mm * 60e3 < RUG_FROM) continue;
+      const list = rugs[STOCKS[i].id], last = list[list.length - 1];
+      if (last && last.end > mm * 60e3) continue;                              // one at a time per stock
+      const dur = (2 + Math.floor(r3 * 4)) * 60e3, A = .08 + r4 * .12, Cc = .25 + r5 * .2, dir = r6 < .5 ? 1 : -1;
+      list.push({ start: mm * 60e3, end: mm * 60e3 + dur, ramp: dir * Math.log(1 + A), fin: dir * (Math.log(1 + A) + Math.log(1 - Cc)) });
+    }
+    STOCKS.forEach(x => { let c = 0; rugs[x.id].forEach(e => { e.before = c; c += e.fin; }); });
+  }
   STOCKS.forEach(s => {
     const ev = jumps[s.id], C = new Float64Array(ev.length); let a = 0; ev.forEach((e, i) => { a += e.j; C[i] = a; }); jcum[s.id] = C;
-    const JM = new Float64Array(MIN + 1); let i = 0, c = 0; for (let mm = 0; mm <= MIN; mm++) { while (i < ev.length && ev[i].t <= mm * 60e3) c += ev[i++].j; JM[mm] = c; } jmin[s.id] = JM;
+    const JM = new Float64Array(MIN + 1); let i = 0, c = 0; for (let mm = 0; mm <= MIN; mm++) { while (i < ev.length && ev[i].t <= mm * 60e3) c += ev[i++].j; JM[mm] = c + rugEval(rugs[s.id], mm * 60e3); } jmin[s.id] = JM;
   });
   const prices = {}; STOCKS.forEach(s => prices[s.id] = [start0 ? start0.p[s.id] : s.p0]);
   const e0 = {}; ESTATES.forEach(b => e0[b.id] = start0 ? start0.e[b.id] : b.v0);
@@ -779,7 +793,7 @@ function buildSeason(sid, start0) {
     }
     ewalk[e.id] = L;
   });
-  return { sid, e0, news, shocks, prices, index, secIndex, walk, ewalk, jumps, jcum, bangs };
+  return { sid, e0, news, shocks, prices, index, secIndex, walk, ewalk, jumps, jcum, bangs, rugs };
 }
 
 /* ───────── time ───────── */
@@ -857,6 +871,13 @@ function sawAt(sym, rel) {
   return amp * (k < .6 ? 1 - 1.48 * (k / .6) : -.48 * (1 - (k - .6) / .4));
 }
 const BANG_MS = 15e3, SURGE_MS = 10e3;
+const RUG_FROM = 1794150631000; // 이 시각 이후부터 펌프·덤프 시작
+function rugEval(list, rel) {
+  let lo = 0, hi = list.length - 1, idx = -1; while (lo <= hi) { const md = (lo + hi) >> 1; if (list[md].start <= rel) { idx = md; lo = md + 1; } else hi = md - 1; }
+  if (idx < 0) return 0; const e = list[idx];
+  return e.before + (rel >= e.end ? e.fin : e.ramp * (rel - e.start) / (e.end - e.start));
+}
+const rugAt = (sym, rel) => rugEval(S.SE.rugs[sym], rel);
 function jumpAt(sym, rel) {
   const ev = S.SE.jumps[sym]; let lo = 0, hi = ev.length - 1, idx = -1;
   while (lo <= hi) { const md = (lo + hi) >> 1; if (ev[md].t <= rel) { idx = md; lo = md + 1; } else hi = md - 1; }
@@ -901,7 +922,7 @@ function walkAt(sym, t) {
   const reg = (seedOf(S.season.sid + ':reg:' + sym + ':' + m) % 100) < 52 ? .55 : 2.1;
   const sd = SM[sym].vol * .65 * reg / Math.sqrt(60);
   for (let i = 0; i < 60; i++) { const e = (seedOf(S.season.sid + sym + m + ':' + i) / 4294967296 - .5) * 3.46 * sd; c += e; if (i < j) cj = c; }
-  return L[m] + f * (L[m + 1] - L[m]) + (cj - (j / 60) * c) + sawAt(sym, rel) + pumpAt(sym, rel) + jumpAt(sym, rel) + atkAt(sym, t);
+  return L[m] + f * (L[m + 1] - L[m]) + (cj - (j / 60) * c) + sawAt(sym, rel) + pumpAt(sym, rel) + jumpAt(sym, rel) + rugAt(sym, rel) + atkAt(sym, t);
 }
 function prevPx(sym) {
   const st = liveStep(now());
