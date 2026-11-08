@@ -2379,8 +2379,21 @@ function feedText(f) {
 function timeAgo(ts) { const s = Math.floor((now() - ts) / 1000); if (s < 60) return '방금'; if (s < 3600) return Math.floor(s / 60) + '분 전'; if (s < 86400) return Math.floor(s / 3600) + '시간 전'; return Math.floor(s / 86400) + '일 전'; }
 // 💬 건의 · 소식: 상단 건의 버튼으로 열어요. 건의는 모두가 쓰는 채팅방이에요.
 const BOARD = '__board';
-function openBoard() { S.board = S.board || 'talk'; if (S.board !== 'talk' && S.board !== 'feed') S.board = 'talk'; $('#board').hidden = false; document.body.classList.add('noscroll'); renderBoard(); }
-function closeBoard() { S.board = null; $('#board').hidden = true; document.body.classList.remove('noscroll'); }
+// ⬅️ 앱 안 뒤로가기: 창(거래 창·프로필·종목 상세·건의)이 열려 있으면 방문 기록에 한 칸을 쌓아 두고,
+// 휴대폰 뒤로가기를 누르면 앱을 나가는 대신 맨 위 창부터 하나씩 닫아요.
+let GUARD = false, SKIP = 0;
+const anyOverlay = () => !!(S.sheet || S.detail || S.board || S.profile);
+function guardOn() { if (!GUARD) { try { history.pushState({ gom: 1 }, ''); GUARD = true; } catch {} } }
+function guardOff() { if (GUARD && !anyOverlay()) { GUARD = false; SKIP++; try { history.back(); } catch { SKIP--; } } }
+window.addEventListener('popstate', () => {
+  if (SKIP) { SKIP--; return; }
+  GUARD = false;
+  if (S.sheet) closeSheetRaw(); else if (S.profile) closeProfileRaw(); else if (S.board) closeBoardRaw(); else if (S.detail) closeDetailRaw(); else return;
+  if (anyOverlay()) guardOn();
+});
+function openBoard() { S.board = S.board || 'talk'; if (S.board !== 'talk' && S.board !== 'feed') S.board = 'talk'; $('#board').hidden = false; document.body.classList.add('noscroll'); renderBoard();  guardOn(); }
+function closeBoardRaw() { S.board = null; $('#board').hidden = true; document.body.classList.remove('noscroll'); }
+function closeBoard() { closeBoardRaw(); guardOff(); }
 function renderBoard() {
   const d = $('#board'); if (!S.board || !d) return;
   const ae = document.activeElement, keep = ae && ae.id === 'boardInput' ? { v: ae.value, s: ae.selectionStart } : null;
@@ -2486,14 +2499,16 @@ function drawChart(cv, arr, o = {}) {
 }
 
 /* ───────── sheets ───────── */
-function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('#sheetWrap'); w.classList.toggle('center', type === 'quick'); w.hidden = false; renderSheet(); setTimeout(() => { const n = $('#nick'); if (type === 'join' && n) { n.focus(); n.select(); } }, 60); }
-function closeSheet() { const t = S.sheet && S.sheet.type; S.sheet = null; $('#sheetWrap').hidden = true; if (t === 'reveal') maybeJoin(); }
+function openSheet(type, data = {}) { S.sheet = { type, ...data }; const w = $('#sheetWrap'); w.classList.toggle('center', type === 'quick'); w.hidden = false; renderSheet(); setTimeout(() => { const n = $('#nick'); if (type === 'join' && n) { n.focus(); n.select(); } }, 60);  guardOn(); }
+function closeSheetRaw() { const t = S.sheet && S.sheet.type; S.sheet = null; $('#sheetWrap').hidden = true; if (t === 'reveal') maybeJoin(); }
+function closeSheet() { closeSheetRaw(); guardOff(); }
 function renderSheet() {
   const b = $('#sheetBody'); const sh = S.sheet; if (!sh) return;
   ({ estate: renderEstateSheet, stock: renderStockSheet, quick: renderQuickSheet, player: renderPlayerSheet, join: renderJoinSheet, rename: renderRenameSheet, pos: b => { b.innerHTML = posHUD() || '<div class="empty">이 시장에는 포지션이 없어요.</div>'; }, help: renderHelp, reveal: renderReveal })[sh.type](b, sh);
 }
-function openDetail(sym) { S.chatJump = true; S.detail = sym; const d = $('#detail'); d.hidden = false; document.body.classList.add('noscroll'); renderDetail(); d.scrollTop = 0; }
-function closeDetail() { S.detail = null; $('#detail').hidden = true; document.body.classList.remove('noscroll'); }
+function openDetail(sym) { S.chatJump = true; S.detail = sym; const d = $('#detail'); d.hidden = false; document.body.classList.add('noscroll'); renderDetail(); d.scrollTop = 0;  guardOn(); }
+function closeDetailRaw() { S.detail = null; $('#detail').hidden = true; document.body.classList.remove('noscroll'); }
+function closeDetail() { closeDetailRaw(); guardOff(); }
 const VOL_TXT = v => v < .027 ? '낮음' : v < .045 ? '보통' : '높음';
 function detailPos(sym, p) {
   const q = (S.me && S.me.hold && S.me.hold[sym]) || 0, avg = S.me && S.me.cost && S.me.cost[sym];
@@ -2731,8 +2746,9 @@ async function doTrade() {
 }
 const atkCostOf = principal => Math.max(50_000_000, Math.round(principal * .15 / 10000) * 10000);
 // 👤 프로필 화면: 순위에서 사람을 누르면 열려요. 이름·레벨·사진 + 주식/코인/부동산/정보 탭으로 염탐
-function openProfile(id) { if (!S.players[id]) return; S.profile = id; S.ptab = S.ptab || 'coin'; $('#profile').hidden = false; document.body.classList.add('noscroll'); renderProfile(); $('#profile').scrollTop = 0; }
-function closeProfile() { S.profile = null; $('#profile').hidden = true; document.body.classList.remove('noscroll'); }
+function openProfile(id) { if (!S.players[id]) return; S.profile = id; S.ptab = S.ptab || 'coin'; $('#profile').hidden = false; document.body.classList.add('noscroll'); renderProfile(); $('#profile').scrollTop = 0;  guardOn(); }
+function closeProfileRaw() { S.profile = null; $('#profile').hidden = true; document.body.classList.remove('noscroll'); }
+function closeProfile() { closeProfileRaw(); guardOff(); }
 function renderProfile() {
   const d = $('#profile'); const id = S.profile; if (!id || !d) return;
   const p0 = S.players[id]; if (!p0) { closeProfile(); return; }
