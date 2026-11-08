@@ -141,6 +141,28 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .sname b.hot-long{color:var(--up);font-weight:900} .sname b.hot-short{color:var(--down);font-weight:900}
 .postag{display:inline-block;font-size:11.5px;font-weight:900;color:#fff;padding:1px 7px;border-radius:6px;margin-right:5px}
 .postag.long{background:var(--up)} .postag.short{background:var(--down)}
+.hud{padding:14px;display:flex;flex-direction:column;gap:10px;border:2px solid var(--line)}
+.hud.up{border-color:var(--up);background:var(--up-bg)} .hud.down{border-color:var(--down);background:var(--down-bg)}
+.hud-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hud-top small{font-size:12px;font-weight:700;color:var(--dim)}
+.hud-pnl{font-size:24px;font-weight:900;letter-spacing:-.03em;line-height:1.2}
+.hud.up .hud-pnl{color:var(--up)} .hud.down .hud-pnl{color:var(--down)}
+.hud-pnl span{font-size:15px}
+.hud-all{flex:none;padding:10px 12px;border-radius:14px;background:var(--ink);color:#fff;font-weight:900;font-size:13px;line-height:1.25}
+.hud-all.armed{background:var(--up);animation:blink .6s infinite}
+.hud-all:disabled,.hud-close:disabled{opacity:.35}
+.hud-list{display:flex;flex-direction:column;gap:6px}
+.hud-row{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:14px;padding:8px 10px}
+.hud-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left}
+.hud-main .logo-b{width:34px;height:34px;font-size:11.5px;border-radius:10px}
+.hud-main .sname small{font-size:12px;font-weight:600;color:var(--dim);white-space:normal;overflow:visible}
+.hud-close{flex:none;padding:8px 10px;border-radius:10px;background:var(--down);color:#fff;font-weight:900;font-size:12px;line-height:1.2}
+.gauge{display:block;height:5px;border-radius:9px;background:var(--paper2);overflow:hidden;margin-top:4px}
+.gauge i{display:block;height:100%;background:var(--mint)}
+.gauge.danger i{background:var(--up)}
+.gtxt{display:block;font-size:11px !important}
+.postag.spot{background:var(--ink)}
+.rowpnl{font-size:12px;font-weight:900;margin-left:4px}
 .tb.sell.lit{background:var(--down);color:#fff;box-shadow:0 2px 8px rgba(47,120,238,.35)}
 .tb:disabled{opacity:.3;cursor:default}
 .sprice .p{border-radius:6px;padding:0 3px;margin-right:-3px}
@@ -282,12 +304,14 @@ body.shake{animation:shake .45s}
 
 /* floating total-asset bar */
 .fab{position:fixed;z-index:25;left:0;right:0;margin-inline:auto;width:calc(100% - var(--gut-l) - var(--gut-r));max-width:520px;
-  bottom:calc(70px + env(safe-area-inset-bottom,0px));height:58px;border-radius:18px;background:var(--ink);color:#fff;
-  box-shadow:0 8px 24px rgba(23,22,31,.22);display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:0 16px;text-align:left;transition:transform .1s}
+  bottom:calc(70px + env(safe-area-inset-bottom,0px));min-height:58px;border-radius:18px;background:var(--ink);color:#fff;
+  box-shadow:0 8px 24px rgba(23,22,31,.22);display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:8px 16px;text-align:left;transition:transform .1s}
 .fab:active{transform:scale(.98)}
 .fab .rk{min-width:40px;height:32px;padding:0 8px;border-radius:10px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:14px;font-weight:800}
 .fab .rk.r1{background:var(--gold);color:var(--ink)}
 .fab .mid{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.fab .l2{font-size:11.5px;font-weight:800;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fab .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fab .l{font-size:11.5px;font-weight:600;opacity:.6}
 .fab .v{font-size:18px;font-weight:800}
 .fab .c{font-size:15px;font-weight:800;text-align:right}
@@ -955,13 +979,15 @@ function renderHeader() {
   const w = worth(S.me, S.tick), w0 = worthPrev(S.me, S.tick), d2 = w - w0, r2 = w0 > 0 ? d2 / w0 : 0;
   const roi = roiOf(S.me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
   const allCash = isAllCash(S.me);
+  const invested = Math.max(0, w - S.me.cash - BONUS * pendingOf(S.me));
+  const l2 = `<span class="l2">현금 ${man(S.me.cash)} · 투자중 ${man(invested)}</span>`;
   if (S.sessBase == null) S.sessBase = w;
   const sig = String(rk);
   fab.hidden = false;
   fab.dataset.tabGo = allCash ? 'market' : 'assets';
   fab.innerHTML = allCash
-    ? `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · 100% 현금 보유 중</span><span class="v num">${won(w)}</span></span><span class="c buy-prompt">자산을 구매하세요!</span>`
-    : `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid"><span class="l">내 총자산 · 1초 전 <b class="sd ${cls(d2)}">${signWon(d2)}</b> · 누적 <b class="sd ${cls(roi)}">${pctTxt(roi)}</b></span><span class="v num">${won(w)}</span></span><span class="c num ${cls(r2)}">${pct2Txt(r2)}</span>`;
+    ? `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid">${l2}<span class="l">내 총자산 · 100% 현금 보유 중</span><span class="v num">${won(w)}</span></span><span class="c buy-prompt">자산을 구매하세요!</span>`
+    : `<span class="rk${rk === 1 ? ' r1' : ''}">${rk}위</span><span class="mid">${l2}<span class="l">내 총자산 · 1초 전 <b class="sd ${cls(d2)}">${signWon(d2)}</b> · 누적 <b class="sd ${cls(roi)}">${pctTxt(roi)}</b></span><span class="v num">${won(w)}</span></span><span class="c num ${cls(r2)}">${pct2Txt(r2)}</span>`;
   if (fab.dataset.sig && fab.dataset.sig !== sig) { fab.classList.remove('bump'); void fab.offsetWidth; fab.classList.add('bump'); }
   fab.dataset.sig = sig;
 }
@@ -990,7 +1016,7 @@ function renderHome() {
   let h = `<div class="card idxmini"><div><span class="lab">곰스피</span><b class="num">${Ik.toFixed(2)}</b><span class="livedot" title="실시간"></span></div><span class="num ${cls(ic)}">${pctTxt(ic)}</span></div>
     <div class="movers">${mover(best, '🚀 2시간 최고')}${mover(worst, '📉 2시간 최저')}</div>`;
 
-  h = bonusCard() + h;
+  h = posHUD() + bonusCard() + h;
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">10억원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
@@ -1030,10 +1056,65 @@ function renderHome() {
     }
   }
   h += `</div>`;
-  h += `<div class="sec"><div class="sec-h"><h2>전체 종목</h2><small>2시간 변동률 · 짝수 시 초기화</small></div><div class="slist">${STOCKS.map(stockRow).join('')}</div></div>`;
+  h += `<div class="sec"><div class="sec-h"><h2>전체 종목</h2><small>2시간 변동률 · 짝수 시 초기화</small></div><div class="slist">${heldFirst(STOCKS).map(stockRow).join('')}</div></div>`;
   el.innerHTML = h;
 }
 
+// 내 포지션 한 줄씩: 원금(넣은 돈) → 평가(지금 정리하면 받는 돈), 손익, 청산까지 남은 거리
+function myPositions(me) {
+  me = me || S.me; if (!me) return [];
+  const out = [], k = S.tick;
+  Object.entries(me.hold || {}).filter(([s]) => SM[s]).forEach(([s, q]) => {
+    const p = px(s, k), principal = q * ((me.cost || {})[s] || p), value = q * p - Math.floor(q * p * FEE);
+    out.push({ sym: s, kind: 'spot', label: '현물', mode: 'sell', principal, value });
+  });
+  Object.entries(me.lev || {}).filter(([s]) => SM[s]).forEach(([s, o]) => {
+    const p = px(s, k), d = o.d || 1, value = Math.max(0, levVal(o, p) - Math.ceil(o.q * p * FEE));
+    const liqP = o.e - d * (o.m * .97) / o.q, dist = Math.max(0, d * (p - liqP) / p);
+    out.push({ sym: s, kind: 'lev', label: `${d < 0 ? '📉' : '🚀'}${o.x}배 ${levSide(o)}`, mode: 'levclose', principal: o.m, value, dist, distMax: 1 / o.x });
+  });
+  Object.entries(me.shorts || {}).filter(([s]) => SM[s]).forEach(([s, o]) => {
+    const p = px(s, k), value = Math.max(0, o.q * (2 * o.e - p) - Math.ceil(o.q * p * FEE)), liqP = o.e * 1.97;
+    out.push({ sym: s, kind: 'short', label: '🎯공매도', mode: 'cover', principal: o.q * o.e, value, dist: Math.max(0, (liqP - p) / p), distMax: .97 });
+  });
+  out.forEach(x => { x.pnl = x.value - x.principal; x.pct = x.principal ? x.pnl / x.principal : 0; });
+  return out.sort((a, b) => b.pnl - a.pnl);
+}
+function posHUD() {
+  const list = myPositions(); if (!list.length) return '';
+  const P = list.reduce((a, x) => a + x.principal, 0), V = list.reduce((a, x) => a + x.value, 0), pnl = V - P, pct = P ? pnl / P : 0;
+  const armed = S.closeAllAt && Date.now() - S.closeAllAt < 4000;
+  const off = seasonOver() || S.readOnly || S.saving;
+  return `<div class="card hud ${cls(pnl)}"><div class="hud-top"><div><small>🔥 내 실시간 포지션 · ${list.length}개</small>
+      <div class="hud-pnl num">${signWon(pnl)} <span>(${pctTxt(pct)})</span></div>
+      <small class="num">원금 ${man(P)} → 평가 ${man(V)}</small></div>
+      <button type="button" class="hud-all${armed ? ' armed' : ''}" id="closeAllBtn" ${off ? 'disabled' : ''}>${armed ? '한 번 더 누르면<br>전부 정리' : '⚡ 전체<br>정리'}</button></div>
+    <div class="hud-list">${list.map(x => { const st = SM[x.sym]; const g = x.dist != null ? Math.min(1, x.dist / x.distMax) : null;
+      return `<div class="hud-row"><button type="button" class="hud-main" data-quick="${x.mode}" data-sym="${x.sym}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="postag ${x.kind === 'spot' ? 'spot' : x.label.includes('숏') || x.kind === 'short' ? 'short' : 'long'}">${x.label}</span></b>
+        <small class="num">${man(x.principal)} → ${man(x.value)} · <b class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</b></small>
+        ${g != null ? `<span class="gauge${g < .3 ? ' danger' : ''}"><i style="width:${(g * 100).toFixed(0)}%"></i></span><small class="gtxt${g < .3 ? ' up' : ''}">청산까지 ${(x.dist * 100).toFixed(1)}%</small>` : ''}</span></button>
+        <button type="button" class="hud-close" data-closepos="${x.kind}:${x.sym}" ${off ? 'disabled' : ''}>즉시<br>정리</button></div>`; }).join('')}</div></div>`;
+}
+async function closePositions(filter) {
+  if (!S.me || S.saving || S.readOnly) return;
+  const list = myPositions().filter(filter); if (!list.length) return;
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); let got = 0, pnl = 0;
+  list.forEach(x => {
+    if (x.kind === 'spot') { delete me.hold[x.sym]; if (me.cost) delete me.cost[x.sym]; }
+    if (x.kind === 'lev') { me.levPnl = (me.levPnl || 0) + x.pnl; delete me.lev[x.sym]; }
+    if (x.kind === 'short') delete me.shorts[x.sym];
+    got += x.value; pnl += x.pnl;
+  });
+  me.cash = Math.round(me.cash + got);
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false; S.closeAllAt = null;
+  if (ok) {
+    list.forEach(x => addFeed(x.kind === 'spot' ? { kind: 'sell', sym: x.sym, amt: x.value } : x.kind === 'lev' ? { kind: 'levclose', sym: x.sym, amt: x.pct } : { kind: 'cover', sym: x.sym, amt: x.value }));
+    toast(`${list.length > 1 ? `⚡ ${list.length}개 전부 정리` : `${SM[list[0].sym].n} 정리`} · ${signWon(pnl)} → 현금 ${man(got)}원`);
+    if (pnl > 0) { confetti(); buzz(60); }
+  }
+  renderAll();
+}
+const heldFirst = arr => { const has = id => !!exitMode(id); return [...arr.filter(x => has(x.id)), ...arr.filter(x => !has(x.id))]; };
 function exitMode(id) {
   if (!S.me) return null;
   if ((S.me.hold || {})[id]) return 'sell';
@@ -1047,7 +1128,8 @@ function stockRow(s) {
   const tc = S.talk.filter(t => t.sym === s.id).length;
   const lv = S.me && S.me.lev && S.me.lev[s.id];
   const pos = lv ? `<span class="postag ${(lv.d || 1) < 0 ? 'short' : 'long'}">${lv.x}배 ${levSide(lv)}</span>` : sq ? `<span class="postag short">공매도</span>` : '';
-  const sub = pos + (q ? `<span class="mine">${q.toLocaleString()}주 보유</span>` : pos ? '' : SECTORS[s.s].n) + (tc ? ` · 💬${tc}` : '');
+  const mp = myPositions().filter(x => x.sym === s.id); const rowPnl = mp.reduce((a, x) => a + x.pnl, 0), rowP = mp.reduce((a, x) => a + x.principal, 0);
+  const sub = pos + (q ? `<span class="mine">${q.toLocaleString()}주 보유</span>` : pos ? '' : SECTORS[s.s].n) + (mp.length ? ` <b class="rowpnl ${cls(rowPnl)}">${signWon(rowPnl)} (${pctTxt(rowP ? rowPnl / rowP : 0)})</b>` : '') + (tc ? ` · 💬${tc}` : '');
   const fl = LV.flash && LV.flash[s.id] ? ' f' + LV.flash[s.id] : '';
   const off = seasonOver() || S.readOnly;
   return `<div class="srow${fl ? ' row' + fl.trim() : ''}"><button class="srow-main" type="button" data-stock="${s.id}">${badge(s)}<span class="sname"><b class="${lv ? ((lv.d || 1) < 0 ? 'hot-short' : 'hot-long') : sq ? 'hot-short' : ''}">${esc(s.n)}</b><small>${sub}</small></span>
@@ -1401,7 +1483,7 @@ function indexCardHTML() {
 function drawIndexChart() { const cv = $('#indexChart'); if (!cv) return; const I = S.SE.index, Ik = indexNow(); drawChart(cv, I.slice(0, S.tick + 1), { padB: 4, base: 1000, live: true ? { x: liveX(), v: Ik } : null }); }
 function renderMarket() {
   const el = $('#tab-market'); const k = S.tick; let h = '';
-  h += indexCardHTML();
+  h += posHUD() + indexCardHTML();
   const mine = S.me ? new Set([...Object.keys(S.me.hold || {}), ...Object.keys(S.me.shorts || {})].filter(s => SM[s])) : new Set();
   const chips = [['all', '전체'], ...(mine.size ? [['mine', '내 종목']] : []), ['up', '급등'], ['down', '급락'], ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
   if (S.filter === 'mine' && !mine.size) S.filter = 'all';
@@ -1411,7 +1493,7 @@ function renderMarket() {
   else if (S.filter !== 'all') list = list.filter(s => s.s === S.filter);
   h += `<div class="sec"><div class="sec-h"><h2>종목 ${STOCKS.length}</h2><small>2시간 변동률 · 짝수 시 초기화</small></div>
     <div class="chips" role="group" aria-label="종목 분류">${chips.map(([v, l]) => `<button type="button" data-filter="${v}" aria-pressed="${S.filter === v}">${l}</button>`).join('')}</div><div class="slist">`;
-  h += list.map(stockRow).join('');
+  h += heldFirst(list).map(stockRow).join('');
   h += `</div></div><p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>`;
   el.innerHTML = h;
   requestAnimationFrame(drawIndexChart);
@@ -1992,6 +2074,7 @@ document.addEventListener('click', e => {
   if (t.dataset.stock) { if (S.sheet) closeSheet(); openDetail(t.dataset.stock); return; }
   if (t.hasAttribute('data-player')) { openSheet('player', { id: t.dataset.player }); return; }
   if (t.hasAttribute('data-join')) { openSheet('join'); return; }
+  if (t.dataset.closepos) { const [kind, sym] = t.dataset.closepos.split(':'); closePositions(x => x.kind === kind && x.sym === sym); return; }
   if (t.dataset.levd) { S.sheet.dir = t.dataset.levd; S.sheet.q = 0; renderSheet(); return; }
   if (t.dataset.levx) { S.sheet.x = +t.dataset.levx; S.sheet.q = 0; renderSheet(); return; }
   if (t.dataset.m) { S.sheet.m = t.dataset.m; S.sheet.q = 0; renderSheet(); return; }
@@ -2000,6 +2083,7 @@ document.addEventListener('click', e => {
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
     case 'estAct': estAction(); break;
+    case 'closeAllBtn': if (S.closeAllAt && Date.now() - S.closeAllAt < 4000) closePositions(() => true); else { S.closeAllAt = Date.now(); renderAll(); } break;
     case 'zoomIn': zoomAt(1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
     case 'zoomOut': zoomAt(1 / 1.6, S.mapV.x + S.mapV.w / 2, S.mapV.y + S.mapV.h / 2, true); break;
     case 'zoomReset': { const h = MAP.w0 * mapAR(); S.mapV = { x: MAP.x0, y: MAP.y0 + MAP.h0 / 2 - h / 2, w: MAP.w0, h }; applyMapView(); break; }
