@@ -904,12 +904,19 @@ function jumpAt(sym, rel) {
   return base + e.j * wave;
 }
 const ATK_DUR = 45e3, ATK_HOLD = 20e3, ATK_MAG = .12;
+// 공격 기록은 피드에서 밀려나도 충격이 끝날 때까지 기억해요
+const ATKS = new Map();
+function noteAtks(list) {
+  const t = now();
+  for (const f of list || []) if (f && f.kind === 'atk' && f.sym) ATKS.set(f.ts + ':' + f.uid + ':' + f.sym, f);
+  for (const [k, f] of ATKS) if (t - (f.ts || 0) > ATK_DUR + 60e3) ATKS.delete(k);
+}
+const atkLive = (sym, uid) => [...ATKS.values()].some(f => f.sym === sym && (!uid || f.uid === uid) && now() - (f.ts || 0) < ATK_DUR);
 function atkAt(sym, t) {
-  if (!S.feed || !S.feed.length || !S.season) return 0;
+  if (!ATKS.size || !S.season) return 0;
   let v = 0;
-  for (let i = 0; i < S.feed.length; i++) {
-    const f = S.feed[i];
-    if (f.kind !== 'atk' || f.sym !== sym || f.season !== S.season.sid) continue;
+  for (const f of ATKS.values()) {
+    if (f.sym !== sym) continue;
     const dt = t - (f.ts || 0);
     if (dt < 0 || dt >= ATK_DUR) continue;
     const w = dt <= ATK_HOLD ? 1 : 1 - (dt - ATK_HOLD) / (ATK_DUR - ATK_HOLD);
@@ -1036,7 +1043,7 @@ function posSummary(p) {
 function lockedCount(p) { const top = topHolding(p, S.tick); return Object.keys(p.hold || {}).filter(s => SM[s] && s !== top).length + Object.keys(p.shorts || {}).filter(s => SM[s]).length; }
 const spiedOn = id => S.me && S.me.spy && S.me.spy.day === kstDay(now()) && S.me.spy.target === id;
 const seasonOver = () => false; // 시장은 멈추지 않아요. 월요일 0시에 새 시즌으로 자연스럽게 넘어가요.
-const roiOf = (p, w) => { const b = CASH0 + BONUS * (p ? earnedOf(p) : 0); return (w - b) / b; };
+const roiOf = (p, w) => { const b = CASH0 + BONUS * (p ? earnedOf(p) : 0) + RESCUE_AMT * ((p && p.rescueN) || 0); return (w - b) / b; };
 const chg = (sym, from, to) => px(sym, to) / px(sym, from) - 1;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
 function moodOf(c) { return c > .02 ? ['up', '불장'] : c > .004 ? ['up', '훈훈'] : c < -.02 ? ['down', '공포'] : c < -.004 ? ['down', '쌀쌀'] : ['flat', '눈치보기']; }
@@ -1184,7 +1191,9 @@ function posHUD() {
 }
 async function closePositions(filter) {
   if (!S.me || S.saving || S.readOnly) return;
-  const list = myPositions().filter(filter); if (!list.length) return;
+  const all = myPositions().filter(filter), list = all.filter(x => !atkLive(x.sym, S.uid));
+  if (all.length > list.length) toast('💥 내가 공격한 종목은 충격이 끝날 때까지 정리할 수 없어요');
+  if (!list.length) return;
   const before = S.me, me = JSON.parse(JSON.stringify(before)); let got = 0, pnl = 0;
   list.forEach(x => {
     if (x.kind === 'spot') { delete me.hold[x.sym]; if (me.cost) delete me.cost[x.sym]; }
@@ -1472,7 +1481,9 @@ async function checkLiquidation() {
   // 공매도 반대매매: 진입가 대비 +35% 이상 숏스퀴즈 급등 시 자동 반대매매
   const burnt = Object.entries(S.me.shorts || {}).filter(([sym, o]) => SM[sym] && px(sym, S.tick) >= o.e * 1.35);
   if (burnt.length) {
-    liquidating = true; const b0 = S.me; const me2 = JSON.parse(JSON.stringify(b0)); burnt.forEach(([sym]) => delete me2.shorts[sym]);
+    liquidating = true; const b0 = S.me; const me2 = JSON.parse(JSON.stringify(b0));
+    burnt.forEach(([sym, o]) => { const p = px(sym, S.tick); me2.cash += Math.max(0, o.q * (2 * o.e - p) - Math.ceil(o.q * p * FEE)); delete me2.shorts[sym]; });
+    me2.cash = Math.round(me2.cash);
     const ok2 = await saveMe(me2, b0); liquidating = false;
     if (ok2) { burnt.forEach(([sym]) => addFeed({ kind: 'liq', sym, x: 1, d: -1 })); toast(`💀 ${burnt.map(([sym]) => SM[sym].n).join(', ')} 숏스퀴즈 공매도 반대매매!`); boom(); renderAll(); }
     return;
@@ -1653,7 +1664,7 @@ function feedText(f) {
     case 'lev': return st ? [f.d < 0 ? 'down' : 'up', f.d < 0 ? '📉' : '🚀', `<b>${nm}</b>님이 ${esc(st.n)} <b>${f.x}배 ${f.d < 0 ? '숏' : '롱'}</b> 진입!`] : null;
     case 'levclose': return st ? [f.amt >= 0 ? 'up' : 'down', f.amt >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(st.n)} 레버리지 정리 <b class="${f.amt >= 0 ? 'up' : 'down'}">${pctTxt(f.amt)}</b>`] : null;
     case 'liq': return st ? ['down', '💀', `<b>${nm}</b>님 ${esc(st.n)} <b>${f.x > 1 ? f.x + '배 ' + (f.d < 0 ? '숏' : '롱') + ' 고점 설거지 청산' : '공매도 반대매매'}</b>당했어요`] : null;
-    case 'atk': return st ? ['up', '💥', `<b>${nm}</b>님이 <b>${esc(nameOf(f.target))}</b>님의 ${esc(st.n)} 포지션을 <b>${f.dir < 0 ? '▼12% 폭락' : '▲12% 폭등'} 공격</b>했어요!${f.bounty ? ` <b class="up">(참수 현상금 +${won(f.bounty)})</b>` : ''}`] : null;
+    case 'atk': return st ? ['up', '💥', `<b>${nm}</b>님이 <b>${esc(nameOf(f.target))}</b>님의 ${esc(st.n)} 포지션을 <b>${f.dir < 0 ? '▼12% 폭락' : '▲12% 폭등'} 공격</b>했어요!${f.bounty ? ` <b class="up">(참수 성공 · 비용 환급)</b>` : ''}`] : null;
     case 'spy': return ['gold', '🕵️', `누군가 <b>${esc(nameOf(f.target))}</b>님의 지갑을 엿봤어요`];
     default: return null;
   }
@@ -1902,11 +1913,13 @@ function updateTradeEst() {
   btn.disabled = S.saving || !(sh.m === 'levclose' ? maxQty('levclose', sh.sym) : q) || q > mx;
   const lx = $('#levx'); if (lx) lx.hidden = sh.m !== 'lev'; const ld = $('#levdir'); if (ld) ld.hidden = sh.m !== 'lev';
   const lxVal = sh.x || 25, liqPct = +(100 / lxVal).toFixed(1);
-  $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 1초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가의 2배 가까이 오르면 자동 반대매매돼요. ', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
+  $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 1초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가보다 35% 오르면 자동 반대매매되고, 남은 돈은 돌려받아요. ', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
 }
 async function doTrade() {
   const sh = S.sheet; const q = sh.q, sym = sh.sym, m = sh.m, p = px(sym, S.tick);
   if (!q || q > maxQty(m, sym) || S.saving || seasonOver()) return;
+  if ((m === 'buy' || m === 'short' || m === 'lev') && atkLive(sym)) { toast('💥 공격 충격 중인 종목이에요. 45초 뒤에 진입할 수 있어요'); return; }
+  if ((m === 'sell' || m === 'cover' || m === 'levclose') && atkLive(sym, S.uid)) { toast('💥 내가 공격한 종목이라 충격이 끝날 때까지 정리할 수 없어요'); return; }
   const before = S.me; const me = JSON.parse(JSON.stringify(before)); me.hold ||= {}; me.cost ||= {}; me.shorts ||= {};
   const amt = q * p, fee = Math.ceil(amt * FEE);
   if (m === 'buy') { const h0 = me.hold[sym] || 0; me.cost[sym] = ((me.cost[sym] || 0) * h0 + amt) / (h0 + q); me.hold[sym] = h0 + q; me.cash -= amt + fee; }
@@ -1941,7 +1954,7 @@ function renderPlayerSheet(b, sh) {
   const list = myPositions(p);
   const rows = list.map(x => {
     const st = SM[x.sym], dir = (x.kind === 'spot' || (x.kind === 'lev' && !x.label.includes('숏'))) ? -1 : 1, cost = atkCostOf(x.principal);
-    const btn = canAtk ? `<button type="button" class="atk-btn" data-atk="${esc(sh.id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼6%' : '▲6%'}<small>${man(cost)}원</small></button>` : '';
+    const btn = canAtk ? `<button type="button" class="atk-btn" data-atk="${esc(sh.id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼12%' : '▲12%'}<small>${man(cost)}원</small></button>` : '';
     return `<div class="pos${canAtk ? ' has-atk' : ''}">${badge(st)}<span class="sname"><b>${esc(st.n)} <span class="postag ${x.kind === 'spot' ? 'spot' : dir > 0 ? 'short' : 'long'}">${x.label}</span></b>
       <small class="dim num">원금 ${man(x.principal)} → ${man(x.value)}${x.dist != null ? ` · 청산 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
       <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span>${btn}</div>`;
@@ -1949,7 +1962,7 @@ function renderPlayerSheet(b, sh) {
   const hold = `<div class="slist">${rows || '<div class="empty">보유 중인 포지션이 없어요 (100% 현금)</div>'}
     <div class="pos"><span class="logo-b" style="background:var(--mint)">₩</span><span class="sname"><b>현금</b></span><span class="r num"><b>${won(p.cash)}</b></span></div></div>`;
   b.innerHTML = `<div class="shead">${ava(p, true, rk === 1)}<div><h3>${esc(p.name)}</h3><small>${rk}위 · ${won(w)} · <span class="${cls(roi)}">${pctTxt(roi)}</span></small></div></div>
-    ${canAtk && list.length ? `<p class="hint" style="margin:-4px 0">💥 <b>포지션 공격</b>: 상대 원금의 15%를 써서 주가를 반대 방향으로 6% 폭격해요! 공격으로 상대 레버리지를 청산시키면 <b>상대 증거금의 50%를 약탈</b>해요.</p>` : ''}
+    ${canAtk && list.length ? `<p class="hint" style="margin:-4px 0">💥 <b>포지션 공격</b>: 상대 원금의 15%를 써서 주가를 45초 동안 반대 방향으로 12% 폭격해요! 상대 레버리지를 청산시키면 <b>공격 비용을 돌려받아요</b>. 충격 중인 종목은 아무도 새로 진입할 수 없고, 공격한 사람은 그 종목 포지션을 정리할 수 없어요.</p>` : ''}
     ${hold}
     ${!isMe && S.me ? `<button class="cta soft" type="button" id="rivalBtn">${S.rival === sh.id ? '라이벌 해제' : '⚔️ 라이벌로 지정'}</button>` : ''}`;
 }
@@ -1965,7 +1978,7 @@ async function attackPosition(targetUid, kind, sym) {
   const pAfter = px(sym, S.tick) * (dir < 0 ? 1 / (1 + ATK_MAG) : (1 + ATK_MAG));
   const killed = (kind === 'lev' && p.lev && p.lev[sym] && levVal(p.lev[sym], pAfter) <= p.lev[sym].m * .03)
     || (kind === 'short' && p.shorts && p.shorts[sym] && p.shorts[sym].q * (2 * p.shorts[sym].e - pAfter) <= p.shorts[sym].q * p.shorts[sym].e * .03);
-  const bounty = killed ? Math.round(x.principal * .5) : 0;
+  const bounty = killed ? cost : 0; // 청산시키면 공격 비용만 돌려받아요 (돈이 새로 생기지 않게)
   const before = S.me, me = JSON.parse(JSON.stringify(before));
   me.cash = Math.round(me.cash - cost + bounty);
   S.saving = true; const ok = await saveMe(me, before); S.saving = false;
@@ -1978,8 +1991,8 @@ async function attackPosition(targetUid, kind, sym) {
   LV.step = -1;
   boom(); if (killed) confetti(); buzz(70);
   toast(killed
-    ? `💀 참수 성공! ${p.name}님의 ${SM[sym].n} 포지션 폭파! 현상금 +${won(bounty)} 획득!`
-    : `💥 ${p.name}님의 ${SM[sym].n} 포지션 공격! (${dir < 0 ? '▼6% 폭락' : '▲6% 폭등'} 충격파)`);
+    ? `💀 참수 성공! ${p.name}님의 ${SM[sym].n} 포지션 폭파! 공격 비용 ${won(bounty)} 환급!`
+    : `💥 ${p.name}님의 ${SM[sym].n} 포지션 공격! (${dir < 0 ? '▼12% 폭락' : '▲12% 폭등'} 충격파)`);
   renderAll(); if (S.sheet) renderSheet();
 }
 async function doSpy(id) {
@@ -2077,6 +2090,7 @@ function saveMe(me, before) {
 }
 function addFeed(f) {
   const item = { ...f, uid: S.uid, season: S.season.sid, ts: Date.now() };
+  noteAtks([item]);
   if (S.mode === 'demo') { S.feed.unshift(item); LS.set('demoFeedAll', S.feed.filter(x => !x.bot)); return; }
   S.db.collection('feed').add(item).catch(() => {});
 }
@@ -2103,7 +2117,7 @@ function loadDemo() {
     ...Object.entries(p.hold).map(([s, q], j) => ({ kind: 'buy', uid: id, sym: s, amt: q * SM[s].p0, season: S.season.sid, ts: S.season.start + (i + 1) * 9 * 60e3 + j * 60e3, bot: true })),
     ...Object.keys(p.shorts).map(s => ({ kind: 'short', uid: id, sym: s, season: S.season.sid, ts: S.season.start + (i + 2) * 11 * 60e3, bot: true })),
   ]);
-  S.feed = [...LS.get('demoFeedAll', []), ...bf].sort((a, b) => b.ts - a.ts);
+  S.feed = [...LS.get('demoFeedAll', []), ...bf].sort((a, b) => b.ts - a.ts); noteAtks(S.feed);
   const TR = rng('talk:' + S.season.sid); const LINES = ['이거 오늘 간다', '물렸다… 존버합니다', '찌라시 믿고 들어갔다가 망함ㅋㅋ', '공매도 각 아님?', '외국인 들어온다던데', '여기서 더 사는 건 욕심인가', '오늘 점심장에 손절함', '평단 낮추는 중', '이 가격이면 줍줍', '큰손 이벤트 여기 아니냐'];
   const botTalk = []; let c0 = 0;
   STOCKS.forEach(st => { if (TR() < .45) { const n = 1 + Math.floor(TR() * 3); for (let i = 0; i < n; i++) { const bi = Math.floor(TR() * 3); botTalk.push({ id: 'bt' + (c0++), bot: true, sym: st.id, uid: 'bot' + bi, text: pick(TR, LINES), ts: now() - Math.floor(TR() * 36e5 * 20), season: S.season.sid, likes: TR() < .5 ? { ['bot' + ((bi + 1) % 3)]: true } : {} }); } } });
@@ -2172,13 +2186,13 @@ function startLive(db, uid) {
   }, () => { clearTimeout(timer); S.loaded = true; toast('순위를 불러오지 못했어요.'); renderAll(); });
   db.collection('talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.detail) renderDetail(); if (S.tab === 'home' || S.tab === 'market') renderAll(); }, () => {});
   db.collection('estates').onSnapshot(snap => { const n = {}; snap.docs.forEach(d => n[d.id] = d.data()); S.estates = n; renderAll(); if (S.sheet && S.sheet.type === 'estate') renderSheet(); }, () => {});
-  db.collection('feed').orderBy('ts', 'desc').limit(40).onSnapshot(snap => {
-    S.feed = snap.docs.map(d => d.data()); LV.step = -1;
-    const hit = S.feed.find(f => f && f.type === 'atk' && f.targetUid === S.uid && now() - f.ts < 8000);
+  db.collection('feed').orderBy('ts', 'desc').limit(80).onSnapshot(snap => {
+    S.feed = snap.docs.map(d => d.data()); noteAtks(S.feed); LV.step = -1;
+    const hit = S.feed.find(f => f && f.kind === 'atk' && f.target === S.uid && now() - f.ts < 8000);
     if (hit && S.lastAtkTs !== hit.ts) {
       S.lastAtkTs = hit.ts; boom();
-      const s = STOCK[hit.sym];
-      toast(`🚨 ${hit.nick}님이 내 ${s ? s.name : hit.sym} 포지션을 공격했어요! (${hit.dir > 0 ? '강제 +6% 펌핑' : '강제 -6% 덤핑'})`);
+      const s = SM[hit.sym], who = (S.players[hit.uid] || {}).name || '누군가';
+      toast(`🚨 ${who}님이 내 ${s ? s.n : hit.sym} 포지션을 공격했어요! (${hit.dir > 0 ? '강제 +12% 펌핑' : '강제 -12% 덤핑'})`);
       checkLiquidation();
     }
     renderAll(); if (S.sheet && S.sheet.type === 'player') renderSheet();
