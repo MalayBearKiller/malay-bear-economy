@@ -1,0 +1,38 @@
+rules_version = '2';
+// MPL 주식 리그 Firestore 보안 규칙
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 그대로 붙여넣고 게시하세요.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function shortText(t) { return t is string && t.size() > 0 && t.size() <= 140; }
+
+    // 각자의 지갑: 로그인한 사람은 모두 읽고(순위 계산), 쓰기는 본인 문서만
+    match /players/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 10;
+      allow delete: if false;
+    }
+
+    // 매매·엿보기·게임 소식: 본인 이름으로만 추가, 수정·삭제 불가
+    match /feed/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // 종목 채팅: 본인 이름으로만 보내고, 삭제는 본인 메시지만.
+    // 수정은 좋아요(likes) 필드만 바꿀 수 있어요.
+    match /talk/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && shortText(request.resource.data.text);
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow delete: if isOwner(resource.data.uid);
+    }
+  }
+}

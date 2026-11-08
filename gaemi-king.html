@@ -42,7 +42,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .helpbtn{margin-left:auto;width:34px;height:34px;border-radius:50%;font-weight:800;font-size:15px;background:var(--paper);color:var(--dim)}
 
 /* timer */
-.timer{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--ink);color:var(--bg);border-radius:18px}
+.timer{margin-bottom:4px;display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--ink);color:var(--bg);border-radius:18px}
 .timer .lab{font-size:12px;opacity:.6;font-weight:600}
 .timer .nm{font-size:15px;font-weight:700}
 .timer .cd{margin-left:auto;font-size:22px;font-weight:800;letter-spacing:-.01em}
@@ -242,6 +242,11 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .dbar .in{max-width:520px;margin:auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .dbar .cta{padding:14px 6px;font-size:15.5px}
 body.noscroll{overflow:hidden}
+.login{position:fixed;inset:0;z-index:70;background:var(--bg);display:grid;place-items:center;padding:24px var(--gut-r) 24px var(--gut-l)}
+.login-in{width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.login-sub{margin:0 0 18px;color:var(--dim);font-weight:600}
+.cta.google{background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line);display:flex;align-items:center;justify-content:center;gap:10px}
+.cta.google svg{width:20px;height:20px}
 .mypos .r span:first-child{font-size:13px}
 .vote{padding:16px;display:flex;flex-direction:column;gap:10px}
 .vq b{display:block;font-size:15.5px;font-weight:800}
@@ -352,14 +357,12 @@ body.noscroll{overflow:hidden}
 <div class="wrap">
   <div class="top">
     <span class="logo">MPL<i>.</i></span>
-    <span class="round num" id="roundChip">R 0/21</span>
     <button class="helpbtn" id="helpBtn" type="button" aria-label="규칙 보기">?</button>
   </div>
   <div class="timer" id="timer">
-    <div><div class="lab" id="nextLab">다음 라운드</div><div class="nm" id="nextName">-</div></div>
+    <div><div class="lab" id="nextLab">다음 장 마감까지</div><div class="nm" id="nextName">-</div></div>
     <div class="cd num" id="countdown">--:--:--</div>
   </div>
-  <div class="rounds" id="rounds" aria-hidden="true"></div>
 </div>
 
 <main class="wrap" style="padding-top:18px">
@@ -390,9 +393,19 @@ body.noscroll{overflow:hidden}
     <div class="sbody" id="sheetBody"></div>
   </div>
 </div>
+<section class="login" id="login" hidden>
+  <div class="login-in">
+    <div class="logo" style="font-size:40px">MPL<i>.</i></div>
+    <p class="login-sub">친구들끼리 일주일 동안 겨루는 가상 주식 리그</p>
+    <button class="cta google" type="button" id="googleBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.7H2v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14a6.6 6.6 0 0 1 0-4.2V7H2a11 11 0 0 0 0 9.9z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.3 1.7l3.1-3.1A11 11 0 0 0 2 7l3.7 2.8C6.6 7.4 9.1 5.4 12 5.4z"/></svg>Google로 로그인</button>
+    <button class="cta soft" type="button" id="demoBtn">로그인 없이 연습 모드</button>
+    <p class="hint" id="loginMsg">같은 링크로 들어온 친구들과 순위, 채팅을 같이 봐요.</p>
+  </div>
+</section>
 <section class="detail" id="detail" hidden aria-label="종목 상세"></section>
 <div class="toast" id="toast" hidden></div>
 
+<script src="firebase-config.js"></script>
 <script>
 (() => {
 'use strict';
@@ -614,9 +627,6 @@ function syncTime() {
 
 /* ───────── header ───────── */
 function renderHeader() {
-  $('#roundChip').textContent = `R ${S.tick}/${NT}`;
-  let h = ''; for (let k = 1; k <= NT; k++) h += `<i class="${k <= S.tick ? 'done' : ''}${k === S.tick + 1 && !seasonOver() ? ' now' : ''}${(k - 1) % 3 === 0 && k > 1 ? ' gap' : ''}"></i>`;
-  $('#rounds').innerHTML = h;
   const fab = $('#fab');
   if (!S.me) { fab.hidden = true; return; }
   const w = worth(S.me, S.tick), roi = roiOf(S.me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
@@ -630,7 +640,7 @@ function renderClock() {
   const t = now();
   const bc = $('#bonusCd'); if (bc) bc.textContent = hms(nextSlotAt(t) - t);
   if (seasonOver()) { $('#nextLab').textContent = '시즌 끝! 새 시즌까지'; $('#nextName').textContent = '월요일 0시'; $('#countdown').textContent = hms(S.season.start + 7 * D - t); return; }
-  $('#nextLab').textContent = `다음 라운드 ${S.tick + 1}`;
+  $('#nextLab').textContent = '다음 장 마감까지';
   $('#nextName').textContent = tickLabel(S.tick + 1);
   $('#countdown').textContent = hms(tickTime(S.season.start, S.tick + 1) - t);
 }
@@ -650,7 +660,7 @@ function renderHome() {
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>이번 주 리그에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">1,000만원 받고 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
-  if (S.mode === 'demo') h += `<p class="hint" style="margin-top:-10px">연습 모드예요. 연습봇 셋과 겨뤄요. 공유 링크로 열면 친구 순위가 떠요.</p>`;
+  if (S.mode === 'demo') h += `<p class="hint" style="margin-top:-10px">연습 모드예요. 연습봇 셋과 겨뤄요. 로그인하면 친구들과 같이 해요.</p>`;
   if (S.readOnly) h += `<p class="hint" style="margin-top:-10px">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
 
   if (S.me && S.rival && S.players[S.rival] && S.rival !== S.uid) {
@@ -1151,7 +1161,7 @@ function renderHelp(b) {
     <li><span>8</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 한 판 최대 200만원.</span></li>
     <li><span>9</span><span>일요일 22시 마지막 라운드 결과로 이번 주 1등이 정해져요.</span></li>
   </ul>
-  <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>`;
+  <p class="hint">종목 이름은 실제 기업이지만 가격과 뉴스는 게임용 가상 데이터예요.</p>${S.fb && S.mode === 'live' ? '<button class="cta soft" type="button" id="logoutBtn">로그아웃</button>' : ''}`;
 }
 function renderReveal(b, sh) {
   const { from, to } = sh; const n = to - from; const I = S.SE.index; const ic = I[to] / I[from] - 1;
@@ -1201,7 +1211,7 @@ function saveMe(me, before) {
     try { await S.db.doc('players/' + S.uid).set(me); return true; }
     catch (e) {
       S.me = before || null; if (before) S.players[S.uid] = before; else delete S.players[S.uid];
-      if (e && e.code === 'invalid_argument') { S.readOnly = true; toast('관전 모드예요. 방장에게 편집자 초대를 받아야 거래할 수 있어요.'); }
+      if (e && e.code === 'invalid_argument') { S.readOnly = true; toast(S.fb ? '저장 권한이 없어요. 로그아웃 후 다시 로그인해 보세요.' : '관전 모드예요. 방장에게 편집자 초대를 받아야 거래할 수 있어요.'); }
       else if (e && e.code === 'quota_exceeded') toast('저장 공간이 가득 찼어요. 방장에게 알려주세요.');
       else toast('저장하지 못했어요. 잠시 후 다시 해주세요.');
       renderAll(); return false;
@@ -1245,14 +1255,48 @@ function loadDemo() {
 function startDemo() { S.mode = 'demo'; S.loaded = true; loadDemo(); renderAll(); if (!maybeReveal()) maybeJoin(); autoCredit(); }
 
 /* ───────── live mode ───────── */
-async function boot() {
-  syncTime(); S.lastLive = liveStep(now()); S.bet = LS.get('bet', 500000); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
-  let db = null, user = null;
-  try { if (window.claude && window.claude.use) [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch {}
-  const uid = user ? await user.id() : null;
-  if (!db || !uid) { startDemo(); return; }
+// Firebase: Google login + Firestore, wrapped to the same small API the game already uses
+const FB_V = '10.12.2';
+async function firebaseBackend(cfg) {
+  const base = `https://www.gstatic.com/firebasejs/${FB_V}/`;
+  const [appM, fsM, auM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js'), import(base + 'firebase-auth.js')]);
+  const app = appM.initializeApp(cfg); const fs = fsM.getFirestore(app); const auth = auM.getAuth(app);
+  const wrapQ = q => ({
+    orderBy: (f, d) => wrapQ(fsM.query(q, fsM.orderBy(f, d))),
+    limit: n => wrapQ(fsM.query(q, fsM.limit(n))),
+    onSnapshot: (next, err) => fsM.onSnapshot(q, next, err),
+    add: d => fsM.addDoc(q, d),
+  });
+  const mapErr = e => { if (e && e.code === 'permission-denied') e.code = 'invalid_argument'; throw e; };
+  const db = {
+    collection: path => wrapQ(fsM.collection(fs, path)),
+    doc: path => { const r = fsM.doc(fs, path); return {
+      set: d => fsM.setDoc(r, d).catch(mapErr),
+      update: d => fsM.setDoc(r, d, { merge: true }).catch(mapErr),
+      delete: () => fsM.deleteDoc(r).catch(mapErr),
+    }; },
+  };
+  return {
+    db,
+    onUser: cb => auM.onAuthStateChanged(auth, cb),
+    signIn: async () => { const pr = new auM.GoogleAuthProvider(); try { await auM.signInWithPopup(auth, pr); } catch (e) { if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) await auM.signInWithRedirect(auth, pr); else throw e; } },
+    signOut: () => auM.signOut(auth),
+  };
+}
+async function bootFirebase(cfg) {
+  const L = $('#login'); L.hidden = false; document.body.classList.add('noscroll');
+  let fb;
+  try { fb = await firebaseBackend(cfg); } catch (e) { $('#loginMsg').textContent = '서버에 연결하지 못했어요. 연습 모드로 둘러볼 수 있어요.'; return; }
+  S.fb = fb; let started = false;
+  fb.onUser(u => {
+    if (!u) { L.hidden = false; document.body.classList.add('noscroll'); return; }
+    L.hidden = true; document.body.classList.remove('noscroll');
+    if (!LS.get('nick', '') && u.displayName) LS.set('nick', u.displayName.slice(0, 10));
+    if (!started) { started = true; startLive(fb.db, u.uid); }
+  });
+}
+function startLive(db, uid) {
   S.mode = 'live'; S.db = db; S.uid = uid;
-  try { if ((await user.can('data.write')) === false) S.readOnly = true; } catch {}
   renderAll();
   const timer = setTimeout(() => { if (!S.loaded) toast('시장 서버가 느려요. 조금만 기다려 주세요.'); }, 10000);
   db.collection('players').onSnapshot(snap => {
@@ -1265,8 +1309,19 @@ async function boot() {
     if (S.loaded && !maybeReveal()) maybeJoin();
     autoCredit();
   }, () => { clearTimeout(timer); S.loaded = true; toast('순위를 불러오지 못했어요.'); renderAll(); });
-  db.collection('talk').orderBy('ts', 'desc').limit(300).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.detail) renderDetail(); if (S.tab === 'home' || S.tab === 'market') renderAll(); }, () => {});
-  db.collection('feed').orderBy('ts', 'desc').limit(60).onSnapshot(snap => { S.feed = snap.docs.map(d => d.data()); renderAll(); }, () => {});
+  db.collection('talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.detail) renderDetail(); if (S.tab === 'home' || S.tab === 'market') renderAll(); }, () => {});
+  db.collection('feed').orderBy('ts', 'desc').limit(40).onSnapshot(snap => { S.feed = snap.docs.map(d => d.data()); renderAll(); }, () => {});
+}
+async function boot() {
+  syncTime(); S.lastLive = liveStep(now()); S.bet = LS.get('bet', 500000); S.slot = slotOf(now()); S.rival = LS.get('rival', null); S.feedSeen = LS.get('feedSeen', 0); renderAll();
+  const cfg = window.FIREBASE_CONFIG;
+  if (cfg && cfg.apiKey) { bootFirebase(cfg); return; }
+  let db = null, user = null;
+  try { if (window.claude && window.claude.use) [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch {}
+  const uid = user ? await user.id() : null;
+  if (!db || !uid) { startDemo(); return; }
+  try { if ((await user.can('data.write')) === false) S.readOnly = true; } catch {}
+  startLive(db, uid);
 }
 
 /* ───────── events ───────── */
@@ -1292,6 +1347,9 @@ document.addEventListener('click', e => {
   if (t.dataset.frac) { const mx = maxQty(S.sheet.m, S.sheet.sym); $('#qty').value = Math.floor(mx * +t.dataset.frac); updateTradeEst(); return; }
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
+    case 'googleBtn': t.disabled = true; S.fb.signIn().catch(() => toast('로그인하지 못했어요. 다시 시도해 주세요.')).finally(() => { t.disabled = false; }); break;
+    case 'demoBtn': $('#login').hidden = true; document.body.classList.remove('noscroll'); startDemo(); break;
+    case 'logoutBtn': S.fb.signOut().then(() => location.reload()); break;
     case 'detailBack': closeDetail(); break;
     case 'talkSend': postTalk(); break;
     case 'spinBtn': playCasino('wheel'); break;
