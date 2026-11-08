@@ -1221,6 +1221,31 @@ function posSummary(p) {
 function lockedCount(p) { const top = topHolding(p, S.tick); return Object.keys(p.hold || {}).filter(s => SM[s] && s !== top).length + Object.keys(p.shorts || {}).filter(s => SM[s]).length; }
 const spiedOn = id => S.me && S.me.spy && S.me.spy.day === kstDay(now()) && S.me.spy.target === id;
 const seasonOver = () => false; // 시장은 멈추지 않아요. 월요일 0시에 새 시즌으로 자연스럽게 넘어가요.
+// 순위의 자산 변동률: 20분마다 0으로 초기화. 구간 시작 때 각자 앱이 자기 기준값(wb)을 저장하고,
+// 그 기준값이 없으면(앱을 안 켠 사람) 지금 가진 것들을 구간 시작 가격으로 계산해요.
+const WB_MS = 20 * 60e3, wbStart = t => Math.floor(t / WB_MS) * WB_MS, WB_CACHE = {};
+function worthAtTime(p, t) {
+  let v = (p.cash || 0) + BONUS * pendingOf(p);
+  for (const [s, q] of Object.entries(p.hold || {})) if (SM[s]) v += q * priceAt(s, t);
+  for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += Math.max(0, o.q * (2 * o.e - priceAt(s, t)));
+  for (const [s, o] of Object.entries(p.lev || {})) if (SM[s]) v += levVal(o, priceAt(s, t));
+  for (const b of ESTATES) { const e = estOf(b.id); if (e && e.owner === p.id && !e.destroyed) v += estAt(b.id, t); }
+  return v;
+}
+function winBase(p) {
+  const ws = wbStart(now());
+  if (p.wb && p.wb.t === ws && p.wb.w > 0) return p.wb.w;
+  const key = p.id + ':' + ws + ':' + p.cash; return WB_CACHE[key] ?? (WB_CACHE[key] = worthAtTime(p, ws));
+}
+const winChg = (p, w) => { const b = winBase(p); return b > 0 ? (w - b) / b : 0; };
+let wbSaving = false;
+async function saveWinBase() {
+  if (!S.me || S.readOnly || S.saving || wbSaving || (S.mode === 'live' && !S.loaded)) return;
+  const ws = wbStart(now()); if (S.me.wb && S.me.wb.t === ws) return;
+  wbSaving = true; const before = S.me, me = JSON.parse(JSON.stringify(before));
+  me.wb = { t: ws, w: Math.round(worthAtTime({ ...before, id: S.uid }, ws)) };
+  await saveMe(me, before); wbSaving = false;
+}
 const roiOf = (p, w) => { const b = CASH0 + BONUS * (p ? earnedOf(p) : 0) + RESCUE_AMT * ((p && p.rescueN) || 0); return (w - b) / b; };
 const chg = (sym, from, to) => px(sym, to) / px(sym, from) - 1;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
@@ -1330,12 +1355,13 @@ function renderHome() {
         if (own.length) info = `🏢 <b class="brag">${esc(own[0].n.replace(/ \(한 채\)$/, ''))}${own.length > 1 ? ` 외 ${own.length - 1}` : ''}</b> 건물주 · ` + info;
         const allCashP = isAllCash(p);
         const canAtk = p.id !== S.uid && myPositions(p).length > 0;
-        const subRight = p.id === S.uid ? (allCashP ? `<small class="up">자산을 구매하세요!</small>` : `<small class="${cls(r2)}">${pct2Txt(r2)}</small>`) : `<small class="${cls(roi)}">${pctTxt(roi)}</small>`;
+        const wc = winChg(p, p.w);
+        const subRight = p.id === S.uid && allCashP ? `<small class="up">자산을 구매하세요!</small>` : `<small class="${cls(wc)}">${pctTxt(wc)}</small>`;
         h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}" type="button" data-player="${esc(p.id)}"><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
           <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${canAtk ? '<span class="tag atk">💥공격</span>' : ''}${mv}<small>${info}</small></span>
           <span class="r num"><b>${man(p.w)}</b>${subRight}</span></button>`;
       });
-      h += `</div><p class="hint">전체 ${cur.length}명 · ${S.rankPage + 1}/${rPages}쪽. 이름을 누르면 지갑 전체를 볼 수 있어요.</p>`;
+      h += `</div><p class="hint">전체 ${cur.length}명 · ${S.rankPage + 1}/${rPages}쪽. %는 20분마다 0으로 초기화돼요. 이름을 누르면 지갑 전체를 볼 수 있어요.</p>`;
     }
   }
   h += `</div>`;
@@ -2511,7 +2537,7 @@ window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz
 
 setInterval(() => {
   let changed = syncTime();
-  feedAlerts();
+  feedAlerts(); saveWinBase();
   const sl = slotOf(now()); if (sl !== S.slot) { S.slot = sl; changed = true; }
   autoCredit();
   const ls = liveStep(now());
