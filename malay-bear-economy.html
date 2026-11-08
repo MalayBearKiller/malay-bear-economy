@@ -33,6 +33,10 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .sec-h small{color:var(--faint);font-size:12.5px;font-weight:600}
 .rpager{display:flex;align-items:center;gap:6px}
+.hswitch{display:flex;gap:4px;background:var(--paper);padding:3px;border-radius:12px}
+.hswitch button{padding:6px 12px;border-radius:9px;font-size:15px;font-weight:800;color:var(--dim)}
+.hswitch button[aria-selected="true"]{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.sec-h:has(.hswitch){align-items:center}
 .rpager button{width:32px;height:32px;border-radius:10px;background:var(--paper);font-size:13px;color:var(--ink)}
 .rpager button:disabled{opacity:.3}
 .card{background:var(--paper);border-radius:22px}
@@ -1225,9 +1229,11 @@ function renderHome() {
     h += `<button class="card rival press" type="button" data-player="${esc(S.rival)}"><div class="rival-top"><span class="g up">나</span><span class="num ${cls(gap)}">${gap >= 0 ? '앞서는 중' : '뒤지는 중'} ${signWon(gap)}</span><span class="g down">${esc(r.name)}</span></div><div class="tug"><i style="width:${(vis * 100).toFixed(1)}%"></i></div></button>`;
   }
 
+  const hsw = `<span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${S.homeView !== 'stocks'}">현재 순위</button><button type="button" role="tab" data-homeview="stocks" aria-selected="${S.homeView === 'stocks'}">종목</button></span>`;
+  if (S.homeView !== 'stocks') {
   const RPG = 5, nRank = S.mode === 'loading' ? 0 : ranking(k).length, rPages = Math.max(1, Math.ceil(nRank / RPG));
   S.rankPage = Math.max(0, Math.min(S.rankPage || 0, rPages - 1));
-  h += `<div class="sec"><div class="sec-h"><h2>현재 순위</h2><span class="rpager"><button type="button" data-rankpg="-1" aria-label="이전 순위" ${S.rankPage ? '' : 'disabled'}>◀</button><small class="num">${S.rankPage * RPG + 1}~${Math.min(nRank, (S.rankPage + 1) * RPG) || RPG}위</small><button type="button" data-rankpg="1" aria-label="다음 순위" ${S.rankPage < rPages - 1 ? '' : 'disabled'}>▶</button></span></div>`;
+  h += `<div class="sec"><div class="sec-h">${hsw}<span class="rpager"><button type="button" data-rankpg="-1" aria-label="이전 순위" ${S.rankPage ? '' : 'disabled'}>◀</button><small class="num">${S.rankPage * RPG + 1}~${Math.min(nRank, (S.rankPage + 1) * RPG) || RPG}위</small><button type="button" data-rankpg="1" aria-label="다음 순위" ${S.rankPage < rPages - 1 ? '' : 'disabled'}>▶</button></span></div>`;
   if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
   else {
     const cur = ranking(k), prev = ranking(Math.max(0, k - 1)); const prevIdx = Object.fromEntries(prev.map((p, i) => [p.id, i]));
@@ -1253,10 +1259,12 @@ function renderHome() {
     }
   }
   h += `</div>`;
+  } else {
   if (!SECTORS[S.homeSec]) S.homeSec = Object.keys(SECTORS)[0];
-  h += `<div class="sec"><div class="sec-h"><h2>종목</h2><small>가격 높은 순 · 2시간 변동률</small></div>
+  h += `<div class="sec"><div class="sec-h">${hsw}<small>가격 높은 순</small></div>
     <div class="chips" role="group" aria-label="종목 분류">${Object.entries(SECTORS).map(([k2, v]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${v.n}</button>`).join('')}</div>
     <div class="slist">${byPrice(STOCKS.filter(x => x.s === S.homeSec)).map(stockRow).join('')}</div></div>`;
+  }
   el.innerHTML = h;
 }
 
@@ -2333,6 +2341,7 @@ document.addEventListener('click', e => {
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { S.sub = t.dataset.sub; goTab('assets'); return; }
   if (t.dataset.tbag) { teabag(t.dataset.tbag); return; }
+  if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); return; }
   if (t.dataset.homesec) { S.homeSec = t.dataset.homesec; renderHome(); return; }
   if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
   if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
