@@ -50,7 +50,12 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .brand.big{justify-content:center;gap:12px;margin-bottom:4px}.brand.big .bear{width:64px;height:64px}.brand.big .logo{font-size:40px}
 .logo i{font-style:normal;color:var(--violet)}
 .round{font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--violet-bg);color:var(--violet)}
-.helpbtn{margin-left:auto;width:34px;height:34px;border-radius:50%;font-weight:800;font-size:15px;background:var(--paper);color:var(--dim)}
+#homeMap{margin-top:-10px}
+#homeMap .seoul{height:calc(100vh - 190px);max-height:560px;min-height:320px}
+.boardbtn{margin-left:auto;position:relative;height:34px;padding:0 12px;border-radius:99px;font-weight:800;font-size:13.5px;background:var(--paper);color:var(--ink)}
+.boardbtn .dot{position:absolute;top:2px;right:2px}
+.invseg{margin-bottom:14px}
+.helpbtn{margin-left:8px;width:34px;height:34px;border-radius:50%;font-weight:800;font-size:15px;background:var(--paper);color:var(--dim)}
 
 /* timer */
 .timer{margin-bottom:4px;display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--ink);color:var(--bg);border-radius:18px}
@@ -114,6 +119,13 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .ava{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:var(--ink);flex:none}
 .ava.lg{width:52px;height:52px;font-size:20px}
 .ava.ph{background-size:cover;background-position:center;background-color:var(--paper)}
+.shopitem{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.shopitem .si-ic{font-size:26px}
+.shopitem .si-t{flex:1;min-width:0}
+.shopitem .si-t b{display:block;font-size:16px;font-weight:800}
+.shopitem .si-t small{color:var(--dim);font-size:12.5px;font-weight:600}
+.shopitem button{background:var(--violet);color:#fff;border-radius:12px;padding:10px 12px;font-weight:800;font-size:13.5px;white-space:nowrap}
+.shopitem button:disabled{opacity:.35}
 .profile{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .profile .who{flex:1;min-width:0}
 .profile .who b{display:block;font-size:17px;font-weight:800}
@@ -532,6 +544,7 @@ body.noscroll{overflow:hidden}
 <div class="wrap">
   <div class="top">
     <span class="brand"><img class="bear" src="bear.jpg" alt="말레이곰" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2732%27 fill=%27%23f6d78b%27/%3E%3Ccircle cx=%2715%27 cy=%2717%27 r=%278%27 fill=%27%232b211c%27/%3E%3Ccircle cx=%2749%27 cy=%2717%27 r=%278%27 fill=%27%232b211c%27/%3E%3Ccircle cx=%2715%27 cy=%2717%27 r=%273.5%27 fill=%27%237a5a40%27/%3E%3Ccircle cx=%2749%27 cy=%2717%27 r=%273.5%27 fill=%27%237a5a40%27/%3E%3Cellipse cx=%2732%27 cy=%2735%27 rx=%2722%27 ry=%2720%27 fill=%27%232b211c%27/%3E%3Cellipse cx=%2732%27 cy=%2744%27 rx=%2712%27 ry=%279%27 fill=%27%23e9b96e%27/%3E%3Cellipse cx=%2732%27 cy=%2739.5%27 rx=%274.6%27 ry=%273.2%27 fill=%27%23120c09%27/%3E%3Ccircle cx=%2723%27 cy=%2730%27 r=%273%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2741%27 cy=%2730%27 r=%273%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2723.7%27 cy=%2730.5%27 r=%271.6%27 fill=%27%23120c09%27/%3E%3Ccircle cx=%2741.7%27 cy=%2730.5%27 r=%271.6%27 fill=%27%23120c09%27/%3E%3Cpath d=%27M27 47.5q5 3.2 10 0%27 stroke=%27%23120c09%27 stroke-width=%271.8%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E'"><span class="logo">곰스피</span></span>
+    <button class="boardbtn" id="boardBtn" type="button">💬 건의<i class="dot" id="feedDot" hidden></i></button>
     <button class="helpbtn" id="helpBtn" type="button" aria-label="규칙 보기">?</button>
   </div>
 </div>
@@ -541,17 +554,17 @@ body.noscroll{overflow:hidden}
   <section class="tab sec" id="tab-market" style="gap:22px" hidden></section>
   <div class="seg assetseg" id="assetSeg" hidden role="group" aria-label="자산 메뉴"><button type="button" data-sub="wallet" aria-pressed="true">내 자산</button><button type="button" data-sub="casino" aria-pressed="false">게임</button></div>
   <section class="tab sec" id="tab-wallet" style="gap:22px" hidden></section>
-  <section class="tab sec" id="tab-estate" style="gap:16px" hidden></section>
+  <section class="tab" id="tab-invest" hidden></section>
+  <section class="tab sec" id="tab-shop" style="gap:18px" hidden></section>
   <section class="tab sec" id="tab-casino" style="gap:18px" hidden></section>
-  <section class="tab sec" id="tab-feed" style="gap:22px" hidden></section>
 </main>
 
 <nav class="nav" aria-label="메뉴">
   <div class="nav-in" role="tablist">
-    <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8 3 3"/><path d="M3 21h18"/></svg>종목</button>
-    <button type="button" role="tab" data-tab="estate" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 21V7l6-3v17M10 21V10l10 3v8M3 21h18"/></svg>부동산</button>
+    <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M8 21V11M16 21V7M12 21V3M4 21h16"/></svg>순위/지도</button>
+    <button type="button" role="tab" data-tab="invest" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8 3 3"/><path d="M3 21h18"/></svg>투자</button>
     <button type="button" role="tab" data-tab="assets" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg>자산</button>
-    <button type="button" role="tab" data-tab="feed" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>소식<i class="dot" id="feedDot" hidden></i></button>
+    <button type="button" role="tab" data-tab="shop" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2"/></svg>상점</button>
   </div>
 </nav>
 
@@ -575,6 +588,7 @@ body.noscroll{overflow:hidden}
   </div>
 </section>
 <section class="detail" id="detail" hidden aria-label="종목 상세"></section>
+<section class="detail" id="board" hidden aria-label="건의와 소식"></section>
 <div class="toast" id="toast" hidden></div>
 <input type="file" id="photoIn" accept="image/*" hidden>
 <div class="liqbar" id="liqBar" hidden></div>
@@ -1361,8 +1375,9 @@ function renderHome() {
     h += `<button class="card rival press" type="button" data-player="${esc(S.rival)}"><div class="rival-top"><span class="g up">나</span><span class="num ${cls(gap)}">${gap >= 0 ? '앞서는 중' : '뒤지는 중'} ${signWon(gap)}</span><span class="g down">${esc(r.name)}</span></div><div class="tug"><i style="width:${(vis * 100).toFixed(1)}%"></i></div></button>`;
   }
 
-  const hsw = `<span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${S.homeView !== 'stocks'}">현재 순위</button><button type="button" role="tab" data-homeview="stocks" aria-selected="${S.homeView === 'stocks'}">종목</button></span>`;
-  if (S.homeView !== 'stocks') {
+  if (S.homeView !== 'map') S.homeView = 'rank';
+  const hsw = `<span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${S.homeView === 'rank'}">자산순위</button><button type="button" role="tab" data-homeview="map" aria-selected="${S.homeView === 'map'}">지도</button></span>`;
+  if (S.homeView === 'rank') {
   const RPG = 5, nRank = S.mode === 'loading' ? 0 : ranking(k).length, rPages = Math.max(1, Math.ceil(nRank / RPG));
   S.rankPage = Math.max(0, Math.min(S.rankPage || 0, rPages - 1));
   h += `<div class="sec"><div class="sec-h">${hsw}<span class="rpager"><button type="button" data-rankpg="-1" aria-label="이전 순위" ${S.rankPage ? '' : 'disabled'}>◀</button><small class="num">${S.rankPage * RPG + 1}~${Math.min(nRank, (S.rankPage + 1) * RPG) || RPG}위</small><button type="button" data-rankpg="1" aria-label="다음 순위" ${S.rankPage < rPages - 1 ? '' : 'disabled'}>▶</button></span></div>`;
@@ -1392,19 +1407,33 @@ function renderHome() {
     }
   }
   h += `</div>`;
-  } else {
+  } else h += `<div class="sec-h">${hsw}<small>구마다 땅주인 도장이 찍혀요</small></div>`;
+  if (!el.querySelector('#homeDyn')) el.innerHTML = '<div id="homeDyn" style="display:contents"></div><div id="homeMap" hidden></div>';
+  $('#homeDyn').innerHTML = h;
+  const hm = $('#homeMap'); hm.hidden = S.homeView !== 'map';
+  if (S.homeView === 'map') { ensureMap(hm); updateMap(); }
+}
+// 투자 탭: 주식 · 코인 · 부동산 · 환율
+function renderInvest() {
+  const el = $('#tab-invest'); const k = S.tick; if (!S.inv) S.inv = 'coin';
+  const subs = [['stock', '주식'], ['coin', '코인'], ['estate', '부동산'], ['fx', '환율']];
+  if (!el.querySelector('#invSeg')) el.innerHTML = `<div class="seg invseg" id="invSeg" role="group" aria-label="투자 메뉴"></div><div id="invBody" class="sec" style="gap:18px"></div>`;
+  $('#invSeg').innerHTML = subs.map(([v, l]) => `<button type="button" data-inv="${v}" aria-pressed="${S.inv === v}">${l}</button>`).join('');
+  const body = $('#invBody');
+  if (body.dataset.sub !== S.inv) { body.innerHTML = ''; body.dataset.sub = S.inv; }
+  if (S.inv === 'estate') { renderEstList(body); return; }
+  if (S.inv === 'stock' || S.inv === 'fx') { body.innerHTML = `<div class="empty">${S.inv === 'stock' ? '주식 시장을 준비하고 있어요. 곧 열려요.' : '환율 시장을 준비하고 있어요. 곧 열려요.'}</div>`; return; }
+  let h = '';
   const held = STOCKS.filter(x => exitMode(x.id));
   if (S.homeSec == null) S.homeSec = held.length ? 'mine' : Object.keys(SECTORS)[0];
   if (S.homeSec === 'mine' ? !held.length : !SECTORS[S.homeSec]) S.homeSec = Object.keys(SECTORS)[0];
   const secs = [...(held.length ? [['mine', `보유 ${held.length}`]] : []), ...Object.entries(SECTORS).map(([k2, v]) => [k2, v.n])];
-  h += `<div class="sec"><div class="sec-h">${hsw}<small>가격 높은 순</small></div>
+  h += `<div class="sec"><div class="sec-h"><h2>코인</h2><small>가격 높은 순</small></div>
     <div class="chips" role="group" aria-label="종목 분류">${secs.map(([k2, l]) => `<button type="button" data-homesec="${k2}" aria-pressed="${S.homeSec === k2}">${l}</button>`).join('')}</div>
     <div class="slist">${byPrice(S.homeSec === 'mine' ? held : STOCKS.filter(x => x.s === S.homeSec)).map(stockRow).join('')}</div></div>`;
-  }
-  // 1초마다 다시 그려도 카테고리 버튼 줄의 가로 스크롤 위치는 그대로 둬요
-  const oldChips = el.querySelector('.chips'), sx = oldChips ? oldChips.scrollLeft : 0;
-  el.innerHTML = h;
-  const newChips = el.querySelector('.chips'); if (newChips && sx) newChips.scrollLeft = sx;
+  const oldChips = body.querySelector('.chips'), sx = oldChips ? oldChips.scrollLeft : 0;
+  body.innerHTML = h;
+  const newChips = body.querySelector('.chips'); if (newChips && sx) newChips.scrollLeft = sx;
 }
 
 // 내 포지션 한 줄씩: 원금(넣은 돈) → 평가(지금 정리하면 받는 돈), 손익, 고점 대비 청산까지 남은 거리
@@ -1676,27 +1705,29 @@ function bindMap(svg) {
   svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
   svg.addEventListener('wheel', e => { e.preventDefault(); const [mx, my] = toMap(e.clientX, e.clientY); zoomAt(e.deltaY < 0 ? 1.25 : .8, mx, my); }, { passive: false });
 }
-function renderEstate() {
-  const el = $('#tab-estate'); const k = S.tick;
+function ensureMap(host) {
   if (!MAP.w0) Object.assign(MAP, { x0: MAP.x, y0: MAP.y, w0: MAP.w, h0: MAP.h });
-  if (!el.querySelector('#seoulMap')) {
-    el.innerHTML = `<div class="card estsum" id="estSum"></div>
-      <div class="mapbox"><svg id="seoulMap" class="seoul" viewBox="0 30 866 715" role="img" aria-label="서울 부동산 지도"><g id="gDist"></g><g id="gPins"></g><g id="gStamps"></g></svg>
+  if (!host.querySelector('#seoulMap')) { host.innerHTML = `<div class="mapbox"><svg id="seoulMap" class="seoul" viewBox="0 30 866 715" role="img" aria-label="서울 부동산 지도"><g id="gDist"></g><g id="gPins"></g><g id="gStamps"></g></svg>
         <div class="mapctl"><button type="button" id="zoomIn" aria-label="확대">+</button><button type="button" id="zoomOut" aria-label="축소">−</button><button type="button" id="zoomReset" aria-label="서울 전체 보기">⤢</button></div>
-        <div class="mapinfo" id="zoomInfo">구를 누르면 확대돼요</div></div>
+        <div class="mapinfo" id="zoomInfo">구를 누르면 확대돼요</div></div>`; bindMap($('#seoulMap')); }
+  if (!S.mapV) { const h = MAP.w * mapAR(); S.mapV = { x: MAP.x, y: MAP.y + MAP.h / 2 - h / 2, w: MAP.w, h }; }
+}
+function updateMap() {
+  if (!$('#seoulMap')) return;
+  if (!S.liveOnly || !$('#gDist').childElementCount) $('#gDist').innerHTML = districtSVG();
+  $('#gPins').innerHTML = pinsSVG(); $('#gStamps').innerHTML = stampsSVG();
+  applyMapView();
+}
+// 투자 > 부동산: 내 부동산 요약 + 건물 목록(10개씩)
+function renderEstList(host) {
+  const k = S.tick;
+  if (!host.querySelector('#estList')) host.innerHTML = `<div class="card estsum" id="estSum"></div>
       <div class="sec"><div class="sec-h"><h2>건물 ${ESTATES.length}</h2><span class="rpager" id="estPager"></span></div><div class="slist" id="estList"></div></div>
       <p class="hint">건물 값은 주식처럼 움직이지만 정해진 최저가 아래로는 안 내려가요. 내 건물은 1시간마다 가치의 0.1%를 월세로 주고, 유지비 0.02%와 재산세 0.02%가 빠져요. 부동산 합계가 10억을 넘으면 넘는 부분에 종부세 0.03%가 더 붙어요. 살 때 취득세 4%, 팔 때 차익의 22%를 양도세로 내요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
-    bindMap($('#seoulMap'));
-  }
-  if (!S.mapV) { const h = MAP.w * mapAR(); S.mapV = { x: MAP.x, y: MAP.y + MAP.h / 2 - h / 2, w: MAP.w, h }; }
   const mineList = myEstates({ id: S.uid });
   $('#estSum').innerHTML = `<div><span class="dim" style="font-size:13px;font-weight:700">내 부동산 ${mineList.length}곳</span><b class="num">${won(mineList.reduce((a, b) => a + (estOf(b.id).destroyed ? 0 : estVal(b.id, k)), 0))}</b></div>
     <div style="text-align:right"><span class="dim" style="font-size:13px;font-weight:700">시간당 순수익 · <span class="num" id="rentCd">${mmss((rentHour(now()) + 1) * H - now())}</span></span><b class="num ${cls(rentPerHour())}">${signWon(rentPerHour())}</b></div>
     ${mineList.length ? (() => { const hb = estHourly(); return `<div class="costline">월세 <b class="up">+${won(hb.rent)}</b> · 유지비 <b class="down">-${won(hb.maint)}</b> · 재산세${hb.jtax ? '·종부세' : ''} <b class="down">-${won(hb.tax)}</b></div>`; })() : ''}`;
-  if (!S.liveOnly || !$('#gDist').childElementCount) $('#gDist').innerHTML = districtSVG();
-  $('#gPins').innerHTML = pinsSVG();
-  $('#gStamps').innerHTML = stampsSVG();
-  applyMapView();
   let h = '';
   const EPG = 10, ePages = Math.ceil(ESTATES.length / EPG); S.estPage = Math.max(0, Math.min(S.estPage || 0, ePages - 1));
   $('#estPager').innerHTML = `<button type="button" data-estpg="-1" aria-label="이전 건물" ${S.estPage ? '' : 'disabled'}>◀</button><small class="num">비싼 순 ${S.estPage * EPG + 1}~${Math.min(ESTATES.length, (S.estPage + 1) * EPG)}</small><button type="button" data-estpg="1" aria-label="다음 건물" ${S.estPage < ePages - 1 ? '' : 'disabled'}>▶</button>`;
@@ -1942,7 +1973,7 @@ function renderWallet() {
   h += `<div class="sec"><div class="sec-h"><h2>프로필</h2></div>
     <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)}</b><small>사진은 모두에게 보여요</small></span></div>
     <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button>
-      <button type="button" class="wide" id="renameOpen">✏️ 닉네임 변경권 · ${won(RENAME_COST)}</button></div></div>`;
+</div></div>`;
   h += `<p class="hint">수익률은 시드 10억원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
   el.innerHTML = h;
 }
@@ -1974,6 +2005,42 @@ function feedText(f) {
   }
 }
 function timeAgo(ts) { const s = Math.floor((now() - ts) / 1000); if (s < 60) return '방금'; if (s < 3600) return Math.floor(s / 60) + '분 전'; if (s < 86400) return Math.floor(s / 3600) + '시간 전'; return Math.floor(s / 86400) + '일 전'; }
+// 💬 건의 · 소식: 상단 건의 버튼으로 열어요. 건의는 모두가 쓰는 채팅방이에요.
+const BOARD = '__board';
+function openBoard() { S.board = S.board || 'talk'; if (S.board !== 'talk' && S.board !== 'feed') S.board = 'talk'; $('#board').hidden = false; document.body.classList.add('noscroll'); renderBoard(); }
+function closeBoard() { S.board = null; $('#board').hidden = true; document.body.classList.remove('noscroll'); }
+function renderBoard() {
+  const d = $('#board'); if (!S.board || !d) return;
+  const ae = document.activeElement, keep = ae && ae.id === 'boardInput' ? { v: ae.value, s: ae.selectionStart } : null;
+  let h = `<div class="in"><div class="dtop"><button class="back" type="button" id="boardBack" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>건의 · 소식</b></div>
+    <div class="seg" style="grid-template-columns:1fr 1fr"><button type="button" data-boardtab="talk" aria-pressed="${S.board === 'talk'}">건의</button><button type="button" data-boardtab="feed" aria-pressed="${S.board === 'feed'}">소식</button></div>`;
+  if (S.board === 'feed') { d.innerHTML = h + `<section class="sec" id="tab-feed" style="gap:22px"></section></div>`; renderFeed(); return; }
+  const msgs = S.talk.filter(t => t.sym === BOARD).slice(0, 150).reverse(); const canWrite = S.me && !S.readOnly;
+  h += `<p class="hint">바라는 점, 버그, 아무 얘기나 자유롭게 남겨요. 모두에게 보여요.</p><div class="chat" id="boardChat">`;
+  if (!msgs.length) h += `<div class="chat-empty">아직 조용해요. 첫 건의를 남겨보세요.</div>`;
+  let prevTs = 0;
+  msgs.forEach(t => { const au = S.players[t.uid] || {}, mine = t.uid === S.uid, nm = au.name || t.name || '누군가';
+    if (!prevTs || t.ts - prevTs > 60 * 60e3) h += `<div class="chat-day">${chatTime(t.ts, true)}</div>`;
+    h += `<div class="msg${mine ? ' me' : ''}">${mine ? '' : ava({ ...au, id: t.uid, name: nm })}<div class="mb"><div class="mn">${mine ? `나 · ${esc(nm)}` : esc(nm)}</div><div class="mrow"><span class="bubble">${esc(t.text)}</span><time>${chatTime(t.ts)}</time></div></div></div>`;
+    prevTs = t.ts; });
+  h += `</div>` + (canWrite ? `<div class="composer"><input id="boardInput" maxlength="140" placeholder="건의 남기기" autocomplete="off" enterkeyhint="send" value="${esc(S.boardDraft || '')}"><button type="button" id="boardSend" aria-label="보내기">➤</button></div>` : `<p class="hint">참가하면 건의를 남길 수 있어요.</p>`) + `</div>`;
+  d.innerHTML = h;
+  const cb = $('#boardChat'); if (cb) cb.scrollTop = cb.scrollHeight;
+  if (keep) { const i = $('#boardInput'); if (i) { i.value = keep.v; i.focus(); try { i.setSelectionRange(keep.s, keep.s); } catch {} } }
+}
+async function postBoard() {
+  const i = $('#boardInput'); if (!i || !S.me || S.readOnly) return; const text = i.value.trim().slice(0, 140); if (!text) return;
+  const item = { sym: BOARD, uid: S.uid, name: S.me.name, text, ts: Date.now(), season: S.season.sid, likes: {} };
+  i.value = ''; S.boardDraft = '';
+  if (S.mode === 'demo') { S.talk.unshift({ id: 't' + Date.now(), ...item }); LS.set('demoTalk', S.talk.filter(t => !t.bot)); renderBoard(); return; }
+  try { await S.db.collection('talk').add(item); } catch (e) { toast('건의를 보내지 못했어요. 잠시 후 다시 해주세요.'); i.value = text; }
+}
+// 🛍️ 상점
+function renderShop() {
+  const el = $('#tab-shop');
+  el.innerHTML = `<div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
+    <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
+}
 function renderFeed() {
   const el = $('#tab-feed');
   const items = S.feed.map(f => [f, feedText(f)]).filter(x => x[1]);
@@ -1999,17 +2066,18 @@ let chipsTouchAt = 0;
 function renderAll() {
   renderHeader(); renderClock();
   if (S.tab === 'assets') { if (S.sub === 'casino' && document.activeElement && document.activeElement.id === 'betInput') updateBetLabels(); else if (!(S.sub === 'casino' && C.busy)) ({ wallet: renderWallet, casino: renderCasino })[S.sub](); }
-  else if (!(S.liveOnly && (S.tab === 'home' || S.tab === 'market') && Date.now() - chipsTouchAt < 1500)) ({ home: renderHome, market: renderMarket, estate: renderEstate, feed: renderFeed })[S.tab]();
+  else if (!(S.liveOnly && (S.tab === 'home' || S.tab === 'market' || S.tab === 'invest') && Date.now() - chipsTouchAt < 1500)) ({ home: renderHome, market: renderMarket, invest: renderInvest, shop: renderShop })[S.tab]();
   if (S.sheet && S.sheet.type === 'estate' && S.liveOnly) { const ep = $('#estPrice'), e = estOf(S.sheet.bid); if (ep && !(e && e.destroyed)) ep.textContent = won(estVal(S.sheet.bid, S.tick)); }
   const latest = S.feed.find(f => f.uid !== S.uid);
-  $('#feedDot').hidden = S.tab === 'feed' || !latest || latest.ts <= S.feedSeen;
+  $('#feedDot').hidden = S.board === 'feed' || !latest || latest.ts <= S.feedSeen;
+  if (S.board && !S.liveOnly) renderBoard();
   if (S.sheet && (S.sheet.type === 'stock' || S.sheet.type === 'quick')) updateTradeEst();
   if (S.detail) { if (S.liveOnly) updateDetailLive(); else renderDetail(); }
 }
 function goTab(name) {
   S.tab = name; document.querySelectorAll('.nav [data-tab]').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
   if (S.sub === 'estate') S.sub = 'wallet';
-  ['home', 'market', 'feed', 'estate'].forEach(n => $('#tab-' + n).hidden = n !== name);
+  ['home', 'market', 'invest', 'shop'].forEach(n => $('#tab-' + n).hidden = n !== name);
   $('#assetSeg').hidden = name !== 'assets'; ['wallet', 'casino'].forEach(n => $('#tab-' + n).hidden = !(name === 'assets' && S.sub === n));
   document.querySelectorAll('#assetSeg [data-sub]').forEach(x => x.setAttribute('aria-pressed', x.dataset.sub === S.sub));
   renderAll(); window.scrollTo({ top: 0 });
@@ -2495,7 +2563,7 @@ function startLive(db, uid) {
     if (S.loaded && !maybeReveal()) maybeJoin();
     autoCredit();
   }, () => { clearTimeout(timer); S.loaded = true; toast('순위를 불러오지 못했어요.'); renderAll(); });
-  db.collection('talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.detail) renderDetail(); if (S.tab === 'home' || S.tab === 'market') renderAll(); }, () => {});
+  db.collection('talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.board === 'talk') renderBoard(); if (S.detail) renderDetail(); if (S.tab === 'home' || S.tab === 'market') renderAll(); }, () => {});
   db.collection('estates').onSnapshot(snap => { const n = {}; snap.docs.forEach(d => n[d.id] = d.data()); S.estates = n; renderAll(); if (S.sheet && S.sheet.type === 'estate') renderSheet(); }, () => {});
   db.collection('feed').orderBy('ts', 'desc').limit(80).onSnapshot(snap => {
     S.feed = snap.docs.map(d => d.data()); noteAtks(S.feed); LV.step = -1;
@@ -2530,8 +2598,10 @@ document.addEventListener('click', e => {
   if (t.dataset.tabGo) { if (t.dataset.tabGo === 'assets') S.sub = 'wallet'; goTab(t.dataset.tabGo); return; }
   if (t.dataset.sub) { if (t.dataset.sub === 'estate') { goTab('estate'); return; } S.sub = t.dataset.sub; goTab('assets'); return; }
   if (t.dataset.tbag) { teabag(t.dataset.tbag); return; }
-  if (t.dataset.estpg) { S.estPage = (S.estPage || 0) + +t.dataset.estpg; renderEstate(); return; }
-  if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); return; }
+  if (t.dataset.estpg) { S.estPage = (S.estPage || 0) + +t.dataset.estpg; renderInvest(); return; }
+  if (t.dataset.inv) { S.inv = t.dataset.inv; renderInvest(); window.scrollTo({ top: 0 }); return; }
+  if (t.dataset.boardtab) { S.board = t.dataset.boardtab; renderBoard(); return; }
+  if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); if (S.homeView === 'map') { const sw = document.querySelector('#homeDyn .hswitch'); if (sw) window.scrollTo(0, sw.getBoundingClientRect().top + window.scrollY - 12); } return; }
   if (t.dataset.homesec) { S.homeSec = t.dataset.homesec; renderHome(); return; }
   if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
   if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
@@ -2556,6 +2626,9 @@ document.addEventListener('click', e => {
   if (t.dataset.frac) { const mx = maxQty(S.sheet.m, S.sheet.sym); $('#qty').value = Math.floor(mx * +t.dataset.frac); updateTradeEst(); return; }
   switch (t.id) {
     case 'helpBtn': openSheet('help'); break;
+    case 'boardBtn': openBoard(); break;
+    case 'boardBack': closeBoard(); break;
+    case 'boardSend': postBoard(); break;
     case 'photoBtn': pickPhoto(); break;
     case 'photoDel': clearPhoto(); break;
     case 'renameOpen': if (S.me) openSheet('rename'); break;
@@ -2583,7 +2656,8 @@ $('#scrim').addEventListener('click', closeSheet);
 ['touchstart', 'touchmove', 'wheel'].forEach(ev => document.addEventListener(ev, e => { if (e.target.closest && e.target.closest('.chips')) chipsTouchAt = Date.now(); }, { passive: true }));
 document.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('chips')) chipsTouchAt = Date.now(); }, true);
 document.addEventListener('change', e => { if (e.target.id === 'photoIn' && e.target.files && e.target.files[0]) savePhoto(e.target.files[0]); });
-document.addEventListener('input', e => { if (e.target.id === 'betInput') { S.betCustom = Math.max(0, Math.floor(+e.target.value || 0)); LS.set('betCustom', S.betCustom); updateBetLabels(); } if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
+document.addEventListener('keydown', e => { if (e.target.id === 'boardInput' && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); postBoard(); } });
+document.addEventListener('input', e => { if (e.target.id === 'boardInput') S.boardDraft = e.target.value; if (e.target.id === 'betInput') { S.betCustom = Math.max(0, Math.floor(+e.target.value || 0)); LS.set('betCustom', S.betCustom); updateBetLabels(); } if (e.target.id === 'qty') updateTradeEst(); if (e.target.id === 'talkInput' && S.detail) S.drafts[S.detail] = e.target.value; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (S.detail) closeDetail(); } if (e.key === 'Enter' && e.target.id === 'nick') doJoin(); if (e.key === 'Enter' && e.target.id === 'talkInput' && !e.isComposing) postTalk(); });
 window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (S.tab === 'home') renderHome(); drawIndexChart(); drawBig(); }, 150); });
 
