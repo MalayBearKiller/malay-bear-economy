@@ -253,7 +253,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .wheel-wrap{position:relative;width:240px;height:240px;margin:14px auto 0;max-width:100%}
 .wheel{position:absolute;inset:0;border-radius:50%;transition:transform 2.8s cubic-bezier(.12,.8,.18,1);box-shadow:0 0 0 5px var(--bg),0 0 0 7px var(--paper2)}
 .wheel span{position:absolute;left:50%;top:50%;width:0;height:0}
-.wheel span i{position:absolute;transform:translate(-50%,-50%);font-style:normal;font-weight:800;font-size:13.5px;color:var(--ink);white-space:nowrap}
+.wheel span i{position:absolute;transform:translate(-50%,-50%);font-style:normal;font-weight:800;font-size:11px;color:var(--ink);white-space:nowrap}
 .pointer{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:20px solid var(--ink);z-index:2}
 .hub{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 3px var(--paper2)}
 
@@ -540,7 +540,9 @@ body.noscroll{overflow:hidden}
 /* ───────── constants ───────── */
 const FEE = 0.003, CASH0 = 1_000_000_000, NT = 21;
 const BONUS = 200_000_000, MAXBET = 200_000_000, MINBET = 1_000_000;
-const WHEEL = [0, 1.5, 0, 0.5, 2, 0, 3, 0, 10, 0]; // 10x 대박 룰렛
+// 10x 대박 룰렛: 20칸, 평균 0.975배 (홀짝과 같은 2.5% 하우스 엣지)
+const WHEEL = [0, 1.5, 0, 0.5, 2, 0, 1.5, 0, 10, 0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0];
+const WSEG = 360 / WHEEL.length;
 const COIN_PAY = 1.95;
 const H = 3600e3, D = 86400e3, KST = 9 * H, TICK_H = [12, 18, 22];
 const TICK_NAME = { 12: '', 18: '', 22: '' };
@@ -999,21 +1001,48 @@ const LEVS = [5, 10, 25, 50, 100];
 const levVal = (o, price) => Math.max(0, o.m + (o.d || 1) * o.q * (price - o.e));
 const levSide = o => (o.d || 1) < 0 ? '숏' : '롱';
 const levROE = (o, price, sym) => levVal(o, price, sym) / o.m - 1;
+// 앱이 꺼져 있던 동안에도 청산선을 건드렸는지 지난 가격으로 확인해요 (끄고 버티기 방지)
+const LQ = {}, LQ_STEP = 3000;
+const levLiqP = o => o.e - (o.d || 1) * (o.m * .94) / o.q;
+const SHORT_LIQ = 1.35;
+function lqState(uid, kind, sym, o) {
+  const k = uid + ':' + kind + ':' + sym + ':' + o.e + ':' + o.q;
+  return LQ[k] || (LQ[k] = { t: Math.max(o.at || now(), S.season.start), dead: false });
+}
+const lqDead = (uid, kind, sym, o) => !!(uid && SM[sym] && lqState(uid, kind, sym, o).dead);
+const lqReady = (uid, kind, sym, o) => { const st = lqState(uid, kind, sym, o); return st.dead || now() - st.t < LQ_STEP * 2; };
+function lqScan(budget = 800) {
+  if (!S.season) return; const tEnd = now() - LQ_STEP;
+  for (const [uid, p] of Object.entries(S.players)) {
+    if (!p || !p.name) continue;
+    for (const kind of ['lev', 'short']) for (const [sym, o] of Object.entries((kind === 'lev' ? p.lev : p.shorts) || {})) {
+      if (!SM[sym] || !o || !o.q) continue;
+      const st = lqState(uid, kind, sym, o); if (st.dead) continue;
+      const lim = kind === 'lev' ? levLiqP(o) : o.e * SHORT_LIQ, up = kind === 'short' || (o.d || 1) < 0;
+      while (st.t < tEnd && budget > 0) {
+        st.t = Math.min(tEnd, st.t + LQ_STEP); budget--;
+        const pr = tickRound(priceAt(sym, st.t));
+        if (up ? pr >= lim : pr <= lim) { st.dead = true; break; }
+      }
+      if (budget <= 0) return;
+    }
+  }
+}
 function worth(p, k) {
   if (!p) return 0; let v = (p.cash || 0) + BONUS * pendingOf(p);
   for (const [s, q] of Object.entries(p.hold || {})) v += q * px(s, k);
-  for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += Math.max(0, o.q * (2 * o.e - px(s, k)));
-  for (const [s, o] of Object.entries(p.lev || {})) if (SM[s]) v += levVal(o, px(s, k), s);
   const pid = p.id || (p === S.me || p === S.players[S.uid] ? S.uid : null);
+  for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += lqDead(pid, 'short', s, o) ? o.q * o.e * (2 - SHORT_LIQ) : Math.max(0, o.q * (2 * o.e - px(s, k)));
+  for (const [s, o] of Object.entries(p.lev || {})) if (SM[s] && !lqDead(pid, 'lev', s, o)) v += levVal(o, px(s, k), s);
   for (const b of ESTATES) { const e = estOf(b.id); if (e && pid && e.owner === pid && !e.destroyed) v += estVal(b.id, k); }
   return Math.round(v);
 }
 function worthPrev(p, k) {
   if (!p) return 0; let v = (p.cash || 0) + BONUS * pendingOf(p);
   for (const [s, q] of Object.entries(p.hold || {})) if (SM[s]) v += q * prevPx(s);
-  for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += Math.max(0, o.q * (2 * o.e - prevPx(s)));
-  for (const [s, o] of Object.entries(p.lev || {})) if (SM[s]) v += levVal(o, prevPx(s), s);
   const pid = p.id || (p === S.me || p === S.players[S.uid] ? S.uid : null);
+  for (const [s, o] of Object.entries(p.shorts || {})) if (SM[s]) v += lqDead(pid, 'short', s, o) ? o.q * o.e * (2 - SHORT_LIQ) : Math.max(0, o.q * (2 * o.e - prevPx(s)));
+  for (const [s, o] of Object.entries(p.lev || {})) if (SM[s] && !lqDead(pid, 'lev', s, o)) v += levVal(o, prevPx(s), s);
   const tPrev = (liveStep(now()) - 1) * LIVE_MS;
   for (const b of ESTATES) { const e = estOf(b.id); if (e && pid && e.owner === pid && !e.destroyed) v += estAt(b.id, tPrev); }
   return Math.round(v);
@@ -1191,7 +1220,9 @@ function posHUD() {
 }
 async function closePositions(filter) {
   if (!S.me || S.saving || S.readOnly) return;
-  const all = myPositions().filter(filter), list = all.filter(x => !atkLive(x.sym, S.uid));
+  const ready = x => x.kind === 'spot' || lqReady(S.uid, x.kind, x.sym, (x.kind === 'lev' ? S.me.lev : S.me.shorts)[x.sym]);
+  const all = myPositions().filter(filter), list = all.filter(x => !atkLive(x.sym, S.uid) && ready(x));
+  if (all.some(x => !ready(x))) toast('⏳ 앱이 꺼져 있던 동안의 청산 여부를 확인하는 중인 포지션은 잠시 후 정리돼요');
   if (all.length > list.length) toast('💥 내가 공격한 종목은 충격이 끝날 때까지 정리할 수 없어요');
   if (!list.length) return;
   const before = S.me, me = JSON.parse(JSON.stringify(before)); let got = 0, pnl = 0;
@@ -1479,22 +1510,22 @@ let liquidating = false;
 async function checkLiquidation() {
   if (!S.me || liquidating || S.saving) return;
   // 공매도 반대매매: 진입가 대비 +35% 이상 숏스퀴즈 급등 시 자동 반대매매
-  const burnt = Object.entries(S.me.shorts || {}).filter(([sym, o]) => SM[sym] && px(sym, S.tick) >= o.e * 1.35);
+  const burnt = Object.entries(S.me.shorts || {}).filter(([sym, o]) => SM[sym] && (px(sym, S.tick) >= o.e * SHORT_LIQ || lqDead(S.uid, 'short', sym, o)));
   if (burnt.length) {
     liquidating = true; const b0 = S.me; const me2 = JSON.parse(JSON.stringify(b0));
-    burnt.forEach(([sym, o]) => { const p = px(sym, S.tick); me2.cash += Math.max(0, o.q * (2 * o.e - p) - Math.ceil(o.q * p * FEE)); delete me2.shorts[sym]; });
+    burnt.forEach(([sym, o]) => { const p = lqDead(S.uid, 'short', sym, o) ? o.e * SHORT_LIQ : px(sym, S.tick); me2.cash += Math.max(0, o.q * (2 * o.e - p) - Math.ceil(o.q * p * FEE)); delete me2.shorts[sym]; });
     me2.cash = Math.round(me2.cash);
     const ok2 = await saveMe(me2, b0); liquidating = false;
     if (ok2) { burnt.forEach(([sym]) => addFeed({ kind: 'liq', sym, x: 1, d: -1 })); toast(`💀 ${burnt.map(([sym]) => SM[sym].n).join(', ')} 숏스퀴즈 공매도 반대매매!`); boom(); renderAll(); }
     return;
   }
   if (!S.me.lev) return;
-  const dead = Object.entries(S.me.lev).filter(([sym, o]) => SM[sym] && levVal(o, px(sym, S.tick), sym) <= o.m * .06);
+  const dead = Object.entries(S.me.lev).filter(([sym, o]) => SM[sym] && (levVal(o, px(sym, S.tick), sym) <= o.m * .06 || lqDead(S.uid, 'lev', sym, o)));
   if (!dead.length) return;
   liquidating = true; const before = S.me; const me = JSON.parse(JSON.stringify(before));
   dead.forEach(([sym]) => { me.levPnl = (me.levPnl || 0) - me.lev[sym].m; delete me.lev[sym]; });
   const ok = await saveMe(me, before); liquidating = false;
-  if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x, d: o.d || 1 })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 고점 설거지 강제 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
+  if (ok) { dead.forEach(([sym, o]) => addFeed({ kind: 'liq', sym, x: o.x, d: o.d || 1 })); toast(`💀 ${dead.map(([sym, o]) => SM[sym].n + ' ' + o.x + '배').join(', ')} 강제 청산!`); boom(); renderAll(); if (S.sheet && S.sheet.type === 'quick') renderSheet(); }
 }
 function jumpAlerts() {
   const k = Math.floor((now() - S.season.start) / BANG_MS);
@@ -1518,7 +1549,7 @@ function holdingAlerts() {
 
 /* ───────── casino ───────── */
 const C = { coinFace: '?', coinMsg: '', wheelRot: 0, wheelMsg: '', busy: false };
-function wheelBg() { const cols = ['#6a4cf5', '#f5f5f9']; return 'conic-gradient(' + WHEEL.map((m, i) => `${m === 0 ? '#ececf2' : m >= 2 ? '#ffcf4a' : m >= 1 ? '#c3b7ff' : '#e4deff'} ${i * 36}deg ${(i + 1) * 36}deg`).join(',') + ')'; }
+function wheelBg() { const cols = ['#6a4cf5', '#f5f5f9']; return 'conic-gradient(' + WHEEL.map((m, i) => `${m === 0 ? '#ececf2' : m >= 2 ? '#ffcf4a' : m >= 1 ? '#c3b7ff' : '#e4deff'} ${i * WSEG}deg ${(i + 1) * WSEG}deg`).join(',') + ')'; }
 function renderCasino() {
   const el = $('#tab-casino');
   if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 게임을 할 수 없어요.' : '참가하면 게임을 할 수 있어요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
@@ -1534,7 +1565,7 @@ function renderCasino() {
       <p class="res" id="coinMsg">${C.coinMsg}</p>
       <div class="pick2"><button class="cta" type="button" data-coin="홀" ${C.busy || bet < MINBET ? 'disabled' : ''}>홀</button><button class="cta sell" type="button" data-coin="짝" ${C.busy || bet < MINBET ? 'disabled' : ''}>짝</button></div></div>
     <div class="card game"><div><h3>룰렛</h3><p class="desc">0배부터 대박 10배까지! 한 방에 인생 역전.</p></div>
-      <div class="wheel-wrap"><div class="pointer"></div><div class="wheel" id="wheel" style="background:${wheelBg()};transform:rotate(${C.wheelRot}deg)">${WHEEL.map((m, i) => `<span style="transform:rotate(${i * 36 + 18}deg) translateY(-92px)"><i>${m}x</i></span>`).join('')}</div><div class="hub"></div></div>
+      <div class="wheel-wrap"><div class="pointer"></div><div class="wheel" id="wheel" style="background:${wheelBg()};transform:rotate(${C.wheelRot}deg)">${WHEEL.map((m, i) => `<span style="transform:rotate(${i * WSEG + WSEG / 2}deg) translateY(-96px)"><i>${m}x</i></span>`).join('')}</div><div class="hub"></div></div>
       <p class="res" id="wheelMsg">${C.wheelMsg}</p>
       <button class="cta" type="button" id="spinBtn" ${C.busy || bet < MINBET ? 'disabled' : ''}>${won(bet)} 걸고 돌리기</button></div>
     <p class="hint">게임 결과도 총자산에 그대로 반영돼요. 올인으로 단숨에 1,000억·1조를 노려보세요!</p>`;
@@ -1565,7 +1596,7 @@ async function playCasino(game, choice) {
     await sleep(950); C.coinFace = face; label = '홀짝';
   } else {
     const i = Math.floor(Math.random() * WHEEL.length); mult = WHEEL[i];
-    const target = 360 - (i * 36 + 18) + (Math.random() * 20 - 10);
+    const target = 360 - (i * WSEG + WSEG / 2) + (Math.random() - .5) * WSEG * .6;
     const cur = C.wheelRot % 360; C.wheelRot += 360 * 5 + ((target - cur) % 360 + 360) % 360;
     C.wheelMsg = ''; renderCasino(); await sleep(30); $('#wheel').style.transform = `rotate(${C.wheelRot}deg)`;
     await sleep(2900); label = '룰렛';
@@ -1912,25 +1943,27 @@ function updateTradeEst() {
   if (sh.m === 'levclose') { const i = $('#qty'); const all = maxQty('levclose', sh.sym); if (i && +i.value !== all) { i.value = all; sh.q = all; } }
   btn.disabled = S.saving || !(sh.m === 'levclose' ? maxQty('levclose', sh.sym) : q) || q > mx;
   const lx = $('#levx'); if (lx) lx.hidden = sh.m !== 'lev'; const ld = $('#levdir'); if (ld) ld.hidden = sh.m !== 'lev';
-  const lxVal = sh.x || 25, liqPct = +(100 / lxVal).toFixed(1);
+  const lxVal = sh.x || 25, liqPct = +(94 / lxVal).toFixed(1);
   $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${lxVal}%! 대신 약 ${liqPct}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 1초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가보다 35% 오르면 자동 반대매매되고, 남은 돈은 돌려받아요. ', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
 }
 async function doTrade() {
   const sh = S.sheet; const q = sh.q, sym = sh.sym, m = sh.m, p = px(sym, S.tick);
   if (!q || q > maxQty(m, sym) || S.saving || seasonOver()) return;
   if ((m === 'buy' || m === 'short' || m === 'lev') && atkLive(sym)) { toast('💥 공격 충격 중인 종목이에요. 45초 뒤에 진입할 수 있어요'); return; }
+  { const o = m === 'levclose' ? (S.me.lev || {})[sym] : m === 'cover' ? (S.me.shorts || {})[sym] : null;
+    if (o && !lqReady(S.uid, m === 'cover' ? 'short' : 'lev', sym, o)) { toast('⏳ 앱이 꺼져 있던 동안의 청산 여부를 확인하는 중이에요. 잠시 후 다시 눌러 주세요'); return; } }
   if ((m === 'sell' || m === 'cover' || m === 'levclose') && atkLive(sym, S.uid)) { toast('💥 내가 공격한 종목이라 충격이 끝날 때까지 정리할 수 없어요'); return; }
   const before = S.me; const me = JSON.parse(JSON.stringify(before)); me.hold ||= {}; me.cost ||= {}; me.shorts ||= {};
   const amt = q * p, fee = Math.ceil(amt * FEE);
   if (m === 'buy') { const h0 = me.hold[sym] || 0; me.cost[sym] = ((me.cost[sym] || 0) * h0 + amt) / (h0 + q); me.hold[sym] = h0 + q; me.cash -= amt + fee; }
   if (m === 'sell') { me.hold[sym] -= q; me.cash += amt - fee; if (!me.hold[sym]) { delete me.hold[sym]; delete me.cost[sym]; } }
-  if (m === 'short') { const o = me.shorts[sym] || { q: 0, e: 0 }; me.shorts[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q) }; me.cash -= amt + fee; }
+  if (m === 'short') { const o = me.shorts[sym] || { q: 0, e: 0 }; me.shorts[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q), at: now() }; me.cash -= amt + fee; }
   if (m === 'cover') { const o = me.shorts[sym]; me.cash += Math.max(0, q * (2 * o.e - p) - fee); o.q -= q; if (!o.q) delete me.shorts[sym]; }
   me.lev ||= {};
   if (m === 'lev') { const x = sh.x || 25, d = sh.dir === 'short' ? -1 : 1, o = me.lev[sym]; const mg = amt / x;
     if (o && (o.d || 1) !== d) { toast(`반대쪽(${levSide(o)}) 포지션을 먼저 청산해 주세요`); return; }
-    if (o) { const val = levVal(o, p); me.lev[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q), m: val + mg, x: Math.round((o.q + q) * p / (val + mg)), d }; }
-    else me.lev[sym] = { q, e: p, m: mg, x, d }; me.cash -= mg + fee; }
+    if (o) { const val = levVal(o, p); me.lev[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q), m: val + mg, x: Math.round((o.q + q) * p / (val + mg)), d, at: now() }; }
+    else me.lev[sym] = { q, e: p, m: mg, x, d, at: now() }; me.cash -= mg + fee; }
   if (m === 'levclose') { const o = me.lev[sym]; me.cash += Math.max(0, levVal(o, p) - Math.ceil(o.q * p * FEE)); me.levPnl = (me.levPnl || 0) + levVal(o, p) - o.m; delete me.lev[sym]; }
   me.cash = Math.round(me.cash);
   S.saving = true; updateTradeEst();
@@ -2277,7 +2310,7 @@ setInterval(() => {
     const w0 = S.me ? worthPrev(S.me, S.tick) : 0;
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
     if (S.me && !isAllCash(S.me)) { const w1 = worth(S.me, S.tick); const fab = $('#fab'); if (fab && w1 !== w0) { fab.classList.remove('pu', 'pd'); void fab.offsetWidth; fab.classList.add(w1 > w0 ? 'pu' : 'pd'); } }
-    holdingAlerts(); checkLiquidation(); jumpAlerts();
+    lqScan(); holdingAlerts(); checkLiquidation(); jumpAlerts();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
     if (sh && sh.type === 'player') renderSheet();
