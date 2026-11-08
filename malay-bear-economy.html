@@ -181,6 +181,10 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .srow-main:active{opacity:.6}
 .tbtns{display:flex;gap:4px;flex:none}
 .tb{font-size:12.5px;font-weight:800;padding:8px 9px;border-radius:10px}
+.tb.trade{background:var(--violet-bg);color:var(--violet);padding:8px 14px}
+.tb.trade.lit{background:var(--violet);color:#fff}
+.sheetcash{display:flex;justify-content:space-between;align-items:center;background:var(--paper);border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:700;color:var(--dim)}
+.sheetcash b{color:var(--ink);font-size:15px}
 .tb.buy{background:var(--up-bg);color:var(--up)} .tb.sell{background:var(--down-bg);color:var(--down)}
 .sname b.hot-long{color:var(--up);font-weight:900} .sname b.hot-short{color:var(--down);font-weight:900}
 .postag{display:inline-block;font-size:11.5px;font-weight:900;color:#fff;padding:1px 7px;border-radius:6px;margin-right:5px}
@@ -1748,7 +1752,7 @@ function stockRow(s) {
   const off = seasonOver() || S.readOnly;
   return `<div class="srow${fl ? ' row' + fl.trim() : ''}"><button class="srow-main" type="button" data-stock="${s.id}">${badge(s)}<span class="sname"><b class="${lv ? ((lv.d || 1) < 0 ? 'hot-short' : 'hot-long') : sq ? 'hot-short' : ''}">${esc(s.n)}</b><small>${sub}</small></span>
     <span class="sprice"><div class="p num${fl}">${PW(s.id, p)}</div><div class="c num ${cls(c)}">${pctTxt(c)}</div></span></button>
-    <span class="tbtns"><button class="tb buy" type="button" data-quick="buy" data-sym="${s.id}" ${off ? 'disabled' : ''}>매수</button>${(() => { const ex = exitMode(s.id); return `<button class="tb sell${ex ? ' lit' : ''}" type="button" data-quick="${ex || 'sell'}" data-sym="${s.id}" ${off || !ex ? 'disabled' : ''}>매도</button>`; })()}</span></div>`;
+    <span class="tbtns"><button class="tb trade${exitMode(s.id) ? ' lit' : ''}" type="button" data-quick="buy" data-sym="${s.id}" ${off ? 'disabled' : ''}>거래</button></span></div>`;
 }
 
 /* ───────── payout every 12h ───────── */
@@ -2403,11 +2407,8 @@ function renderDetail() {
     <div class="stats" id="dStats">${detailStats(sym, p)}</div>
     <p class="hint">가격은 게임용 가상 데이터예요. 1초마다 바뀌어요.</p>
   </div>
-  <div class="dbar"><div class="in">
-    <button class="cta buy" type="button" data-quick="buy" data-sym="${sym}" ${off ? 'disabled' : ''}>매수</button>
-    <button class="cta sell" type="button" data-quick="${exitMode(sym) || 'sell'}" data-sym="${sym}" ${off || !exitMode(sym) ? 'disabled' : ''}>매도</button>
-${isEq(sym) ? '' : `<button class="cta short" type="button" data-quick="${sh ? 'cover' : 'short'}" data-sym="${sym}" ${off ? 'disabled' : ''}>${sh ? '상환' : '공매도'}</button>
-    <button class="cta lev" type="button" data-quick="lev" data-sym="${sym}" ${off ? 'disabled' : ''}>🚀 레버</button>`}
+  <div class="dbar"><div class="in" style="grid-template-columns:1fr">
+    <button class="cta violet" type="button" data-quick="buy" data-sym="${sym}" ${off ? 'disabled' : ''}>거래</button>
   </div></div>`;
   d.scrollTop = st;
   const cb = $('#chatBox'); if (cb) cb.scrollTop = atBottom || S.chatJump ? cb.scrollHeight : cst; S.chatJump = false;
@@ -2475,6 +2476,7 @@ function renderQuickSheet(b, sh) {
   const s = SM[sh.sym], p = px(s.id, S.tick), c = nowChg(s.id);
   const my = (S.me && S.me.hold && S.me.hold[s.id]) || 0;
   b.innerHTML = `<div class="shead">${badge(s)}<div><h3>${esc(s.n)}</h3><small>현재가 <b class="num" id="livePrice">${PW(s.id, p)}</b> <span class="num ${cls(c)}" id="livePct">${pctTxt(c)}</span> · 보유 ${QT(s.id, my)}</small></div></div>
+    <div class="sheetcash"><span>💵 내 현금</span><b class="num">${won(S.me ? S.me.cash : 0)}</b></div>
     <div class="seg"${isEq(s.id) ? ' style="grid-template-columns:1fr 1fr"' : ''}>${(isEq(s.id) ? [['buy', '매수'], ['sell', '매도']] : [['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']]).map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
     ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${QT(s.id, o.q)} · 진입 ${PW(s.id, o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
     <div class="levdir" id="levdir" ${sh.m === 'lev' ? '' : 'hidden'}><button type="button" data-levd="long" aria-pressed="${sh.dir !== 'short'}">📈 롱 (오르면 이득)</button><button type="button" data-levd="short" aria-pressed="${sh.dir === 'short'}">📉 숏 (내리면 이득)</button></div>
