@@ -1,15 +1,11 @@
-// Firebase 웹 앱 설정.
-// Firebase 콘솔 → 프로젝트 설정 → 내 앱(웹)에서 firebaseConfig 값을 복사해 아래 null 자리에 붙여넣으세요.
+// Firebase 웹 앱 설정 (malay-bear-economy 프로젝트).
 // 이 값들은 비밀번호가 아니에요. 브라우저에 그대로 공개되는 식별자이고, 실제 보호는 firestore.rules가 해요.
-// null로 두면 로그인 없이 연습 모드로만 동작해요.
-window.FIREBASE_CONFIG = null;
-/* 예시
+// null로 바꾸면 로그인 없이 연습 모드로만 동작해요.
 window.FIREBASE_CONFIG = {
-  apiKey: "AIza...",
+  apiKey: "AIzaSyClTMGI-ZimyD3waj_rt-_7Vy2gZi13KVA",
   authDomain: "malay-bear-economy.firebaseapp.com",
   projectId: "malay-bear-economy",
-  storageBucket: "malay-bear-economy.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef"
+  storageBucket: "malay-bear-economy.firebasestorage.app",
+  messagingSenderId: "713501158633",
+  appId: "1:713501158633:web:69ad283d8e28cab1369478"
 };
-*/
