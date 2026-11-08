@@ -6,9 +6,9 @@ window.FIREBASE_CONFIG = null;
 /* 예시
 window.FIREBASE_CONFIG = {
   apiKey: "AIza...",
-  authDomain: "mpl-stock-league.firebaseapp.com",
-  projectId: "mpl-stock-league",
-  storageBucket: "mpl-stock-league.appspot.com",
+  authDomain: "malay-bear-economy.firebaseapp.com",
+  projectId: "malay-bear-economy",
+  storageBucket: "malay-bear-economy.appspot.com",
   messagingSenderId: "1234567890",
   appId: "1:1234567890:web:abcdef"
 };
