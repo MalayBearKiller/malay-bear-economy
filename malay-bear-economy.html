@@ -2174,7 +2174,7 @@ function renderDetail() {
     <div class="dprice"><div class="p num"><span id="dPrice">${won(p)}</span><span class="livedot" title="실시간"></span></div><div class="c num" id="dChg"><span class="${cls(c)}">2시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span></div></div>
     <div><canvas class="dchart" id="detailChart" aria-label="${esc(s.n)} 이번 주 가격 차트"></canvas></div>
     <div id="dPos">${detailPos(sym, p)}</div>
-    <div class="sec"><div class="sec-h"><h2>${esc(s.n)} 채팅</h2><small>${talkFor(sym).length}개의 메시지</small></div><div id="dTalk" class="sec">${talkHTML(sym)}</div></div>
+    <div class="sec"><div class="sec-h"><h2>누가 들고 있나</h2><small>모든 포지션 공개</small></div><div id="dHold">${holdersHTML(sym)}</div></div>
     <div class="stats" id="dStats">${detailStats(sym, p)}</div>
     <p class="hint">가격은 게임용 가상 데이터예요. 1초마다 바뀌어요.</p>
   </div>
@@ -2189,13 +2189,35 @@ function renderDetail() {
   if (keep) { const i = $('#talkInput'); if (i) { i.value = keep.v; i.focus(); try { i.setSelectionRange(keep.s, keep.s); } catch {} } }
   requestAnimationFrame(drawDetailChart);
 }
-function drawDetailChart() { const cv = $('#detailChart'); const sym = S.detail; if (cv && sym) drawChart(cv, S.SE.prices[sym].slice(0, S.tick + 1), { live: true ? { x: liveX(), v: px(sym, S.tick) } : null }); }
+// 최근 15분 실시간 가격(10초 간격)으로 그려서 1초마다 움직여요
+function drawDetailChart() {
+  const cv = $('#detailChart'); const sym = S.detail; if (!cv || !sym) return;
+  const t1 = liveStep(now()) * LIVE_MS, arr = [];
+  for (let t = t1 - 15 * 60e3; t < t1; t += 10e3) arr.push(Math.max(1, tickRound(priceAt(sym, t))));
+  arr.push(px(sym, S.tick)); drawChart(cv, arr, {});
+}
+// 이 종목을 가진 사람들과 공격 버튼 (지갑 화면의 공격 버튼과 같아요)
+function holdersHTML(sym) {
+  const canAtk0 = S.me && !S.readOnly && !seasonOver(); let rows = '';
+  activePlayers().forEach(p => {
+    myPositions(p).filter(x => x.sym === sym).forEach(x => {
+      const isMe = p.id === S.uid, canAtk = canAtk0 && !isMe, dir = (x.kind === 'spot' || (x.kind === 'lev' && !x.label.includes('숏'))) ? -1 : 1, cost = atkCostOf(x.principal);
+      const q = x.kind === 'spot' ? (p.hold || {})[sym] : x.kind === 'lev' ? ((p.lev || {})[sym] || {}).q : ((p.shorts || {})[sym] || {}).q;
+      const btn = canAtk ? `<button type="button" class="atk-btn" data-atk="${esc(p.id)}:${x.kind}:${x.sym}" ${S.saving || S.me.cash < cost ? 'disabled' : ''}>💥 공격 ${dir < 0 ? '▼12%' : '▲12%'}<small>${man(cost)}원</small></button>` : '';
+      rows += `<div class="pos${canAtk ? ' has-atk' : ''}">${ava(p)}<span class="sname"><b>${esc(p.name)}${isMe ? ' <span class="tag you">나</span>' : ''} <span class="postag ${x.kind === 'spot' ? 'spot' : dir > 0 ? 'short' : 'long'}">${x.label}</span></b>
+        <small class="dim num">${(q || 0).toLocaleString()}주 · 원금 ${man(x.principal)}${x.dist != null ? ` · 청산 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
+        <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span>${btn}</div>`;
+    });
+  });
+  return `<div class="slist">${rows || '<div class="empty">아직 아무도 안 들고 있어요.</div>'}</div>`;
+}
 // live tick: touch only price parts so typing in the 토론방 is never interrupted
 function updateDetailLive() {
   const sym = S.detail; if (!sym) return; const s = SM[sym]; const p = px(sym, S.tick), c = nowChg(sym), cw = p / s.p0 - 1;
   const el = $('#dPrice'); if (el) el.textContent = won(p);
   const ch = $('#dChg'); if (ch) ch.innerHTML = `<span class="${cls(c)}">2시간 ${pctTxt(c)}</span> <span class="dim">·</span> <span class="${cls(cw)}">이번 주 ${pctTxt(cw)}</span>`;
   const ps = $('#dPos'); if (ps) ps.innerHTML = detailPos(sym, p);
+  const dh = $('#dHold'); if (dh) dh.innerHTML = holdersHTML(sym);
   const stt = $('#dStats'); if (stt) stt.innerHTML = detailStats(sym, p);
   drawDetailChart();
 }
@@ -2602,7 +2624,7 @@ document.addEventListener('click', e => {
   if (t.dataset.inv) { S.inv = t.dataset.inv; renderInvest(); window.scrollTo({ top: 0 }); return; }
   if (t.dataset.boardtab) { S.board = t.dataset.boardtab; renderBoard(); return; }
   if (t.dataset.homeview) { S.homeView = t.dataset.homeview; renderHome(); if (S.homeView === 'map') { const sw = document.querySelector('#homeDyn .hswitch'); if (sw) window.scrollTo(0, sw.getBoundingClientRect().top + window.scrollY - 12); } return; }
-  if (t.dataset.homesec) { S.homeSec = t.dataset.homesec; renderHome(); return; }
+  if (t.dataset.homesec) { S.homeSec = t.dataset.homesec; renderAll(); return; }
   if (t.dataset.rankpg) { S.rankPage = (S.rankPage || 0) + +t.dataset.rankpg; renderHome(); return; }
   if (t.dataset.bet) { S.betPct = t.dataset.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
   if (t.dataset.coin) { playCasino('coin', t.dataset.coin); return; }
