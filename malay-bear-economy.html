@@ -2420,14 +2420,14 @@ async function postBoard() {
   if (S.mode === 'demo') { S.talk.unshift({ id: 't' + Date.now(), ...item }); LS.set('demoTalk', S.talk.filter(t => !t.bot)); renderBoard(); return; }
   try { await S.db.collection('talk').add(item); } catch (e) { toast('건의를 보내지 못했어요. 잠시 후 다시 해주세요.'); i.value = text; }
 }
-// ⭐ 레벨: 상점에서 현금으로 올려요. LV.1에서 시작, 첫 레벨업 100만원, 올릴 때마다 가격 2배
-// (레벨 초기화: 예전 필드 lv 대신 lvl을 써요. 데이터는 지우지 않아요)
-const lvOf = p => Math.max(1, Math.floor((p && p.lvl) || 1));
-const lvCost = lv => 1e6 * Math.pow(2, lv - 1);
+// ⭐ 레벨: 상점에서 현금으로 올려요. LV.1에서 시작, 첫 레벨업 100원, 올릴 때마다 1.14배 (LV.200 근처가 상위권)
+// (레벨 초기화 2번째: 예전 필드 lv·lvl 대신 lv3을 써요. 데이터는 지우지 않아요)
+const lvOf = p => Math.max(1, Math.floor((p && p.lv3) || 1));
+const lvCost = lv => Math.max(100, Math.round(100 * Math.pow(1.14, lv - 1)));
 async function levelUp() {
   if (!S.me || S.saving || S.readOnly) return;
   const lv = lvOf(S.me), cost = lvCost(lv); if (S.me.cash < cost) { toast(`현금이 ${won(cost - S.me.cash)} 부족해요`); return; }
-  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - cost); me.lvl = lv + 1;
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - cost); me.lv3 = lv + 1;
   S.saving = true; const ok = await saveMe(me, before); S.saving = false;
   if (ok) { toast(`⭐ LV.${lv + 1} 달성!`); confetti(); buzz(60); renderAll(); }
 }
@@ -2439,7 +2439,7 @@ function renderShop() {
     if (!C.busy) renderCasino(); return;
   }
   const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv);
-  el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 가격이 2배가 돼요</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
+  el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 가격이 1.14배가 돼요</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
 <div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
     <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
 }
@@ -2880,6 +2880,7 @@ const HELP = {
     '<b>부동산</b> 탭: 내 건물과 시간당 순수익이에요. 파괴된 건물은 가치가 멈춘 채로 보여요.',
     '<b>내 프로필</b> 탭: 받은 지원금, 게임 손익, 월세·세금 합계와 프로필 사진이에요. 사진은 순위·지도 도장에 모두에게 보여요.']],
   shop: ['상점', '현금으로 사는 것들', [
+    '<b>⭐ 레벨업</b>: 첫 레벨업은 100원이고 올릴 때마다 가격이 1.14배가 돼요. LV.100은 약 4,300만원, LV.200은 한 번에 약 21조원이에요. 레벨은 순위와 프로필에 보여요.',
     '<b>✏️ 닉네임 변경권</b>: 100조원. 사면 바로 닉네임을 바꿀 수 있고, 소식에 바뀐 이름이 올라가요.',
     '<b>🎰 게임</b>: 총자산의 10%·25%·50%·올인 중에서 걸어요. 한 판 최대 10억이에요.',
     '<b>홀짝</b>: 맞히면 1.95배, 확률 50%예요.',
