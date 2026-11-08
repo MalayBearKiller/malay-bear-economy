@@ -1487,9 +1487,6 @@ function showLiqBar(html, btn) {
 }
 function feedAlerts() {
   if (!S.season) return; const t = now();
-  for (const x of STOCKS) { if (!exitMode(x.id)) continue; // 내 포지션이 있는 종목만 상단에 알려요
-    const h = haltAt(x.id, t); const key = 'halt:' + x.id + ':' + h.from;
-    if (h.from && t - h.from < 20e3 && !LB_SEEN.has(key)) { LB_SEEN.add(key); showLiqBar(h.j < 0 ? `⛔ ${esc(x.n)} -70% 폭락! 3분간 거래정지` : `🚀 ${esc(x.n)} +70% 폭등! 3분간 거래정지`); buzz(60); return; } }
   if (!S.feed) return;
   for (const f of S.feed.slice(0, 30)) {
     if (!f || t - (f.ts || 0) > 20e3) continue;
@@ -1500,6 +1497,9 @@ function feedAlerts() {
       showLiqBar(`💀 ${esc(nameOf(f.uid))}님 ${esc(SM[f.sym].n)} ${what} 청산! -${man(f.amt)}원`,
         S.me && !S.readOnly ? `<button type="button" data-tbag="${esc(f.uid)}:${esc(f.sym)}:${f.ts}">🫖 티배깅</button>` : '');
       return;
+    }
+    if ((f.kind === 'sell' || f.kind === 'levclose' || f.kind === 'cover') && f.uid !== S.uid && (f.pnl || 0) >= BIG_LIQ && SM[f.sym]) {
+      LB_SEEN.add(key); showLiqBar(`💰 ${esc(nameOf(f.uid))}님 ${esc(SM[f.sym].n)}에서 +${man(f.pnl)}원 벌었어요!`); return;
     }
     if (f.kind === 'tbag' && f.target === S.uid && f.uid !== S.uid) {
       LB_SEEN.add(key); showLiqBar(`🫖 ${esc(nameOf(f.uid))}님이 청산당한 나를 티배깅했어요`); return;
@@ -1773,7 +1773,7 @@ async function closePositions(filter) {
   me.cash = Math.round(me.cash + got);
   S.saving = true; const ok = await saveMe(me, before); S.saving = false; S.closeAllAt = null;
   if (ok) {
-    list.forEach(x => addFeed(x.kind === 'spot' ? { kind: 'sell', sym: x.sym, amt: x.value } : x.kind === 'lev' ? { kind: 'levclose', sym: x.sym, amt: x.pct } : { kind: 'cover', sym: x.sym, amt: x.value }));
+    list.forEach(x => addFeed(x.kind === 'spot' ? { kind: 'sell', sym: x.sym, amt: x.value, pnl: Math.round(x.pnl) } : x.kind === 'lev' ? { kind: 'levclose', sym: x.sym, amt: x.pct, pnl: Math.round(x.pnl) } : { kind: 'cover', sym: x.sym, amt: x.value, pnl: Math.round(x.pnl) }));
     toast(`${list.length > 1 ? `⚡ ${list.length}개 전부 정리` : `${SM[list[0].sym].n} 정리`} · ${signWon(pnl)} → 현금 ${man(got)}원`);
     if (pnl > 0) { confetti(); buzz(60); }
   }
@@ -2313,7 +2313,8 @@ function feedText(f) {
   switch (f.kind) {
     case 'join': return ['', '👋', `<b>${nm}</b>님이 참가했어요`];
     case 'buy': return ['up', '🛒', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 샀어요`];
-    case 'sell': return ['down', '💸', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 팔았어요`];
+    case 'sell': return (f.pnl || 0) >= BIG_LIQ ? ['up', '💰', `<b>${nm}</b>님이 ${esc(st.n)}을(를) 팔아서 <b class="up">+${man(f.pnl)}원</b> 벌었어요`] : ['down', '💸', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 팔았어요`];
+    case 'cover': return st && (f.pnl || 0) >= BIG_LIQ ? ['up', '💰', `<b>${nm}</b>님이 ${esc(st.n)} 공매도로 <b class="up">+${man(f.pnl)}원</b> 벌었어요`] : null;
     case 'short': return ['gold', '🎯', `<b>${nm}</b>님이 ${esc(st.n)}에 <b>${size}</b> 공매도를 걸었어요`];
     case 'casino': return [f.amt > 0 ? 'up' : 'down', f.amt > 0 ? '🎰' : '💥', f.amt > 0 ? `<b>${nm}</b>님이 ${esc(f.game)}에서 ${f.mult}배! <b>+${won(f.amt)}</b>` : `<b>${nm}</b>님이 ${esc(f.game)}에서 <b>${won(-f.amt)}</b> 날렸어요`];
     case 'est_buy': return EM[f.est] ? ['up', '🏢', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) ${man(f.amt)}원에 샀어요`] : null;
@@ -2322,7 +2323,7 @@ function feedText(f) {
     case 'est_restore': return EM[f.est] ? ['gold', '🔧', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 복구했어요`] : null;
     case 'est_force': return EM[f.est] ? ['up', '🏴', `<b>${nm}</b>님이 ${f.target ? `<b>${esc(nameOf(f.target))}</b>님의 ` : ''}${esc(EM[f.est].n)}을(를) 강제 매입했어요!`] : null;
     case 'lev': return st ? [f.d < 0 ? 'down' : 'up', f.d < 0 ? '📉' : '🚀', `<b>${nm}</b>님이 ${esc(st.n)} <b>${f.x}배 ${f.d < 0 ? '숏' : '롱'}</b> 진입!`] : null;
-    case 'levclose': return st ? [f.amt >= 0 ? 'up' : 'down', f.amt >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(st.n)} 레버리지 정리 <b class="${f.amt >= 0 ? 'up' : 'down'}">${pctTxt(f.amt)}</b>`] : null;
+    case 'levclose': return st ? [f.amt >= 0 ? 'up' : 'down', f.amt >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(st.n)} 레버리지 정리 <b class="${f.amt >= 0 ? 'up' : 'down'}">${pctTxt(f.amt)}</b>${(f.pnl || 0) >= BIG_LIQ ? ` · <b class="up">+${man(f.pnl)}원</b> 벌었어요` : ''}`] : null;
     case 'liq': return st ? ['down', '💀', `<b>${nm}</b>님 ${esc(st.n)} <b>${f.x > 1 ? f.x + '배 ' + (f.d < 0 ? '숏' : '롱') + ' 청산' : '공매도 반대매매'}</b>당했어요${f.amt ? ` <b class="down">-${man(f.amt)}원</b>` : ''}`] : null;
     case 'rename': return ['gold', '✏️', `<b>${esc(f.old || '누군가')}</b>님이 닉네임을 <b>${nm}</b>(으)로 바꿨어요`];
     case 'tbag': return ['gold', '🫖', `<b>${nm}</b>님이 청산당한 <b>${esc(nameOf(f.target))}</b>님을 티배깅했어요`];
@@ -2369,7 +2370,7 @@ function renderShop() {
     <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
 }
 // 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
-const brag = f => f && ((f.kind === 'liq' && (f.amt || 0) >= BIG_LIQ) || f.kind === 'tbag' || f.kind === 'est_buy' || f.kind === 'est_force' || f.kind === 'est_destroy' || (f.kind === 'atk' && f.bounty));
+const brag = f => f && ((f.kind === 'liq' && (f.amt || 0) >= BIG_LIQ) || ((f.kind === 'sell' || f.kind === 'levclose' || f.kind === 'cover') && (f.pnl || 0) >= BIG_LIQ) || f.kind === 'tbag' || f.kind === 'est_buy' || f.kind === 'est_force' || f.kind === 'est_destroy' || (f.kind === 'atk' && f.bounty));
 function renderFeed() {
   const el = $('#tab-feed');
   const items = S.feed.filter(brag).map(f => [f, feedText(f)]).filter(x => x[1]);
@@ -2655,8 +2656,10 @@ async function doTrade() {
   S.saving = false;
   if (ok) {
     if (m === 'lev') addFeed({ kind: 'lev', sym, amt, x: sh.x || 25, d: sh.dir === 'short' ? -1 : 1 });
-    else if (m === 'levclose') { const o = before.lev[sym], r = levROE(o, p); addFeed({ kind: 'levclose', sym, amt: r }); if (r > .5) { confetti(); buzz(80); } }
-    else if (m !== 'cover') addFeed({ kind: m, sym, amt });
+    else if (m === 'levclose') { const o = before.lev[sym], r = levROE(o, p); addFeed({ kind: 'levclose', sym, amt: r, pnl: Math.round(me.cash - before.cash - o.m) }); if (r > .5) { confetti(); buzz(80); } }
+    else if (m === 'sell') addFeed({ kind: m, sym, amt, pnl: Math.round(amt - fee - q * ((before.cost || {})[sym] || p)) });
+    else if (m === 'cover') { const o = before.shorts[sym]; addFeed({ kind: 'cover', sym, amt, pnl: Math.round(q * (o.e - p) - fee) }); }
+    else addFeed({ kind: m, sym, amt });
     if (m === 'sell' && before.cost && before.cost[sym] && p / before.cost[sym] - 1 >= .1) { confetti(); buzz(60); }
     toast({ buy: `🛒 ${SM[sym].n} ${QT(sym, q)} 매수!`, sell: `💸 ${SM[sym].n} ${QT(sym, q)} 매도!`, short: `🎯 ${SM[sym].n} 공매도 진입`, cover: '공매도 상환 완료', lev: `${sh.dir === 'short' ? '📉' : '🚀'} ${SM[sym].n} ${sh.x || 25}배 ${sh.dir === 'short' ? '숏' : '롱'}!`, levclose: `${SM[sym].n} 레버리지 청산 ${m === 'levclose' ? pctTxt(levROE(before.lev[sym], p)) : ''}` }[m]);
     sh.q = 0; if (sh.type === 'quick') closeSheet(); renderAll(); if (S.sheet) renderSheet();
@@ -3014,7 +3017,7 @@ setInterval(() => {
     S.lastLive = ls; LV.flash = {};
     STOCKS.forEach(x => { const v = px(x.id, S.tick); if (old[x.id] && v !== old[x.id]) LV.flash[x.id] = v > old[x.id] ? 'u' : 'd'; });
     S.liveOnly = true; renderAll(); S.liveOnly = false; LV.flash = null;
-    lqScan(); holdingAlerts(); checkLiquidation(); jumpAlerts();
+    lqScan(); checkLiquidation();
     const lc = $('#levCard'); if (lc && S.sheet && S.sheet.sym && S.me) { const o = (S.me.lev || {})[S.sheet.sym]; if (o) { const r = levROE(o, px(S.sheet.sym, S.tick)); lc.className = 'levcard ' + cls(r); lc.querySelector('b').textContent = pctTxt(r); } }
     const sh = S.sheet;
     if (sh && (sh.type === 'player' || sh.type === 'pos')) renderSheet();
