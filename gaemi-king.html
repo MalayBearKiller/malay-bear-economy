@@ -857,6 +857,13 @@ function activePlayers() { return Object.entries(S.players).filter(([, p]) => p 
 function ranking(k) { return activePlayers().map(p => ({ ...p, w: worth(p, k) })).sort((a, b) => b.w - a.w); }
 const nameOf = id => (S.players[id] && S.players[id].name) || '누군가';
 function topHolding(p, k) { let best = null, bv = 0; for (const [s, q] of Object.entries(p.hold || {})) { if (!SM[s]) continue; const v = q * px(s, k); if (v > bv) { bv = v; best = s; } } return best; }
+function posSummary(p) {
+  const parts = [];
+  Object.entries(p.hold || {}).filter(([s]) => SM[s]).forEach(([s, q]) => parts.push(`${SM[s].n} ${q.toLocaleString()}주`));
+  Object.entries(p.lev || {}).filter(([s]) => SM[s]).forEach(([s, o]) => parts.push(`${SM[s].n} ${o.x}배 ${levSide(o)}`));
+  Object.entries(p.shorts || {}).filter(([s]) => SM[s]).forEach(([s, o]) => parts.push(`${SM[s].n} 공매도 ${o.q.toLocaleString()}주`));
+  return parts.length ? parts.join(' · ') : '현금만';
+}
 function lockedCount(p) { const top = topHolding(p, S.tick); return Object.keys(p.hold || {}).filter(s => SM[s] && s !== top).length + Object.keys(p.shorts || {}).filter(s => SM[s]).length; }
 const spiedOn = id => S.me && S.me.spy && S.me.spy.day === kstDay(now()) && S.me.spy.target === id;
 const seasonOver = () => false; // 시장은 멈추지 않아요. 월요일 0시에 새 시즌으로 자연스럽게 넘어가요.
@@ -937,16 +944,14 @@ function renderHome() {
         const roi = roiOf(p, p.w), d = (prevIdx[p.id] ?? i) - i;
         const mv = k && d ? `<span class="mv ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span>` : '';
         let info;
-        if (p.id === S.uid) { const n = Object.keys(p.hold || {}).filter(x => SM[x]).length; info = n ? `보유 ${n}종목` : '아직 현금만'; }
-        else if (spiedOn(p.id)) info = '오늘 엿봄 · 전부 공개';
-        else { const t = topHolding(p, k), l = lockedCount(p); info = `${t ? '대표 ' + esc(SM[t].n) : '현금 대기'}${l ? ` · 비공개 ${l}` : ''}`; }
+        info = esc(posSummary(p));
         const own = myEstates(p).filter(b => !estOf(b.id).destroyed).sort((a, b) => estVal(b.id, k) - estVal(a.id, k));
         if (own.length) info = `🏢 <b class="brag">${esc(own[0].n.replace(/ \(한 채\)$/, ''))}${own.length > 1 ? ` 외 ${own.length - 1}` : ''}</b> 건물주 · ` + info;
         h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}" type="button" data-player="${esc(p.id)}"><span class="rk r${i + 1}">${i + 1}</span>${ava(p)}
           <span class="who"><b>${esc(p.name)}</b>${p.id === S.uid ? '<span class="tag you">나</span>' : ''}${p.id === S.rival ? '<span class="tag rv">라이벌</span>' : ''}${p.bot ? '<span class="tag bot">봇</span>' : ''}${mv}<small>${info}</small></span>
           <span class="r num"><b>${man(p.w)}</b><small class="${cls(roi)}">${pctTxt(roi)}</small></span></button>`;
       });
-      h += `</div><p class="hint">상위 5명만 보여요${cur.length > 5 ? ` · 전체 ${cur.length}명` : ''}. 이름을 누르면 하루 한 번 🕵️ 엿보기를 쓸 수 있어요.</p>`;
+      h += `</div><p class="hint">상위 5명만 보여요${cur.length > 5 ? ` · 전체 ${cur.length}명` : ''}. 이름을 누르면 지갑 전체를 볼 수 있어요.</p>`;
     }
   }
   h += `</div>`;
@@ -1371,14 +1376,14 @@ function renderWallet() {
 
 /* ───────── feed ───────── */
 function feedText(f) {
-  const st = f.sym && SM[f.sym]; const nm = esc(nameOf(f.uid)); const size = f.amt < 1.5e7 ? '살짝' : f.amt < 4e7 ? '꽤' : '왕창';
+  const st = f.sym && SM[f.sym]; const nm = esc(nameOf(f.uid)); const size = won(f.amt || 0) + '어치';
   if ((f.kind === 'buy' || f.kind === 'sell' || f.kind === 'short' || f.kind === 'lev' || f.kind === 'liq') && !st) return null;
   if (f.kind === 'casino' && typeof f.amt !== 'number') return null;
   switch (f.kind) {
     case 'join': return ['', '👋', `<b>${nm}</b>님이 참가했어요`];
     case 'buy': return ['up', '🛒', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 샀어요`];
     case 'sell': return ['down', '💸', `<b>${nm}</b>님이 ${esc(st.n)}을(를) <b>${size}</b> 팔았어요`];
-    case 'short': return ['gold', '🎯', `누군가 ${esc(st.n)}에 공매도를 걸었어요`];
+    case 'short': return ['gold', '🎯', `<b>${nm}</b>님이 ${esc(st.n)}에 <b>${size}</b> 공매도를 걸었어요`];
     case 'casino': return [f.amt > 0 ? 'up' : 'down', f.amt > 0 ? '🎰' : '💥', f.amt > 0 ? `<b>${nm}</b>님이 ${esc(f.game)}에서 ${f.mult}배! <b>+${won(f.amt)}</b>` : `<b>${nm}</b>님이 ${esc(f.game)}에서 <b>${won(-f.amt)}</b> 날렸어요`];
     case 'est_buy': return EM[f.est] ? ['up', '🏢', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) ${man(f.amt)}원에 샀어요`] : null;
     case 'est_sell': return EM[f.est] ? ['down', '🏢', `<b>${nm}</b>님이 ${esc(EM[f.est].n)}을(를) 팔았어요`] : null;
@@ -1396,7 +1401,7 @@ function timeAgo(ts) { const s = Math.floor((now() - ts) / 1000); if (s < 60) re
 function renderFeed() {
   const el = $('#tab-feed');
   const items = S.feed.filter(f => f.season === S.season.sid).map(f => [f, feedText(f)]).filter(x => x[1]);
-  let h = `<div class="sec"><div class="sec-h"><h2>소식</h2><small>금액은 대충만 보여요</small></div><div class="slist">`;
+  let h = `<div class="sec"><div class="sec-h"><h2>소식</h2><small>모든 거래 공개</small></div><div class="slist">`;
   if (!items.length) h += `<div class="empty">아직 조용해요.</div>`;
   items.slice(0, 40).forEach(([f, [c, ic, tx]]) => { h += `<div class="fitem"><span class="ic ${c}">${ic}</span><span>${tx}</span><time>${timeAgo(f.ts)}</time></div>`; });
   h += `</div></div><div class="sec"><div class="sec-h"><h2>뉴스 팩트체크</h2><small>출처별로 얼마나 맞았나</small></div><div class="slist">`;
@@ -1635,7 +1640,7 @@ function updateTradeEst() {
   if (sh.m === 'levclose') { const i = $('#qty'); const all = maxQty('levclose', sh.sym); if (i && +i.value !== all) { i.value = all; sh.q = all; } }
   btn.disabled = S.saving || !(sh.m === 'levclose' ? maxQty('levclose', sh.sym) : q) || q > mx;
   const lx = $('#levx'); if (lx) lx.hidden = sh.m !== 'lev'; const ld = $('#levdir'); if (ld) ld.hidden = sh.m !== 'lev';
-  $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${sh.x || 10}%! 대신 약 ${Math.round(100 / (sh.x || 10))}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${sh.x || 10}%! 대신 약 ${Math.round(100 / (sh.x || 10))}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 2초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가의 2배 가까이 오르면 자동 반대매매돼요. 누가 걸었는지는 비밀이에요.', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
+  $('#tradeHint').textContent = { lev: sh.dir === 'short' ? `가격이 1% 내리면 수익은 ${sh.x || 10}%! 대신 약 ${Math.round(100 / (sh.x || 10))}% 오르면 증거금을 다 잃고 청산돼요 💀` : `가격이 1% 오르면 수익은 ${sh.x || 10}%! 대신 약 ${Math.round(100 / (sh.x || 10))}% 떨어지면 증거금을 다 잃고 청산돼요 💀`, levclose: '레버리지 포지션을 전부 정리하고 남은 돈을 받아요.', buy: '지금 보이는 가격으로 바로 체결돼요. 24시간 쉬지 않고 2초마다 바뀌어요.', sell: '판 돈은 바로 현금으로 들어와요.', short: '내리면 이득, 오르면 손해예요. 만기는 없고 상환할 때까지 유지돼요. 가격이 진입가의 2배 가까이 오르면 자동 반대매매돼요. ', cover: '공매도를 정리하고 손익을 확정해요.' }[sh.m];
 }
 async function doTrade() {
   const sh = S.sheet; const q = sh.q, sym = sh.sym, m = sh.m, p = px(sym, S.tick);
@@ -1669,12 +1674,12 @@ function renderPlayerSheet(b, sh) {
   const p0 = S.players[sh.id]; if (!p0) { closeSheet(); return; }
   const p = { id: sh.id, ...p0 };
   const k = S.tick, w = worth(p, k), rk = ranking(k).findIndex(x => x.id === sh.id) + 1, roi = roiOf(p, w);
-  const isMe = sh.id === S.uid, full = isMe || spiedOn(sh.id);
-  const spyUsed = S.me && S.me.spy && S.me.spy.day === kstDay(now());
+  const isMe = sh.id === S.uid, full = true;
   let hold = '';
   if (full) {
     const hs = Object.entries(p.hold || {}).filter(([s]) => SM[s]), ss = Object.entries(p.shorts || {}).filter(([s]) => SM[s]);
     hold = `<div class="slist">${hs.map(([s, q]) => `<div class="pos">${badge(SM[s])}<span class="sname"><b>${esc(SM[s].n)}</b><small class="dim num">${q.toLocaleString()}주</small></span><span class="r num"><b>${won(q * px(s, k))}</b></span></div>`).join('')}
+      ${Object.entries(p.lev || {}).filter(([s]) => SM[s]).map(([s, o]) => `<div class="pos">${badge(SM[s])}<span class="sname"><b>${esc(SM[s].n)}</b><small class="dim num">🚀 ${o.x}배 ${levSide(o)} ${o.q.toLocaleString()}주 · ${pctTxt(levROE(o, px(s, k)))}</small></span><span class="r num"><b>${won(levVal(o, px(s, k)))}</b></span></div>`).join('')}
       ${ss.map(([s, o]) => `<div class="pos">${badge(SM[s])}<span class="sname"><b>${esc(SM[s].n)}</b><small class="dim num">🎯 공매도 ${o.q.toLocaleString()}주</small></span><span class="r num"><b>${won(Math.max(0, o.q * (2 * o.e - px(s, k))))}</b></span></div>`).join('')}
       <div class="pos"><span class="logo-b" style="background:var(--mint)">₩</span><span class="sname"><b>현금</b></span><span class="r num"><b>${won(p.cash)}</b></span></div></div>`;
   } else {
@@ -1685,9 +1690,7 @@ function renderPlayerSheet(b, sh) {
   }
   b.innerHTML = `<div class="shead">${ava(p, true, rk === 1)}<div><h3>${esc(p.name)}</h3><small>${rk}위 · ${won(w)} · <span class="${cls(roi)}">${pctTxt(roi)}</span></small></div></div>
     ${hold}
-    ${!isMe && S.me ? `${full ? '<p class="hint">오늘 엿본 지갑이에요. 내일이 되면 다시 가려져요.</p>' : `<button class="cta violet" type="button" id="spyBtn" ${spyUsed || S.readOnly ? 'disabled' : ''}>🕵️ 지갑 엿보기 ${spyUsed ? '(오늘 사용함)' : '· 하루 1회'}</button>
-      <p class="hint">엿보면 소식 탭에 "누군가 엿봤다"고 떠요. 누가 봤는지는 안 나와요.</p>`}
-      <button class="cta soft" type="button" id="rivalBtn">${S.rival === sh.id ? '라이벌 해제' : '⚔️ 라이벌로 지정'}</button>` : ''}`;
+    ${!isMe && S.me ? `<button class="cta soft" type="button" id="rivalBtn">${S.rival === sh.id ? '라이벌 해제' : '⚔️ 라이벌로 지정'}</button>` : ''}`;
 }
 async function doSpy(id) {
   if (!S.me || S.saving) return; const before = S.me; const me = JSON.parse(JSON.stringify(before)); me.spy = { day: kstDay(now()), target: id };
@@ -1718,7 +1721,7 @@ function renderHelp(b) {
     <li><span>4</span><span>일주일에 두 번 정체불명의 <b>큰손 이벤트</b>가 터져요.</span></li>
     <li><span>5</span><span><b>🚀 레버리지</b>: 2·5·10·20배로 롱(오르면 이득)이나 숏(내리면 이득)을 걸어요. 10배면 1% 움직일 때 10%, 반대로 약 10% 움직이면 청산 💀. 공매도는 만기 없이 상환할 때까지 유지되고, 증거금이 바닥나면 자동 반대매매돼요.</span></li>
     <li><span>5</span><span><b>공매도</b>는 내릴 때 돈을 벌어요. 누가 걸었는지는 비밀.</span></li>
-    <li><span>6</span><span>친구 지갑은 <b>대표 종목 하나</b>만 보여요. 하루 한 번 🕵️ <b>엿보기</b>로 한 명의 지갑을 다 볼 수 있어요.</span></li>
+    <li><span>6</span><span>모든 포지션은 <b>공개</b>예요. 순위표와 친구 이름을 누르면 주식·레버리지·공매도가 다 보여요.</span></li>
     <li><span>7</span><span><b>2시간마다 2,000만원</b> 지원금이 자동으로 들어와요(짝수 시 정각). 앱을 안 열어도 쌓여요.</span></li>
     <li><span>8</span><span><b>부동산</b>: 서울 건물을 사면 <b>1시간마다 가치의 0.1%가 월세</b>로 들어오고, 유지비·재산세(10억 넘으면 종부세)가 빠져요. 살 때 취득세 4%, 팔 때 양도세 22%. 남의 건물은 50%를 내고 파괴, 파괴된 건물은 2배로 강제 매입할 수 있어요.</span></li>
     <li><span>9</span><span><b>게임</b> 탭에서 홀짝과 룰렛으로 돈을 불릴 수 있어요. 걸 금액은 총자산의 1%·10%·20%·50%.</span></li>
