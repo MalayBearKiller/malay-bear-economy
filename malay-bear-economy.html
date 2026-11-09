@@ -158,6 +158,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .shopitem .si-t small{color:var(--dim);font-size:12.5px;font-weight:600}
 .shopitem button{background:var(--violet);color:#fff;border-radius:12px;padding:10px 12px;font-weight:800;font-size:13.5px;white-space:nowrap}
 .shopitem button:disabled{opacity:.35}
+.shopitem button.unlocked{background:var(--mint)}
 .profile{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .profile .who{flex:1;min-width:0}
 .profile .who b{display:block;font-size:17px;font-weight:800}
@@ -1401,7 +1402,7 @@ const okPhoto = u => typeof u === 'string' && u.length < 40000 && /^data:image\/
 const ava = (p, lg, crown) => { const ph = !p.bot && okPhoto(p.photo);
   return `<span class="ava${lg ? ' lg' : ''}${ph ? ' ph' : ''}" style="${ph ? `background-image:url(${p.photo})` : `background:${p.bot ? '#e4e2ee' : avaColor(p.id)}`}">${crown ? '<span class="crown">👑</span>' : ''}${ph ? '' : esc(p.bot ? '🤖' : (p.name || '?').slice(0, 1))}</span>`; };
 // 프로필: 사진은 96px로 줄여서 지갑 문서에 저장, 닉네임 변경은 변경권(100억) 구매
-const RENAME_COST = 10_000_000_000;
+const RENAME_COST = 10_000_000_000, BANNER_COST = 100_000_000_000_000; // 순위 배경 변경권 100조
 let PICK = 'photo';
 function pickPhoto(kind = 'photo') { PICK = kind; const i = $('#photoIn'); if (i) { i.value = ''; i.click(); } }
 async function savePhoto(file, kind = 'photo') {
@@ -1414,9 +1415,10 @@ async function savePhoto(file, kind = 'photo') {
     g.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, W, Hh);
     let q = .8, url = cv.toDataURL('image/jpeg', q); while (url.length > 30000 && q > .3) { q -= .15; url = cv.toDataURL('image/jpeg', q); }
     if (!okPhoto(url)) { toast('사진을 읽지 못했어요'); return; }
-    const before = S.me, me = JSON.parse(JSON.stringify(before)); me[kind] = url;
+    if (kind === 'banner' && !(S.me.bannerTk > 0)) { toast('🔒 상점에서 순위 배경 변경권을 먼저 사 주세요'); return; }
+    const before = S.me, me = JSON.parse(JSON.stringify(before)); me[kind] = url; if (kind === 'banner') me.bannerTk = (me.bannerTk || 0) - 1;
     S.saving = true; const ok = await saveMe(me, before); S.saving = false;
-    if (ok) { toast(kind === 'banner' ? '🖼️ 순위 배경을 바꿨어요' : '📸 프로필 사진을 바꿨어요'); renderAll(); }
+    if (ok) { toast(kind === 'banner' ? '🖼️ 순위 배경을 바꿨어요 (변경권 사용)' : '📸 프로필 사진을 바꿨어요'); renderAll(); }
   } catch { toast('사진을 읽지 못했어요'); }
 }
 async function clearBanner() {
@@ -2386,7 +2388,7 @@ function renderWallet() {
   h += `<div class="info"><div>받은 월세<b class="num up">${won(m.rentTotal || 0)}</b></div><div>낸 유지비·세금<b class="num down">${won(m.taxTotal || 0)}</b></div></div>`;
   h += `<div class="sec"><div class="sec-h"><h2>프로필</h2></div>
     <div class="card profile">${ava({ ...m, id: S.uid }, true)}<span class="who"><b>${esc(m.name)} <span class="lvtag">LV.${lvOf(m)}</span></b><small>사진은 모두에게 보여요 · 레벨은 상점에서 올려요</small></span></div>
-    <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button><button type="button" id="bannerBtn">🖼️ 순위 배경 바꾸기</button><button type="button" id="bannerDel" ${m.banner ? '' : 'disabled'}>배경 지우기</button>
+    <div class="profile-btns"><button type="button" id="photoBtn">📸 사진 바꾸기</button><button type="button" id="photoDel" ${m.photo ? '' : 'disabled'}>사진 지우기</button><button type="button" class="wide" id="bannerDel" ${m.banner ? '' : 'disabled'}>순위 배경 지우기 (배경은 상점에서 사요)</button>
 </div></div>`;
   h += `<p class="hint">수익률은 시드 10억원과 받은 지원금을 합친 금액 기준이에요. 거래 수수료 0.3% · 공매도는 증거금 이상 잃지 않아요.</p>`;
   }
@@ -2486,6 +2488,16 @@ async function levelMax() {
   S.saving = true; const ok = await saveMe(me, before); S.saving = false;
   if (ok) { toast(`⭐ LV.${plan.to} 달성! (${plan.to - lv}레벨 · ${won(plan.spent)})`); confetti(); buzz(80); renderAll(); }
 }
+// 🖼️ 순위 배경 변경권: 사면 잠금이 풀리고, 배경을 한 번 바꾸면 다시 잠겨요
+async function buyBannerTicket() {
+  if (!S.me || S.saving || S.readOnly) return;
+  if (S.me.bannerTk > 0) { pickPhoto('banner'); return; }
+  if (S.me.cash < BANNER_COST) { toast(`현금이 ${won(BANNER_COST - S.me.cash)} 부족해요`); return; }
+  if (!S.bnArm || Date.now() - S.bnArm > 4000) { S.bnArm = Date.now(); renderShop(); return; }
+  S.bnArm = 0; const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - BANNER_COST); me.bannerTk = 1;
+  S.saving = true; const ok = await saveMe(me, before); S.saving = false;
+  if (ok) { toast('🔓 변경권 구매 완료! 배경 사진을 골라 주세요'); renderAll(); }
+}
 // 🛍️ 상점
 function renderShop() {
   const el = $('#tab-shop');
@@ -2497,6 +2509,7 @@ function renderShop() {
   el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 가격이 1.14배가 돼요</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
     ${plan.to > lv + 1 ? `<button type="button" class="cta ${armed ? 'buy' : 'soft'} lvmax" id="lvMax" ${S.saving || S.readOnly ? 'disabled' : ''}>${armed ? `한 번 더 누르면 LV.${plan.to}까지 · ${won(plan.spent)} 결제` : `⏫ 최대한 올리기 · LV.${plan.to}까지 ${won(plan.spent)}`}</button>` : ''}
 <div class="sec"><div class="sec-h"><h2>상점</h2><small>현금으로 사요</small></div>
+    <div class="card shopitem"><span class="si-ic">🖼️</span><span class="si-t"><b>순위 배경 변경권</b><small>사진을 골라 내 순위 줄·프로필 배경으로 옅게 깔아요</small></span>${S.me && S.me.bannerTk > 0 ? `<button type="button" id="bannerBtn" class="unlocked">🔓 배경 고르기</button>` : `<button type="button" id="bannerBuy" ${S.me && !S.readOnly && S.me.cash >= BANNER_COST && !S.saving ? '' : 'disabled'}>${S.bnArm && Date.now() - S.bnArm < 4000 ? '한 번 더 눌러 구매' : `🔒 ${won(BANNER_COST)}`}</button>`}</div>
     <div class="card shopitem"><span class="si-ic">✏️</span><span class="si-t"><b>닉네임 변경권</b><small>한 번 쓰면 닉네임을 바꿀 수 있어요</small></span><button type="button" id="renameOpen" ${S.me && !S.readOnly ? '' : 'disabled'}>${won(RENAME_COST)}</button></div></div>`;
 }
 // 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
@@ -2937,6 +2950,7 @@ const HELP = {
     '<b>부동산</b> 탭: 내 건물과 시간당 순수익이에요. 파괴된 건물은 가치가 멈춘 채로 보여요.',
     '<b>내 프로필</b> 탭: 월세·세금 합계와 프로필 사진·순위 배경이에요. 사진은 순위·지도 도장에 모두에게 보여요.']],
   shop: ['상점', '현금으로 사는 것들', [
+    '<b>🖼️ 순위 배경 변경권</b>: 100조원. 사면 🔒이 풀려 배경을 한 번 바꿀 수 있고, 바꾸면 다시 잠겨요. 사진은 내 순위 줄과 프로필 뒤에 옅게 깔려요. 지우는 건 자산 > 내 프로필에서 공짜예요.',
     '<b>⭐ 레벨업</b>: 첫 레벨업은 100원이고 올릴 때마다 가격이 1.14배가 돼요. LV.100은 약 4,300만원, LV.200은 한 번에 약 21조원이에요. 레벨은 순위와 프로필에 보여요.',
     '<b>✏️ 닉네임 변경권</b>: 100억원. 사면 바로 닉네임을 바꿀 수 있고, 소식에 바뀐 이름이 올라가요.',
     '<b>🎰 게임</b>: 총자산의 10%·25%·50%·올인 중에서 걸어요. 한 판 최대 10억이에요.',
@@ -3183,7 +3197,8 @@ document.addEventListener('click', e => {
     case 'profRival': S.rival = S.rival === S.profile ? null : S.profile; LS.set('rival', S.rival); toast(S.rival ? '⚔️ 라이벌 지정!' : '라이벌을 해제했어요'); renderProfile(); renderAll(); break;
     case 'boardSend': postBoard(); break;
     case 'photoBtn': pickPhoto('photo'); break;
-    case 'bannerBtn': pickPhoto('banner'); break;
+    case 'bannerBtn': if (!S.me || !(S.me.bannerTk > 0)) { toast('🔒 변경권이 없어요'); break; } pickPhoto('banner'); break;
+    case 'bannerBuy': buyBannerTicket(); break;
     case 'bannerDel': clearBanner(); break;
     case 'photoDel': clearPhoto(); break;
     case 'renameOpen': if (S.me) openSheet('rename'); break;
