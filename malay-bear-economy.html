@@ -1187,10 +1187,14 @@ const LS = {
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // 조/억/만 단위 (1억 이상), 그 아래는 콤마
-function krwUnits(n, short) {
-  n = Math.abs(Math.round(n)); const jo = Math.floor(n / 1e12), eok = Math.floor(n % 1e12 / 1e8), mn = Math.floor(n % 1e8 / 1e4);
-  const parts = []; if (jo) parts.push(jo.toLocaleString('ko-KR') + '조'); if (eok) parts.push(eok.toLocaleString('ko-KR') + '억'); if (mn && !jo && !(short && eok >= 100)) parts.push(mn.toLocaleString('ko-KR') + '만');
-  return parts.length ? parts.join(' ') : n.toLocaleString('ko-KR');
+// 큰 금액은 가장 큰 두 단위까지만: 1해 5,647경 · 3경 2,000조 · 5조 3,131억 · 84억 5,706만
+const KRW_U = [['극', 1e48], ['재', 1e44], ['정', 1e40], ['간', 1e36], ['구', 1e32], ['양', 1e28], ['자', 1e24], ['해', 1e20], ['경', 1e16], ['조', 1e12], ['억', 1e8], ['만', 1e4]];
+function krwUnits(n) {
+  n = Math.abs(Math.round(n)); if (n < 1e4) return n.toLocaleString('ko-KR');
+  if (n >= 1e52) { const e = Math.floor(Math.log10(n)); return (n / 10 ** e).toFixed(2) + '×10^' + e; } // 너무 크면 짧게
+  const i = KRW_U.findIndex(([, v]) => n >= v), [u, v] = KRW_U[i], hi = Math.floor(n / v);
+  const nx = KRW_U[i + 1], lo = nx ? Math.floor((n - hi * v) / nx[1]) : 0;
+  return hi.toLocaleString('ko-KR') + u + (lo ? ' ' + lo.toLocaleString('ko-KR') + nx[0] : '');
 }
 const won = n => (Math.abs(n) >= 1e8 ? krwUnits(n) : Math.round(Math.abs(n)).toLocaleString('ko-KR')) + '원';
 const man = n => krwUnits(n, true);
