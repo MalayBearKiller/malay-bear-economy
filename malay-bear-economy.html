@@ -51,7 +51,8 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .logo i{font-style:normal;color:var(--violet)}
 .round{font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--violet-bg);color:var(--violet)}
 #homeMap{margin-top:-10px}
-#homeMap .seoul{height:calc(100vh - 250px);height:calc(100dvh - 250px);min-height:300px}
+#homeMap .minimap.big{padding:12px}#homeMap .minimap.big svg{max-width:none}
+#estMapHost{margin-bottom:6px}#estMapHost .seoul{height:min(56vh,440px)}
 .gamebtn{margin-left:8px;height:30px;padding:0 10px;border-radius:99px;font-weight:800;font-size:12.5px;background:var(--gold-bg);color:var(--ink)}
 .boardbtn{margin-left:auto;position:relative;height:34px;padding:0 12px;border-radius:99px;font-weight:800;font-size:13.5px;background:var(--paper);color:var(--ink)}
 .boardbtn[hidden] + .helpbtn{margin-left:auto}
@@ -1718,7 +1719,7 @@ function renderHome() {
   if (!el.querySelector('#homeDyn')) el.innerHTML = '<div id="homeDyn" style="display:contents"></div><div id="homeMap" hidden></div>';
   $('#homeDyn').innerHTML = h;
   const hm = $('#homeMap'); hm.hidden = S.homeView !== 'map';
-  if (S.homeView === 'map') { ensureMap(hm); updateMap(); }
+  if (S.homeView === 'map' && (!S.liveOnly || !hm.firstChild)) hm.innerHTML = `<div class="card minimap big">${miniMapSVG(3)}</div><p class="hint" style="margin-top:8px">구마다 건물을 가장 많이 가진 사람의 도장이에요. 확대해서 건물을 사고팔려면 투자 > 부동산으로 가요.</p>`;
 }
 // 투자 탭: 주식 · 코인 · 부동산 · 환율
 function renderInvest() {
@@ -2061,11 +2062,11 @@ function updateMap() {
 }
 // 투자 > 부동산: 내 부동산 요약 + 건물 목록(10개씩)
 // 움직이지 않는 작은 지도: 구마다 1등 땅주인 색으로만 칠해요 (내 땅은 보라)
-function miniMapSVG() {
+function miniMapSVG(sc = 2.1) {
   const top = topOwners();
   const fills = DISTRICTS.map(d => { const u = top[d.n];
     return `<path d="${d.d}" fill="${!u ? '#eceaf4' : u === S.uid ? '#6a4cf5' : ownerColor(u)}" fill-opacity="${u ? (u === S.uid ? .5 : .35) : 1}" stroke="#fff" stroke-width="2"/>`; }).join('');
-  const stamps = DISTRICTS.map((d, i) => { const uid = top[d.n]; return uid ? `<g transform="translate(${d.c[0]},${d.c[1]}) scale(2.1)">${stampInner(uid, 'mst' + i)}</g>` : ''; }).join('');
+  const stamps = DISTRICTS.map((d, i) => { const uid = top[d.n]; return uid ? `<g transform="translate(${d.c[0]},${d.c[1]}) scale(${sc})">${stampInner(uid, 'mst' + i)}</g>` : ''; }).join('');
   return `<svg viewBox="0 30 866 715" role="img" aria-label="구별 땅주인 도장">${fills}${stamps}</svg>`;
 }
 // 내 부동산 요약 (자산 > 부동산에 보여요)
@@ -2077,12 +2078,12 @@ function estSumHTML() {
 }
 function renderEstList(host) {
   const k = S.tick;
-  if (!host.querySelector('#estList')) host.innerHTML = `<div class="card minimap" id="miniMap"></div>
+  if (!host.querySelector('#estList')) host.innerHTML = `<div id="estMapHost"></div>
       <div class="sec"><div class="sec-h"><h2>건물 <span id="estCount"></span></h2><span class="rpager" id="estPager"></span></div><div class="slist" id="estList"></div></div>
       <p class="hint">건물 값은 주식처럼 움직이지만 정해진 최저가 아래로는 안 내려가요. 내 건물은 1시간마다 가치의 0.1%를 월세로 주고, 유지비 0.02%와 재산세 0.02%가 빠져요. 부동산 합계가 10억을 넘으면 넘는 부분에 종부세 0.03%가 더 붙어요. 살 때 취득세 4%, 팔 때 차익의 22%를 양도세로 내요. 남의 건물은 가치의 50%를 내면 파괴할 수 있고, 파괴된 건물은 멈춘 가치의 2배로 강제 매입할 수 있어요.</p>`;
   const sumEl = $('#estSum'); if (sumEl) sumEl.innerHTML = estSumHTML();
   let h = '';
-  const mm = $('#miniMap'); if (mm && (!S.liveOnly || !mm.firstChild)) mm.innerHTML = miniMapSVG();
+  const emh = $('#estMapHost'); if (emh) { ensureMap(emh); updateMap(); }
   const EST = shownEst(), EPG = 10, ePages = Math.ceil(EST.length / EPG); $('#estCount').textContent = EST.length; S.estPage = Math.max(0, Math.min(S.estPage || 0, ePages - 1));
   $('#estPager').innerHTML = `<button type="button" data-estpg="-1" aria-label="이전 건물" ${S.estPage ? '' : 'disabled'}>◀</button><small class="num">비싼 순 ${S.estPage * EPG + 1}~${Math.min(EST.length, (S.estPage + 1) * EPG)}</small><button type="button" data-estpg="1" aria-label="다음 건물" ${S.estPage < ePages - 1 ? '' : 'disabled'}>▶</button>`;
   EST.slice().sort((a, b) => estVal(b.id, k) - estVal(a.id, k)).slice(S.estPage * EPG, (S.estPage + 1) * EPG).forEach(b => {
