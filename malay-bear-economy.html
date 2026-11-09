@@ -1468,7 +1468,8 @@ function estVal(bid, k) {
 }
 const estOf = bid => { const e = S.estates[bid]; return e && e.owner ? e : null; };
 const myEstates = p => ESTATES.filter(b => { const e = estOf(b.id); return e && e.owner === p.id; });
-const LEVS = [5, 10, 25, 50, 100];
+const LEVS = [5, 10, 25, 50, 100], EQ_LEVS = [2, 5, 10, 20, 30]; // 코인 / 주식(최대 30배)
+const levsFor = sym => isEq(sym) ? EQ_LEVS : LEVS;
 // 레버리지 평가액: 진입가 기준. 진입가보다 유리하면 수익, 불리하면 손실(증거금 6% 남으면 청산)
 const levVal = (o, price) => Math.max(0, o.m + (o.d || 1) * o.q * (price - o.e));
 const levSide = o => (o.d || 1) < 0 ? '숏' : '롱';
@@ -2719,7 +2720,7 @@ function renderQuickSheet(b, sh) {
     <div class="seg"${s.fx ? ' style="grid-template-columns:1fr 1fr"' : ''}>${(s.fx ? [['buy', '매수'], ['sell', '매도']] : [['buy', '매수'], ['sell', '매도'], ['short', '공매도'], ['lev', '🚀 레버']]).map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${sh.m === m || (m === 'lev' && sh.m === 'levclose')}">${l}</button>`).join('')}</div>
     ${(() => { const o = S.me && (S.me.lev || {})[s.id]; if (!o) return ''; const r = levROE(o, p); return `<div class="levcard ${cls(r)}" id="levCard"><span>${o.x}배 ${levSide(o)} · ${QT(s.id, o.q)} · 진입 ${PW(s.id, o.e)}</span><b class="num">${pctTxt(r)}</b><button type="button" data-m="levclose">청산</button></div>`; })()}
     <div class="levdir" id="levdir" ${sh.m === 'lev' ? '' : 'hidden'}><button type="button" data-levd="long" aria-pressed="${sh.dir !== 'short'}">📈 롱 (오르면 이득)</button><button type="button" data-levd="short" aria-pressed="${sh.dir === 'short'}">📉 숏 (내리면 이득)</button></div>
-    <div class="levx" id="levx" ${sh.m === 'lev' ? '' : 'hidden'}>${LEVS.map(x => `<button type="button" data-levx="${x}" aria-pressed="${(sh.x || 25) === x}">${x}배</button>`).join('')}</div>
+    <div class="levx" id="levx" ${sh.m === 'lev' ? '' : 'hidden'}>${levsFor(s.id).map(x => `<button type="button" data-levx="${x}" aria-pressed="${(sh.x || 25) === x}">${x}배</button>`).join('')}</div>
     <div class="qtyrow"><button type="button" data-step="-1" aria-label="수량 줄이기">−</button><input id="qty" type="number" inputmode="decimal" step="any" min="0" value="${sh.q ? qOut(s.id, sh.q) : ''}" placeholder="${isCoin(s.id) ? '몇 개?' : s.fx ? '몇 달러?' : '몇 주?'}" aria-label="수량"><button type="button" data-step="1" aria-label="수량 늘리기">+</button></div>
     <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-frac="${f}">${l}</button>`).join('')}</div>
     <div class="est" id="est"></div>
@@ -2793,6 +2794,7 @@ async function doTrade() {
   if (m === 'short') { const o = me.shorts[sym] || { q: 0, e: 0 }; me.shorts[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q), at: now() }; me.cash -= amt + fee; }
   if (m === 'cover') { const o = me.shorts[sym]; me.cash += Math.max(0, q * (2 * o.e - p) - fee); o.q -= q; if (!o.q) delete me.shorts[sym]; }
   me.lev ||= {};
+  if (m === 'lev' && !levsFor(sym).includes(sh.x)) { toast('그 배수는 쓸 수 없어요'); return; }
   if (m === 'lev') { const x = sh.x || 25, d = sh.dir === 'short' ? -1 : 1, o = me.lev[sym]; const mg = amt / x;
     if (o && (o.d || 1) !== d) { toast(`반대쪽(${levSide(o)}) 포지션을 먼저 청산해 주세요`); return; }
     if (o) { const val = levVal(o, p); me.lev[sym] = { q: o.q + q, e: (o.q * o.e + q * p) / (o.q + q), m: val + mg, x: Math.round((o.q + q) * p / (val + mg)), d, at: now() }; }
@@ -2936,7 +2938,7 @@ const HELP = {
     '<b>🪙 코인</b> 30종목: 24시간 쉬지 않고 1초마다 움직이고, 15초마다 몇 종목이 크게 출렁여요. 펌핑 후 덤프도 자주 와요.',
     '<b>⛔ 서킷브레이커</b>(코인): 2시간 변동률이 +40% 넘으면 -70% 폭락, -40% 밑이면 +70% 폭등할 확률이 생기고 멀어질수록 커져요. 터지면 3분간 거래정지예요.',
     '<b>📈 주식</b> 70종목(분야별 10개): 코인보다 덜 거칠지만 2시간에 ±40%까지 가고, 가끔 ±8~30% 급등락이 와요. 거래정지는 없어요.',
-    '<b>🚀 레버리지</b> 5·10·25·50·100배(코인·주식): 진입가 대비 약 0.94÷배수만큼 반대로 가면 증거금을 다 잃고 청산돼요. 앱을 꺼 둬도 그 사이 가격으로 청산돼요.',
+    '<b>🚀 레버리지</b> 코인 5·10·25·50·100배, 주식 2·5·10·20·30배: 진입가 대비 약 0.94÷배수만큼 반대로 가면 증거금을 다 잃고 청산돼요. 앱을 꺼 둬도 그 사이 가격으로 청산돼요.',
     '<b>🎯 공매도</b>(코인·주식): 내리면 이득이에요. 진입가보다 35% 오르면 자동 반대매매되고 남은 돈은 돌려받아요.',
     '<b>💵 환율</b>: 1달러가 900~1,900원 사이에서 움직여요. 매수·매도만 돼요. 수수료는 모든 거래에 0.3%예요.',
     '<b>🏢 부동산</b>: 사면(취득세 4%) 1시간마다 가치의 0.1%가 월세로 들어오고 유지비·재산세 0.04%가 빠져요. 합계 10억 넘는 부분엔 종부세 0.03%, 팔 때 차익의 22%가 양도세예요.',
@@ -3170,7 +3172,7 @@ document.addEventListener('click', e => {
   if (t.dataset.del) { deleteTalk(t.dataset.del); return; }
   if (t.dataset.quick) {
     if (!S.me) { if (S.readOnly) toast('관전 중이라 거래할 수 없어요'); else openSheet('join'); return; }
-    openSheet('quick', { sym: t.dataset.sym, m: t.dataset.quick, q: 0, x: 25 }); return;
+    openSheet('quick', { sym: t.dataset.sym, m: t.dataset.quick, q: 0, x: isEq(t.dataset.sym) ? 10 : 25 }); return;
   }
   if (t.dataset.stock) { if (S.sheet) closeSheet(); openDetail(t.dataset.stock); return; }
   if (t.hasAttribute('data-player')) { if (S.sheet) closeSheet(); openProfile(t.dataset.player); return; }
