@@ -1527,6 +1527,7 @@ function isAllCash(p) {
 // 데이터는 절대 초기화하지 않아요: 시즌(주) 표시와 상관없이 모든 참가자·지갑을 그대로 이어서 써요
 function activePlayers() { return Object.entries(S.players).filter(([, p]) => p && p.name).map(([id, p]) => ({ id, ...p })); }
 function ranking(k) { return activePlayers().map(p => ({ ...p, w: worth(p, k) })).sort((a, b) => b.w - a.w); }
+const NAME_ALIAS = { '무늬수': '새벽코끼리', '박원국': '파란고슴도치' };
 const nameOf = id => (S.players[id] && S.players[id].name) || '누군가';
 // 100억 이상 청산되면 상단에 작게 알려주고 티배깅할 수 있어요
 const BIG_LIQ = 10_000_000_000, LB_SEEN = new Set(), TBAGGED = new Set(); let lbTimer = 0;
@@ -3090,6 +3091,8 @@ function startLive(db, uid) {
   const timer = setTimeout(() => { if (!S.loaded) toast('시장 서버가 느려요. 조금만 기다려 주세요.'); }, 10000);
   db.collection('players').onSnapshot(snap => {
     const next = {}; snap.docs.forEach(d => next[d.id] = d.data());
+    // 표시용 별명: 다른 사람 화면에서만 바꿔 보여줘요. 데이터는 그대로이고, 본인 화면은 원래 이름이에요.
+    Object.entries(next).forEach(([id, pl]) => { if (id !== S.uid && pl && NAME_ALIAS[pl.name]) next[id] = { ...pl, name: NAME_ALIAS[pl.name] }; });
     if (S.saving && S.me) next[S.uid] = S.me;
     S.players = next;
     const mine = next[S.uid]; S.me = mine && mine.name ? mine : null;
