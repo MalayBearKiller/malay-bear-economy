@@ -146,6 +146,7 @@ h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balan
 .minimap{margin-top:4px;padding:10px}.minimap svg{width:100%;max-width:300px;height:auto;display:block;margin:auto}
 .lvtag{font-size:13px;font-weight:800;color:#fff;background:var(--violet);border-radius:8px;padding:2px 7px;vertical-align:3px}
 .lvmax{margin:-4px 0 14px}
+.nickwarn{color:var(--up);font-weight:700;margin-top:-4px}
 .lvitem{margin-bottom:12px;background:var(--gold-bg)}
 .lrow .who small.lv{color:var(--violet);font-weight:800}
 .lord{color:#b8860b;font-weight:800}
@@ -1435,6 +1436,7 @@ function renderRenameSheet(b) {
   b.innerHTML = `<div class="rv-head"><span class="k">닉네임 변경권</span><h3>새 닉네임</h3></div>
     <p class="hint" style="text-align:center">변경권 가격은 <b>${won(RENAME_COST)}</b>이에요. 현금에서 빠져요. 지금 현금 ${won(S.me ? S.me.cash : 0)}.</p>
     <div class="field"><label for="newNick" class="dim" style="font-size:13px;font-weight:700">닉네임 (10자까지)</label><input id="newNick" maxlength="10" value="${esc(S.me ? S.me.name : '')}"></div>
+    <p class="hint nickwarn">⚠️ 실명은 쓰지 마세요. 닉네임은 순위·채팅에서 모두에게 보여요.</p>
     <button class="cta" type="button" id="renameBtn" ${can && !S.saving ? '' : 'disabled'}>${can ? `${won(RENAME_COST)} 내고 바꾸기` : '현금이 부족해요'}</button>`;
 }
 async function doRename() {
@@ -2897,6 +2899,7 @@ function renderJoinSheet(b) {
   b.innerHTML = `<div class="rv-head"><span class="k">NEW SEASON</span><h3>이번 주 1등은 누구?</h3></div>
     <p class="hint" style="text-align:center">10억원으로 시작해요. 월요일 0시에 새 시즌이 시작되기 직전, 총자산 1등이 그 주 우승이에요. 2시간마다 2억원 지원금이 자동으로 들어와요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
+    <p class="hint nickwarn">⚠️ 실명은 쓰지 마세요. 닉네임은 순위·채팅에서 모두에게 보여요.</p>
     <button class="cta" type="button" id="joinBtn">10억원 받고 참가하기</button>`;
 }
 async function doJoin() {
