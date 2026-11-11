@@ -99,8 +99,13 @@ async function fClose(sym) {
 }
 
 /* ───────── 거래창 안 선물 화면 (코인·주식·현물 같은 모양) ───────── */
+// 증거금은 자동으로 채워져요: 마지막으로 고른 비율(처음엔 현금의 10%). 직접 입력하면 그 값을 그대로 써요
+const F_PCTS = [['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']];
+const fPct = () => { const v = S.futPct ?? LS.get('futPct', .1); return F_PCTS.some(([f]) => +f === +v) ? +v : .1; };
+function fAutoAmt(sh) { if (!sh.amtTouched) { const mx = fMax(sh), v = fPct() === 1 ? mx : Math.floor(mx * fPct() / 10000) * 10000; sh.amt = v >= K_MIN ? String(v) : ''; } }
 function fFormHTML(sh) {
   sh.fd ||= 1; const levs = fLevs(sh.sym); if (!levs.includes(sh.fx)) sh.fx = levs.includes(10) ? 10 : levs[0];
+  fAutoAmt(sh);
   const o = ((S.me || {})[fField(sh.sym)] || {})[sh.sym], p = fPx(sh.sym);
   const pos = o ? (() => { const v = fVal(o, p), pnl = v - o.m;
     return `<div class="fpos ${o.d > 0 ? 'long' : 'short'}"><div><b>${o.x}배 ${fSide(o)}</b><small class="num">진입 ${fShowPx(sh.sym, o.e)} · 청산 ${fShowPx(sh.sym, fLiqP(o))}</small></div>
@@ -108,8 +113,8 @@ function fFormHTML(sh) {
       <button type="button" id="fClose" data-sym="${sh.sym}">종료</button></div>`; })() : '';
   return `${pos}<div class="seg fdir"><button type="button" data-fdir="1" aria-pressed="${sh.fd > 0}">롱 (오르면 이득)</button><button type="button" data-fdir="-1" aria-pressed="${sh.fd < 0}">숏 (내리면 이득)</button></div>
     <div class="levrow">${levs.map(x => `<button type="button" data-flev="${x}" aria-pressed="${sh.fx === x}">${x}배</button>`).join('')}</div>
-    <div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="증거금(원)" aria-label="증거금"><span class="unit">원</span></div>
-    <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}</div>
+    <div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="증거금(원) · 직접 입력도 돼요" aria-label="증거금"><span class="unit">원</span></div>
+    <div class="quick fpct">${F_PCTS.map(([f, l]) => `<button type="button" data-kfrac="${f}" aria-pressed="${!sh.amtTouched && +f === fPct()}">${l}</button>`).join('')}</div>
     <div class="est" id="kEst"></div>
     <button class="cta" id="kDoTrade" type="button"></button>`;
 }

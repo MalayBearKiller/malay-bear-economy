@@ -372,6 +372,7 @@ function kClick(t) {
   if (d.flev) { S.sheet.fx = +d.flev; renderSheet(); return true; }
   if (d.kown) { S.kOwn = d.kown; document.querySelectorAll('[data-kown]').forEach(b => b.setAttribute('aria-selected', b.dataset.kown === S.kOwn)); renderCoins(); return true; }
   if (d.km) { S.sheet.m = d.km; S.sheet.amt = ''; S.sheet.all = false; renderSheet(); return true; }
+  if (d.kfrac && S.sheet.m === 'fut') { const sh = S.sheet; S.futPct = +d.kfrac; LS.set('futPct', S.futPct); sh.amtTouched = false; renderSheet(); return true; }   // 롱·숏: 비율을 기억해 두고 자동으로 채워요
   if (d.kfrac) { const sh = S.sheet, f = +d.kfrac, mx = sh.type === 'us' ? uCalc(sh).max : sh.m === 'fut' ? fMax(sh) : kMax(sh.m, sh.sym); sh.all = sh.m === 'sell' && f === 1; sh.amt = String(Math.floor(mx * f)); const i = $('#kAmt'); if (i) i.value = sh.amt; kUpdateEst(); uUpdateEst(); return true; }
   if (d.bond) { if (!S.me && !S.readOnly) { openSheet('join'); return true; } openSheet('bond', { gu: d.bond, side: 'buy', n: 1 }); return true; }
   if (d.bside) { S.sheet.side = d.bside; S.sheet.n = 1; renderSheet(); return true; }
@@ -387,7 +388,7 @@ function kClick(t) {
   return false;
 }
 document.addEventListener('input', e => {
-  if (e.target.id === 'kAmt' && S.sheet) { S.sheet.all = false; kUpdateEst(); uUpdateEst(); }
+  if (e.target.id === 'kAmt' && S.sheet) { S.sheet.all = false; if (S.sheet.m === 'fut') { S.sheet.amtTouched = true; document.querySelectorAll('.fpct [data-kfrac]').forEach(b => b.setAttribute('aria-pressed', 'false')); } kUpdateEst(); uUpdateEst(); }
   if (e.target.id === 'bQty' && S.sheet) { S.sheet.n = Math.max(1, Math.floor(+e.target.value || 1)); clearTimeout(S.bqT); S.bqT = setTimeout(renderSheet, 500); }
 });
 document.addEventListener('change', e => { if (e.target.id === 'xCat') { S[{ us: 'uCat', coin: 'kCat', cm: 'cCat' }[S.xMkt]] = e.target.value; renderExchange(); } if (e.target.id === 'xSort') { S[{ us: 'uSortKey', coin: 'kSortKey', cm: 'cSortKey' }[S.xMkt]] = e.target.value; renderExchange(); } });

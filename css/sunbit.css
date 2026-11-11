@@ -906,3 +906,4 @@ body.noscroll{overflow:hidden}
 .msum b{white-space:normal;font-size:13.5px;line-height:1.25}
 @media (max-width:400px){.mact{min-width:64px;padding:8px 8px;font-size:12px}.mrow .sprice .p{font-size:14px}.msum{gap:4px;padding:9px 10px}}
 .sheet .info.info3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.quick button[aria-pressed="true"]{background:var(--ink);color:#fff}
