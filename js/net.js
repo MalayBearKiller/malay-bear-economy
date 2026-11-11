@@ -74,7 +74,7 @@ async function bootFirebase(cfg) {
   fb.onUser(u => {
     if (!u) { L.hidden = false; document.body.classList.add('noscroll'); return; }
     L.hidden = true; document.body.classList.remove('noscroll');
-    if (!LS.get('nick', '') && u.displayName) LS.set('nick', u.displayName.slice(0, 10));
+    // Google 실명은 닉네임 칸에 자동으로 넣지 않아요 (순위·채팅에 그대로 보이니까)
     if (!started) { started = true; startLive(fb.db, u.uid); }
   });
 }
