@@ -32,7 +32,7 @@ document.addEventListener('click', e => {
     case 'profBack': closeProfile(); break;
     case 'lvUp': levelUp(); break;
     case 'lvMax': levelMax(); break;
-    case 'shopGame': case 'gameBtn': case 'goGame': S.shopView = 'game'; goTab('shop'); break;
+    case 'shopGame': case 'gameBtn': case 'goGame': case 'promoGo': S.shopView = 'game'; goTab('shop'); break;
     case 'shopBack': S.shopView = null; renderShop(); break;
     case 'spinBtn': playCasino('wheel'); break;
     case 'photoBtn': case 'photoBtn2': pickPhoto('photo'); break;

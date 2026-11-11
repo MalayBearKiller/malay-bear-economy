@@ -1032,3 +1032,29 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .logo-b.gflag{background:var(--paper);font-size:22px}
 .gnote,.gfut-note{font-size:12px;font-weight:700;color:var(--dim);margin:4px 2px 0}
 .gfut-note b{color:var(--ink)}
+
+/* 🎰 게임 배너 (자극적으로) */
+.promo{position:relative;overflow:hidden;isolation:isolate;width:100%;display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;margin-bottom:12px;border-radius:18px;text-align:left;color:#fff;
+  background:linear-gradient(120deg,#3b0764 0%,#9d174d 45%,#ea580c 80%,#facc15 120%);background-size:200% 100%;animation:prbg 6s ease-in-out infinite;
+  box-shadow:0 8px 24px rgba(157,23,77,.35),inset 0 0 0 1.5px rgba(255,215,0,.55)}
+@keyframes prbg{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.promo:active{transform:scale(.985)}
+.pr-shine{position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-120%);animation:prsh 2.8s ease-in-out infinite}
+@keyframes prsh{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
+.pr-spark{position:absolute;color:#ffe27a;font-size:12px;opacity:0;animation:prsp 2.4s ease-in-out infinite}
+.pr-spark.s1{top:8px;right:92px}.pr-spark.s2{bottom:10px;right:132px;animation-delay:.8s}.pr-spark.s3{top:14px;left:46%;animation-delay:1.6s}
+@keyframes prsp{0%,100%{opacity:0;transform:scale(.4)}50%{opacity:1;transform:scale(1.2) rotate(30deg)}}
+.pr-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pr-tag{align-self:flex-start;font-size:10.5px;font-weight:900;letter-spacing:.02em;padding:2px 8px;border-radius:99px;background:rgba(0,0,0,.35);color:#ffe27a;animation:armp .7s ease-in-out infinite alternate}
+.pr-h{display:block;height:28px;overflow:hidden;font-size:22px;font-weight:900;letter-spacing:-.03em;line-height:28px;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+.pr-roll{display:flex;flex-direction:column;animation:prroll 7.5s cubic-bezier(.7,0,.3,1) infinite}
+.pr-roll i{font-style:normal;height:28px;white-space:nowrap}
+.pr-roll em{font-style:normal;color:#ffe27a;font-size:25px}
+@keyframes prroll{0%,28%{transform:translateY(0)}33%,61%{transform:translateY(-28px)}66%,94%{transform:translateY(-56px)}100%{transform:translateY(-84px)}}
+.pr-s{font-size:12px;font-weight:700;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr-s b{font-weight:900}.pr-s .up{color:#ffb4ba}.pr-s .down{color:#a9c8ff}
+.pr-go{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;width:68px;height:58px;border-radius:14px;font-size:22px;font-weight:900;color:#3a2400;
+  background:linear-gradient(180deg,#fff3b0,#facc15 55%,#e39a00);box-shadow:0 4px 0 #a16207,0 6px 14px rgba(0,0,0,.3);animation:prgo 1.2s ease-in-out infinite}
+.pr-go small{font-size:10px;font-weight:900;margin-top:-2px}
+@keyframes prgo{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.promo,.pr-shine,.pr-spark,.pr-roll,.pr-go,.pr-tag{animation:none!important}}

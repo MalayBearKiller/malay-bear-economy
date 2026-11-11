@@ -260,7 +260,7 @@ function goTab(name) {
   ['home', 'coin', 'shop', 'assets'].forEach(n => $('#tab-' + (n === 'assets' ? 'wallet' : n)).hidden = n !== name);
   const bb = $('#boardBtn'); if (bb) bb.hidden = name !== 'home';
   const lb = $('#logBtn'); if (lb) lb.hidden = name !== 'home';
-  const gb = $('#gameBtn'); if (gb) gb.hidden = name !== 'coin';   // 게임 버튼은 거래소에서만
+  const gb = $('#gameBtn'); if (gb) gb.hidden = true;   // 게임은 거래소 맨 위 큰 배너로 들어가요
   renderAll(); window.scrollTo({ top: 0 });
 }
 /* ───────── chart ───────── */
