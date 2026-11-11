@@ -118,7 +118,7 @@ async function kStipend() {
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
   uTick(); gTick();
-  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); kCashTax(); fScan(); }
+  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); fScan(); }   // 현금 자동 투자(kCashTax)는 없앴어요(2026-11-12)
 }
 
 /* ───────── 거래 ───────── */

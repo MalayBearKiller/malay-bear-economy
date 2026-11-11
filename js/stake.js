@@ -47,7 +47,7 @@ async function bondTrade(gu, side, n) {
     const cost = bondBuyCost(gu, n, sold); if (cost > me.cash) { toast(`원화가 ${krw(cost - me.cash)} 부족해요`); return; }
     me.bCost[gu] = ((me.bCost[gu] || 0) * held + cost) / (held + n); me.bonds[gu] = held + n; if (!held) me.bAt[gu] = now(); me.cash -= cost;
     if (me.cpH == null) me.cpH = Math.floor(now() / H);
-    if (await kSave(me, before)) { addFeed({ kind: 'k_bond', gu, n, amt: cost }); const ch = guChief()[gu]; toast(ch && ch.id === S.uid ? `👑 ${gu}청장이 됐어요!` : `🏛️ ${gu} 지분 ${n}% 매수`); if (ch && ch.id === S.uid) confetti(); showMine('stake'); }
+    if (await kSave(me, before)) { addFeed({ kind: 'k_bond', gu, n, amt: cost }); const ch = guChief()[gu]; toast(ch && ch.id === S.uid ? `👑 ${gu}청장이 됐어요!` : `🏛️ ${gu} 지분 ${n}% 매수`); if (ch && ch.id === S.uid) confetti(); showMine('bond'); }
   } else {
     if (n > held) return; const get = bondSellGet(gu, n, sold);
     me.bonds[gu] = held - n; me.cash += get; if (!me.bonds[gu]) { delete me.bonds[gu]; delete me.bCost[gu]; delete me.bAt[gu]; }
@@ -123,4 +123,5 @@ document.addEventListener('click', e => {
   if (d.bset) { const sh = S.sheet, gg = sh.gu; sh.n = d.bset === 'max' ? Math.max(1, bondMaxBuy(gg)) : d.bset === 'all' ? ((S.me.bonds || {})[gg] || 1) : +d.bset; renderSheet(); return; }
   if (t.id === 'bDo') bondTrade(S.sheet.gu, S.sheet.side, S.sheet.n);
 });
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-gbsub]'); if (t) { S.bondSub = t.dataset.gbsub; renderExchange(); } });
 document.addEventListener('input', e => { if (e.target.id === 'bQty' && S.sheet) { S.sheet.n = Math.max(1, Math.floor(+e.target.value || 1)); clearTimeout(S.bqT); S.bqT = setTimeout(renderSheet, 500); } });

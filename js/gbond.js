@@ -121,16 +121,14 @@ function gHomeHTML() {
       return `<button type="button" class="gking${uid === S.uid ? ' me' : ''}" data-gpin="${o.c[0].id}" style="--kc:${chiefColor(uid)}"><span class="gk-a">${ava(p)}</span><span class="gk-t"><b>👑 ${esc(uid === S.uid ? '나' : p.name || '?')}</b><small>${o.c.map(c => c.f + ' ' + esc(c.cn)).join(' · ')}</small></span><span class="gk-v num">${krw(o.a)}</span></button>`; }).join('')}</div>`
       : `<p class="gk-none">아직 국채 왕이 없어요. 거래소 › 채권에서 첫 번째 왕이 되어 보세요.</p>`}`;
 }
-function worldHTML() {
-  const z = gReg(), top = gTop(), me = S.me || {}, list = gShown().filter(c => c.rg === z);
-  requestAnimationFrame(gCarFix);
-  return `<div class="greg">${GRG.map(k => `<button type="button" data-gzoom="${k}" aria-pressed="${z === k}">${GREG[k]}</button>`).join('')}</div>
-    ${gCarHTML()}
-    ${list.map(c => { const bp = gBp(c.id), o = (me.gHold || {})[c.id], v = o ? gLotVal(c.id, o) : 0, t = top[c.id];
-      return `<div class="srow"><button class="srow-main" type="button" data-gb="${c.id}"><span class="logo-b gflag">${c.f}</span><span class="sname"><b>${esc(c.n)}</b><small>${o ? `<span class="mine">${krw(v)}</span> <b class="rowpnl ${cls(v - o.a)}">${signKrw(v - o.a)}</b>` : t ? `👑 ${esc(t.id === S.uid ? '나' : nameOf(t.id))} ${krw(t.a)}` : `10년물 · 가격 ${gPx(c.id) ? gPx(c.id).toFixed(2) : '…'}`}</small></span>
+function worldHTML() {   // 국제채권: 다른 투자처처럼 목록만 (지역마다 제목)
+  const top = gTop(), me = S.me || {};
+  return GRG.map(rg => { const list = gShown().filter(c => c.rg === rg); if (!list.length) return '';
+    return `<div class="ucat-h" style="--c:${{ us: '#1f4fa8', eu: '#5b4bd6', as: '#e8384f' }[rg]}"><b>${GREG[rg]}</b><small>${list.length}</small></div>` + list.map(c => { const bp = gBp(c.id), o = (me.gHold || {})[c.id], v = o ? gLotVal(c.id, o) : 0, t = top[c.id], fu = (me.gFut || {})[c.id];
+      return `<div class="srow"><button class="srow-main" type="button" data-gb="${c.id}"><span class="logo-b gflag">${c.f}</span><span class="sname"><b>${esc(c.n)}</b><small>${o ? `<span class="mine">${krw(v)}</span> <b class="rowpnl ${cls(v - o.a)}">${signKrw(v - o.a)}</b>` : fu ? `<span class="postag ${fu.d > 0 ? 'long' : 'short'}">${fu.x}배 ${fu.d > 0 ? '롱' : '숏'}</span>` : t ? `👑 ${esc(t.id === S.uid ? '나' : nameOf(t.id))} ${krw(t.a)}` : `10년물 · 가격 ${gPx(c.id) ? gPx(c.id).toFixed(2) : '…'}`}</small></span>
         <span class="sprice"><div class="p num">${gY(c.id) ? gY(c.id).toFixed(3) + '%' : '…'}</div><div class="c num ${bp > 0 ? 'down' : bp < 0 ? 'up' : 'flat'}">${bp > 0 ? '+' : ''}${bp.toFixed(1)}bp</div></span></button>
-        <span class="tbtns"><button class="tb trade${o || (me.gFut || {})[c.id] ? ' lit' : ''}" type="button" data-gb="${c.id}">거래</button></span></div>`; }).join('')}
-    <p class="gnote">지도를 좌우로 넘기면 다른 지역이에요. 나라마다 국채를 가장 많이 넣은 사람의 프로필이 찍혀요. 금리가 오르면(빨간 bp) 국채 가격은 내려요.</p>`;
+        <span class="tbtns"><button class="tb trade${o || fu ? ' lit' : ''}" type="button" data-gb="${c.id}">거래</button></span></div>`; }).join(''); }).join('')
+    + `<p class="gnote">10년물 국채 금리 · 실시간. 금리가 오르면(빨간 bp) 국채 가격은 내려요. 산 금리만큼 이자가 쌓여요.</p>`;
 }
 /* ───────── 거래창 ───────── */
 const GCH = {};

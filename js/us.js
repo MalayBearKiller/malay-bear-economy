@@ -220,11 +220,11 @@ function fxRow() {
     <span class="sprice"><div class="p num${fl ? ' f' + fl : ''}">${FX.p ? FX.p.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '…'}</div><div class="c num ${cls(FX.c)}">${FX.p ? (FX.c > 0 ? '+' : '') + (FX.c * 100).toFixed(2) + '%' : ''}</div></span></button></div>`;
 }
 // 거래소 탭: [주식 | 코인 | 현물 | 채권]. 내 보유는 오른쪽 아래 떠 있는 버튼 → 아래에서 올라오는 창
-const X_TABS = [['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권'], ['stake', '지분']];
+const X_TABS = [['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권']];
 function xCtlHTML() {
   const m = S.xMkt, tab = ([k, l]) => `<button type="button" role="tab" data-xmkt="${k}" aria-selected="${m === k}">${l}</button>`;
   const h = `<div class="xtop"><div class="xtabs" role="tablist">${X_TABS.map(tab).join('')}<small class="livetag" id="kLiveTag"><i></i></small></div></div>`;
-  if (m === 'bond' || m === 'stake') return h;
+  if (m === 'bond') return h;
   const cats = m === 'us' ? UCAT : m === 'cm' ? CCAT : KCAT, sorts = m === 'coin' ? K_SORTS : U_SORTS, ck = { us: 'uCat', coin: 'kCat', cm: 'cCat' }[m], sk = { us: 'uSortKey', coin: 'kSortKey', cm: 'cSortKey' }[m];
   const opt = (v, l, cur) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`;
   return h + `<div class="krow2"><label class="ksel"><select id="xCat" aria-label="분류">${opt('all', '전체', S[ck])}${Object.entries(cats).map(([k, v]) => opt(k, v.n, S[ck])).join('')}</select></label>
@@ -232,13 +232,12 @@ function xCtlHTML() {
 }
 // ───────── 내 보유 (화면 가득) ─────────
 // 탭 4개(주식·코인·현물·채권) · 위에 그 탭의 평가금액·손익·주문 가능 · 줄마다 [전량 매도]/[종료] (한 번 더 누르면 바로 실행)
-const mktOf = sym => (KC[sym] ? 'coin' : UC[sym] ? UC[sym].m : GC[sym] ? 'bond' : BOND[sym] ? 'stake' : 'us');
+const mktOf = sym => (KC[sym] ? 'coin' : UC[sym] ? UC[sym].m : GC[sym] || BOND[sym] ? 'bond' : 'us');
 function showMine(tab) { if (S.sheet) closeSheetRaw(); openSheet('mine', { tab: X_TABS.some(([k]) => k === tab) ? tab : 'us' }); }
 function minePositions(me, tab) {
   if (!me) return [];
   if (tab === 'coin') return kPositions(me);
-  if (tab === 'bond') return gPositions(me);
-  if (tab === 'stake') return stakePositions(me);
+  if (tab === 'bond') return [...stakePositions(me), ...gPositions(me)];   // 채권 = 서울시 투자지분 + 국제채권
   return uPositions(me).filter(x => UC[x.sym].m === tab || (tab === 'us' && UC[x.sym].m === 'fx'));   // 달러는 주식 탭에
 }
 const myAll = me => (me ? X_TABS.flatMap(([k]) => minePositions(me, k)).sort((a, b) => b.value - a.value) : []);
@@ -309,9 +308,10 @@ function renderExchange(ctl) {
   if (ctl) $('#kCtl').innerHTML = xCtlHTML();
   const m = S.xMkt;
   $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 2억원</b><small>총자산이 2,000만원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
-  const live = m === 'coin' ? kLive() : m === 'bond' || m === 'stake' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
-  if (m === 'bond') { const kl = $('#kList'); kl._keys = null; kl.innerHTML = worldHTML(); return; }
-  if (m === 'stake') { const kl = $('#kList'); kl._keys = null; kl.innerHTML = stakesHTML(); return; }   // 서울 지분 (stake.js)
+  const live = m === 'coin' ? kLive() : m === 'bond' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
+  if (m === 'bond') {   // 채권 탭 안에서 [서울시 투자지분 | 국제채권]
+    const sub = S.bondSub === 'world' ? 'world' : 'stake', kl = $('#kList'); kl._keys = null;
+    kl.innerHTML = `<div class="seg seg2 gbsub"><button type="button" data-gbsub="stake" aria-pressed="${sub === 'stake'}">🏛️ 서울시 투자지분</button><button type="button" data-gbsub="world" aria-pressed="${sub === 'world'}">🌍 국제채권</button></div>` + (sub === 'world' ? worldHTML() : stakesHTML()); return; }
   if (m === 'coin') {
     if (!KCAT[S.kCat]) S.kCat = 'all'; if (!K_SORTS[S.kSortKey]) S.kSortKey = 'v';
     const sk = S.kSortKey, list = Object.values(KC).filter(c => S.kCat === 'all' || c.c === S.kCat);
