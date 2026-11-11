@@ -1,5 +1,5 @@
 rules_version = '2';
-// MPL 주식 리그 Firestore 보안 규칙
+// 썬빗(SUNBIT) Firestore 보안 규칙
 // Firebase 콘솔 → Firestore Database → 규칙 탭에 그대로 붙여넣고 게시하세요.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -47,6 +47,29 @@ service cloud.firestore {
             && newBroken() is map && newBroken().by == me())
       );
       allow delete: if false;
+    }
+
+    // ───── 썬빗(SUNBIT) 새 게임: sb_ 컬렉션. 예전 곰스피 컬렉션은 그대로 두고 따로 써요 ─────
+    match /sb_players/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 10;
+      allow delete: if false;
+    }
+    match /sb_feed/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /sb_talk/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && shortText(request.resource.data.text);
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow delete: if isOwner(resource.data.uid);
     }
 
     // 종목 채팅: 본인 이름으로만 보내고, 삭제는 본인 메시지만.
