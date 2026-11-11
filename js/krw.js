@@ -152,7 +152,7 @@ async function kStipend() {
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
   uTick();
-  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); fScan(); }
+  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); kCashTax(); fScan(); }
 }
 
 /* ───────── 거래 ───────── */
@@ -371,6 +371,7 @@ function kFeedText(f) {
       return f.type === 'loot' ? ['up', '💰', `<b>${nm}</b>님이 <b>${tn}</b>님의 ${an} 수익 <b class="up">${krw(f.gain)}</b> 약탈!`]
         : f.exec ? ['down', '☠️', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} <b>참수!</b> 현상금 <b class="up">${krw(f.gain)}</b>`]
         : ['up', '🎯', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} 증거금 <b class="up">${krw(f.gain)}</b> 사냥`]; }
+    case 'k_tax': return ['down', '💸', `<b>${nm}</b>님 현금세 <b class="down">-${krw(f.amt)}</b>`];
     case 'k_bond': return ['gold', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 <b>${f.n}장</b>을 샀어요`];
     case 'k_bsell': return ['down', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 ${f.n}장을 팔았어요`];
     case 'k_rescue': return ['down', '🆘', `<b>${nm}</b>님이 파산해서 지원금을 받았어요`];

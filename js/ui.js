@@ -155,12 +155,13 @@ const anyOverlay = () => !!(S.sheet || S.detail || S.board || S.profile);
 function guardOn() { if (!GUARD) { try { history.pushState({ gom: 1 }, ''); GUARD = true; } catch {} } }
 // 창을 닫을 때: 지금 기록이 우리가 쌓아 둔 칸일 때만 뒤로 가요 (빨리 열고 닫아도 앱 밖으로 안 튕기게)
 function guardOff() { if (GUARD && !anyOverlay()) { GUARD = false; if (!(history.state && history.state.gom)) return; SKIP++; try { history.back(); } catch { SKIP--; } } }
-function openBoard() { S.board = S.board || 'talk'; if (S.board !== 'talk' && S.board !== 'feed') S.board = 'talk'; $('#board').hidden = false; document.body.classList.add('noscroll'); renderBoard();  guardOn(); }
+function openBoard() { S.board = S.board && S.board !== 'log' ? S.board : 'talk'; if (S.board !== 'talk' && S.board !== 'feed') S.board = 'talk'; $('#board').hidden = false; document.body.classList.add('noscroll'); renderBoard();  guardOn(); }
 function closeBoardRaw() { S.board = null; $('#board').hidden = true; document.body.classList.remove('noscroll'); }
 function closeBoard() { closeBoardRaw(); guardOff(); }
 function renderBoard() {
   const d = $('#board'); if (!S.board || !d) return;
   const ae = document.activeElement, keep = ae && ae.id === 'boardInput' ? { v: ae.value, s: ae.selectionStart } : null;
+  if (S.board === 'log') { d.innerHTML = `<div class="in"><div class="dtop"><button class="back" type="button" id="boardBack" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>📜 전체 로그</b></div>${renderLogHTML()}</div>`; return; }
   let h = `<div class="in"><div class="dtop"><button class="back" type="button" id="boardBack" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>건의 · 소식</b></div>
     <div class="seg" style="grid-template-columns:1fr 1fr"><button type="button" data-boardtab="talk" aria-pressed="${S.board === 'talk'}">건의</button><button type="button" data-boardtab="feed" aria-pressed="${S.board === 'feed'}">소식</button></div>`;
   if (S.board === 'feed') { d.innerHTML = h + `<section class="sec" id="tab-feed" style="gap:22px"></section></div>`; renderFeed(); return; }
@@ -249,14 +250,16 @@ function renderAll() {
   if (R && !(S.liveOnly && (S.tab === 'shop' || Date.now() - chipsTouchAt < 1500))) R();
   const latest = S.feed.find(f => f.uid !== S.uid && brag(f));
   $('#feedDot').hidden = S.board === 'feed' || !latest || latest.ts <= S.feedSeen;
-  if (S.board && !S.liveOnly) renderBoard();
+  if (S.board && S.board !== 'log' && !S.liveOnly) renderBoard();
   if (S.profile) renderProfile();
-  renderMineFab(); rollNums();
+  renderMineFab(); renderTaxBar(); rollNums();
+  if (S.board === 'log' && !S.liveOnly) renderBoard();
 }
 function goTab(name) {
   S.tab = name; document.querySelectorAll('.nav [data-tab]').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
   ['home', 'coin', 'shop', 'assets'].forEach(n => $('#tab-' + (n === 'assets' ? 'wallet' : n)).hidden = n !== name);
   const bb = $('#boardBtn'); if (bb) bb.hidden = name !== 'home';
+  const lb = $('#logBtn'); if (lb) lb.hidden = name !== 'home';
   const gb = $('#gameBtn'); if (gb) gb.hidden = name !== 'shop';
   renderAll(); window.scrollTo({ top: 0 });
 }
@@ -355,7 +358,7 @@ async function doJoin() {
   const inputEl = $('#nick');
   const nick = ((inputEl && inputEl.value) || '').trim().slice(0, 10) || '존버의신';
   LS.set('nick', nick);
-  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H), stipS: stipSlot(), g40: 1 });
+  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H), stipS: stipSlot(), g40: 1, taxH: Math.floor(Date.now() / H) + 1 });
   S.saving = true; const ok = await saveMe(me, S.me); S.saving = false;
   if (ok) { addFeed({ kind: 'join' }); closeSheet(); toast('참가 완료!'); renderAll(); }
 }
@@ -365,6 +368,8 @@ const HELP = {
     '돈은 <b>원화</b> 하나예요. 처음 <b>50억원</b>. 진짜 시세 코인·주식·구채와 게임·상점에 다 같이 써요.',
     '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 구채. 순위는 총자산 순서예요.',
     '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
+    '<b>💸 현금세</b>: 총자산 중 <b>현금이 50% 이상</b>이면 매시 정각에 <b>50%를 넘는 현금의 5%</b>가 세금으로 빠져요. 40%부터 화면 아래에 경고가 떠요. 투자해서 현금을 50% 아래로 두면 0원이에요.',
+    '<b>📜 로그</b>: 홈 위쪽 로그 버튼. 모든 거래·공격(뽑은 번호까지)·청산·세금이 다 같이 보는 기록으로 남아요.',
     '<b>파산</b>: 총자산이 100만원 밑으로 떨어지면 거래소 탭에서 <b>1,000만원</b>을 받을 수 있어요.',
     '이름을 누르면 그 사람 지갑이 다 보여요.']],
   coin: ['거래소', '주식 · 코인 · 현물 · 채권', [

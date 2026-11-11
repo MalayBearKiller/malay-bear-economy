@@ -96,7 +96,7 @@ function startLive(db, uid) {
   db.collection('sb_talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.board === 'talk') renderBoard(); }, () => {});
   // 나를 노린 공격 기록만 따로 (오래된 것도 빠짐없이) → 내 지갑에 반영
   db.collection('sb_feed').where('target', '==', uid).onSnapshot(snap => { S.atkFeed = snap.docs.map(d => d.data()); atkSync(); }, () => {});
-  db.collection('sb_feed').orderBy('ts', 'desc').limit(80).onSnapshot(snap => {
+  db.collection('sb_feed').orderBy('ts', 'desc').limit(200).onSnapshot(snap => {
     S.feed = snap.docs.map(d => d.data()); evFeed(S.feed);
     renderAll();
   }, () => {});
