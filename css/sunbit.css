@@ -1002,3 +1002,11 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .gamebtn:active{transform:scale(.95)}
 @media (max-width:420px){.boardbtn .bt{display:none}.boardbtn{padding:0 9px;font-size:15px}.gamebtn{font-size:14px;padding:0 12px;margin-left:8px}}
 .gamebtn{white-space:nowrap;flex:none}
+
+/* 게임 버튼 (거래소에서만): 차분한 다크 + 금색 번개 */
+.gamebtn{display:inline-flex;align-items:center;gap:5px;margin-left:10px;height:32px;padding:0 12px 0 10px;border-radius:10px;font-size:13.5px;font-weight:800;letter-spacing:-.01em;
+  color:#fff;background:linear-gradient(180deg,#2a2833,#17161f);box-shadow:inset 0 0 0 1px rgba(255,207,74,.45),0 2px 8px rgba(23,22,31,.18);animation:none;transition:transform .12s,box-shadow .2s}
+.gamebtn svg{width:15px;height:15px;fill:#ffcf4a;filter:drop-shadow(0 0 4px rgba(255,207,74,.55))}
+.gamebtn:hover{box-shadow:inset 0 0 0 1px rgba(255,207,74,.8),0 4px 14px rgba(23,22,31,.25)}
+.gamebtn:active{transform:scale(.96)}
+@media (max-width:420px){.gamebtn{font-size:13px;padding:0 10px 0 9px;margin-left:8px}}
