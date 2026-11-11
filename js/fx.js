@@ -108,3 +108,22 @@ function promoTick() {
   const go = b.querySelector('.pr-go'); if (go) go.textContent = PROMO.i % 2 ? 'GO' : '×2';
 }
 setInterval(promoTick, 500);
+
+/* ───────── 현물 개수 입력 (코인·원자재·국채): 원화 대신 개수+단위로 넣어요 ─────────
+   코인은 BTC 같은 기호, 원자재는 온스·배럴 같은 단위, 국채는 장(1장 = 가격지수 × 1만원, 처음엔 약 100만원) */
+const G_UNIT = 10000;
+function spotQ(sh) {
+  const me = S.me || {}, cash = me.cash || 0;
+  if (sh.type === 'kcoin') { const p = kPx(sh.sym); return { p, fee: KFEE, unit: KC[sh.sym].a, dec: 8, maxQ: p ? cash / (p * (1 + KFEE)) : 0 }; }
+  if (sh.type === 'us') { const p = uWon(sh.sym); return { p, fee: U_FEE, unit: UC[sh.sym].unit || '', dec: 4, maxQ: p ? cash / (p * (1 + U_FEE)) : 0 }; }
+  if (sh.type === 'gb') { const p = gPx(sh.sym) * G_UNIT; return { p, fee: G_FEE, unit: '장', dec: 2, maxQ: p ? cash / (p * (1 + G_FEE)) : 0 }; }
+  return { p: 0, fee: 0, unit: '', dec: 0, maxQ: 0 };
+}
+const qRound = (q, dec) => Math.floor(q * 10 ** dec + 1e-9) / 10 ** dec;
+function spotQtyHTML(sh, held) {
+  sh.qmode = true; const s = spotQ(sh);
+  return `<div class="qtyrow kamt"><input id="qIn" type="number" inputmode="decimal" min="0" step="any" value="${sh.all ? '' : sh.qty || ''}" placeholder="${sh.all ? '보유 전부' : '몇 ' + s.unit}" aria-label="수량"><span class="unit">${esc(s.unit)}</span></div>
+    ${spotQuickHTML(sh, held)}`;
+}
+function spotQtyRead(sh) { const i = $('#qIn'); if (i && !sh.all) sh.qty = i.value; return Math.max(0, +sh.qty || 0); }
+document.addEventListener('input', e => { if (e.target.id === 'qIn' && S.sheet) { S.sheet.all = false; S.sheet.qty = e.target.value; kUpdateEst(); uUpdateEst(); gUpdateEst(); } });

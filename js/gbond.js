@@ -47,6 +47,7 @@ function gPositions(p) {
 async function gTrade(side) {
   const sh = S.sheet; if (!sh || !S.me || S.saving || S.readOnly) return;
   const id = sh.sym; if (!gFresh(id)) { toast('금리를 받는 중이에요. 잠시 후 다시 눌러 주세요'); return; }
+  if (sh.qmode) gQtyToAmt(sh);
   const amt = Math.floor(+sh.amt || 0), before = S.me, me = clone(before); me.gHold ||= {};
   const o = me.gHold[id], p = gPx(id), y = gY(id);
   if (side === 'buy') {
@@ -62,7 +63,7 @@ async function gTrade(side) {
     if (part >= .9999) delete me.gHold[id]; else { me.gHold[id] = { ...o, q: o.q * (1 - part), a: o.a * (1 - part) }; }
     if (!(await kSave(me, before))) return;
     addFeed({ kind: 'k_gsell', sym: id, amt: get, pnl }); toast(`${GC[id].f} ${GC[id].n} 매도 · ${signKrw(pnl)}`); if (pnl > 0) bigWin(pnl);
-    sh.amt = ''; sh.all = false; renderAll(); renderSheet(); return;
+    sh.amt = ''; sh.qty = ''; sh.all = false; renderAll(); renderSheet(); return;
   }
   if (!(await kSave(me, before))) return;
   addFeed({ kind: 'k_gbuy', sym: id, amt }); toast(`${GC[id].f} ${GC[id].n} ${krw(amt)} 매수 · 금리 ${y.toFixed(2)}%`); showMine('bond');
@@ -174,20 +175,22 @@ function renderGBSheet(b, sh) {
     ${o ? `<div class="kline"><span>내 국채 <b class="num">${krw(v)}</b> · 산 금리 ${o.y.toFixed(2)}% · 이자 +${krw(interest)}</span><span><b class="num ${cls(v - o.a)}">${signKrw(v - o.a)}</b></span></div>` : ''}
     ${me && !S.readOnly ? `<div class="seg seg2">${[['buy', '현물 매수·매도'], ['fut', '금리 롱·숏']].map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${m === 'fut' ? sh.m === 'fut' : sh.m !== 'fut'}">${l}</button>`).join('')}</div>
       ${sh.m === 'fut' ? `<p class="gfut-note">국채 <b>롱</b> = 금리가 <b>내리면</b> 이득 · <b>숏</b> = 금리가 <b>오르면</b> 이득</p>${fFormHTML(sh)}`
-      : `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="10000" value="${sh.all ? '' : sh.amt || ''}" placeholder="${sh.all ? '보유 전부' : '금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
-        ${spotQuickHTML(sh, o)}<div class="est est2" id="kEst"></div>
+      : `${spotQtyHTML(sh, o)}<div class="est est2" id="kEst"></div>
         <div class="pick2 bs2"><button class="cta buy" id="gBuyGo" type="button">매수하기</button><button class="cta sell" id="gSellGo" type="button">매도하기</button></div>`}` : ''}`;
   gLoadChart(c.id); requestAnimationFrame(gDrawChart); gUpdateEst();
 }
+// 국채 개수(장) → 원화 금액: 1장 = 지금 가격지수 × 1만원
+function gQtyToAmt(sh) { const q = spotQtyRead(sh); sh.amt = String(Math.floor(q * gPx(sh.sym) * G_UNIT)); }
 const gBuyMax = () => Math.floor(((S.me || {}).cash || 0) / (1 + G_FEE));
 function gUpdateEst() {
   const sh = S.sheet; if (!sh || sh.type !== 'gb') return;
   const i = $('#kAmt'); if (i && !sh.all) sh.amt = i.value;
   if (sh.m === 'fut') { fUpdateEst(sh); return; }
+  if (sh.qmode) gQtyToAmt(sh);
   const est = $('#kEst'), bb = $('#gBuyGo'), sb = $('#gSellGo'); if (!est || !bb) return;
   const amt = Math.floor(+sh.amt || 0), o = ((S.me || {}).gHold || {})[sh.sym], v = o ? gLotVal(sh.sym, o) : 0, y = gY(sh.sym);
-  est.innerHTML = `<span>${sh.all ? '' : `살 때 연 <b class="num">${y.toFixed(2)}%</b> · 1년 이자 약 ${krw(amt * y / 100)}`}${o ? `${sh.all ? '' : '<br>'}팔 때 <b class="num">${krw((sh.all ? v : Math.min(v, amt)) * (1 - G_FEE))}</b>` : ''}</span><span class="num">현금 ${krw((S.me || {}).cash || 0)}${o ? `<br>보유 ${krw(v)}` : ''}</span>`;
-  spotPctNow(gBuyMax() ? amt / gBuyMax() : 0, sh.all);
+  est.innerHTML = `<span>${sh.all ? '' : `필요 금액 <b class="num">${krw(amt * (1 + G_FEE))}</b><br>연 ${y.toFixed(2)}% · 1년 이자 약 ${krw(amt * y / 100)}`}${o ? `${sh.all ? '' : '<br>'}팔 때 <b class="num">${krw((sh.all ? v : Math.min(v, amt)) * (1 - G_FEE))}</b>` : ''}</span><span class="num">현금 ${krw((S.me || {}).cash || 0)}${o ? `<br>보유 ${(+(v / (gPx(sh.sym) * G_UNIT)).toFixed(2)).toLocaleString('ko-KR')}장` : ''}</span>`;
+  { const mq = spotQ(sh).maxQ; spotPctNow(mq ? (+sh.qty || 0) / mq : 0, sh.all); }
   const fresh = gFresh(sh.sym);
   bb.disabled = S.saving || !fresh || sh.all || amt < G_MIN || amt > gBuyMax();
   sb.textContent = sh.all ? '전부 매도하기' : '매도하기'; sb.disabled = S.saving || !fresh || !o || (!sh.all && amt < G_MIN);

@@ -89,6 +89,11 @@ function uCalc(sh) {
     const amt = Math.ceil(q * w * (1 + U_FEE)), maxQ = w ? Math.floor((me.cash || 0) / (w * (1 + U_FEE))) : 0;
     return { q, amt, ok: q >= 1 && amt <= (me.cash || 0), line: `필요 금액 <b class="num">${krw(amt)}</b>${UC[sh.sym].m === 'fx' ? '' : ` · ${usd(q * uPx(sh.sym))}`}`, maxQ, maxTxt: maxQ.toLocaleString('ko-KR') + unit };
   }
+  if (sh.qmode) {   // 원자재 개수 입력: 산 개수 그대로, 수수료는 위에
+    const qi = Math.max(0, +sh.qty || 0), unitTxt = uQty;
+    if (sh.m === 'sell') { const q = sh.all ? held : Math.min(held, qi), get = q * w * (1 - U_FEE); return { q, get, ok: q > 0 && q <= held + 1e-12, line: `받을 금액 <b class="num">${krw(get)}</b>`, max: Math.floor(held * w) }; }
+    const a = Math.ceil(qi * w * (1 + U_FEE)); return { q: qi, amt: a, ok: qi > 0 && a >= K_MIN && a <= (me.cash || 0), line: `필요 금액 <b class="num">${krw(a)}</b> · ${usd(qi * uPx(sh.sym))}`, max: Math.floor((me.cash || 0) / (1 + U_FEE)) };
+  }
   const amt = Math.max(0, Math.floor(+sh.amt || 0));
   if (sh.m === 'sell') { const q = sh.all ? held : Math.min(held, w ? amt / w : 0), get = q * w * (1 - U_FEE);
     return { q, get, ok: q > 0 && q <= held + 1e-12, line: `받을 금액 <b class="num">${krw(get)}</b>`, max: Math.floor(held * w) }; }
@@ -147,8 +152,7 @@ function renderUSSheet(b, sh) {
   const allBtn = held ? `<button type="button" data-kall="1" aria-pressed="${!!sh.all}">보유 전부</button>` : '';
   const qtyForm = `<div class="qtyrow"><button type="button" data-uqs="-1" aria-label="줄이기">−</button><input id="uQtyIn" type="number" inputmode="numeric" min="0" step="1" value="${sh.all ? '' : sh.qty || ''}" placeholder="${sh.all ? '보유 전부' : '몇 ' + unit}" aria-label="수량"><button type="button" data-uqs="1" aria-label="늘리기">+</button></div>
       ${spotQuickHTML(sh, held)}`;
-  const amtForm = `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.all ? '' : sh.amt || ''}" placeholder="${sh.all ? '보유 전부' : '금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
-      ${spotQuickHTML(sh, held)}`;
+  const amtForm = spotQtyHTML(sh, held);   // 원자재: 온스·배럴 같은 단위로 개수 입력
   b.innerHTML = `<div class="shead">${uBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${catOf(c).n} · <span id="uSt">${uSt(c.id)}</span></small></div></div>
     <div class="bigp"><div class="p num" id="uLivePrice">${uPx(c.id) ? uPrice(c.id) : '…'}</div><div class="c num"><span class="${cls(ch)}" id="uLivePct">${pctTxt(ch)}</span> <span class="dim" id="uLiveWon">${isFx ? '1달러' : '≈ ' + krw(uWon(c.id))}</span></div>${(UP[c.id] || {}).cap ? `<div class="mcap">시가총액 <b class="num">${usdBig(UP[c.id].cap)}</b> · 약 ${krwUnits(UP[c.id].cap * FX.p)}원</div>` : ''}</div>
     <div class="chartbox"><canvas class="chart" id="uChart" aria-label="하루 차트"></canvas><i class="cpulse"></i></div>
@@ -163,10 +167,11 @@ function uUpdateEst() {
   const i = $('#kAmt'); if (i && !sh.all) sh.amt = i.value;
   const qi = $('#uQtyIn'); if (qi && !sh.all) sh.qty = qi.value;
   if (sh.m === 'fut') { fUpdateEst(sh); return; }
+  if (sh.qmode && !uWhole(sh.sym)) spotQtyRead(sh);
   const est = $('#kEst'), bb = $('#kBuyGo'), sb = $('#kSellGo'); if (!est || !bb) return;
   const cb = uCalc({ ...sh, m: 'buy', all: false }), cs = uCalc({ ...sh, m: 'sell' }), held = ((S.me || {}).uHold || {})[sh.sym] || 0;
   est.innerHTML = `<span>${sh.all ? '' : `살 때 ${cb.line}`}${held ? `${sh.all ? '' : '<br>'}팔 때 ${cs.line}` : ''}</span><span class="num">현금 ${krw((S.me || {}).cash || 0)}${held ? `<br>보유 ${uQty(held, sh.sym)}` : ''}</span>`;
-  { const isQ = uWhole(sh.sym), mx = isQ ? cb.maxQ : cb.max; spotPctNow(mx ? (isQ ? +sh.qty || 0 : +sh.amt || 0) / mx : 0, sh.all); }
+  { const isQ = uWhole(sh.sym), mx = isQ ? cb.maxQ : spotQ(sh).maxQ; spotPctNow(mx ? (+sh.qty || 0) / mx : 0, sh.all); }
   const fresh = uFresh(sh.sym);
   bb.textContent = S.saving ? '처리 중…' : '매수하기'; bb.disabled = S.saving || !fresh || sh.all || !cb.ok;
   sb.textContent = S.saving ? '처리 중…' : sh.all ? '전부 매도하기' : '매도하기'; sb.disabled = S.saving || !fresh || !held || !cs.ok;
