@@ -1102,3 +1102,16 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .gk-t small{font-size:11.5px;font-weight:700;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gk-v{flex:none;font-size:12.5px;font-weight:800}
 .gk-none{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 24px;font-size:13px;font-weight:700;color:var(--dim)}
+.promo.mini{padding:0 4px 0 6px;gap:6px}
+.promo.mini .pr-ic{flex:none;font-size:20px;line-height:1;animation:pric 1.6s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+@keyframes pric{0%,100%{transform:rotate(0)}10%{transform:rotate(-14deg) scale(1.1)}20%{transform:rotate(12deg) scale(1.1)}30%{transform:rotate(0)}}
+.pr-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.1}
+.pr-top{display:flex;align-items:center;gap:4px;font-size:9.5px;font-weight:900;letter-spacing:.06em;color:#ffe27a}
+.pr-dot{width:6px;height:6px;border-radius:99px;background:#ff3b4a;box-shadow:0 0 6px #ff3b4a;animation:armp .6s ease-in-out infinite alternate}
+.pr-msg{display:block;font-size:13.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+.pr-msg em{font-style:normal;color:#ffe27a;font-size:15px}
+.pr-msg.in{animation:prin .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes prin{from{transform:translateY(70%);opacity:0}to{transform:none;opacity:1}}
+.promo.mini .pr-go{width:38px;height:30px;font-size:14px}
+.pr-top{letter-spacing:.02em}.pr-msg{font-size:14px}.pr-msg em{font-size:15.5px}
+.pr-msg.sm{font-size:12px}.pr-msg.sm em{font-size:13px}

@@ -90,3 +90,21 @@ function spotPctNow(ratio, all) {
   const el = $('#pctNow'); if (!el) return;
   el.innerHTML = all ? '<b>보유 전부</b> 매도' : ratio > 0 ? `살 수 있는 돈의 <b class="num">${ratio >= .9995 ? '100' : (ratio * 100).toFixed(ratio < .1 ? 1 : 0)}%</b> <button type="button" data-kclr="1">지우기</button>` : '';
 }
+
+/* ───────── 🎰 헤더 게임 배너: 3초마다 문구가 바뀌어요 (진짜 대박 소식·연승 중인 친구 섞어서) ───────── */
+const PROMO = { i: 0, t: 0 };
+function promoMsgs() {
+  const k = n => n >= 1e8 ? +(n / 1e8).toFixed(1) + '억' : Math.round(n / 1e4) + '만';
+  const out = ['60초에 <em>2배</em>', '룰렛 <em>10배</em>', '5연승 <em>2.3배</em>'];
+  (S.feed || []).filter(f => f && f.kind === 'casino' && f.amt > 0 && Date.now() - f.ts < 864e5).slice(0, 4)
+    .forEach(f => out.push(`${esc(nameOf(f.uid).slice(0, 3))} <em>+${k(f.amt)}</em>`));
+  activePlayers().filter(p => (p.udStreak || 0) >= 2).slice(0, 2).forEach(p => out.push(`${esc(p.name.slice(0, 3))} <em>${p.udStreak}연승</em>`));
+  return out;
+}
+function promoTick() {
+  const el = $('#prMsg'), b = $('#promoGo'); if (!el || !b || b.hidden || Date.now() - PROMO.t < 3000) return;
+  PROMO.t = Date.now(); const ms = promoMsgs(); PROMO.i = (PROMO.i + 1) % ms.length;
+  el.classList.remove('in'); void el.offsetWidth; el.innerHTML = ms[PROMO.i]; el.classList.toggle('sm', el.scrollWidth > el.clientWidth); el.classList.add('in');
+  const go = b.querySelector('.pr-go'); if (go) go.textContent = PROMO.i % 2 ? 'GO' : '×2';
+}
+setInterval(promoTick, 500);
