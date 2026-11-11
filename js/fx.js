@@ -80,3 +80,13 @@ const CM_SVG = {
   USD: svgIcon('linear-gradient(145deg,#2fbf71,#0f8a4f)', '<circle cx="20" cy="20" r="11" fill="none" stroke="#fff" stroke-width="2" opacity=".55"/><text x="20" y="26.5" text-anchor="middle" font-size="17" font-weight="900" fill="#fff">$</text>'),
 };
 const cmIcon = c => CM_SVG[c.a] || logoBadge('', c.a, CCAT[c.c].c);
+
+/* ───────── 현물 빠른 버튼 + 지금 몇 % 골랐는지 ───────── */
+function spotQuickHTML(sh, held) {
+  return `<div class="quick qadd${held ? ' q5' : ''}">${['.01', '.1', '.25', '.5'].map(f => `<button type="button" data-kadd="${f}">+${Math.round(f * 100)}%</button>`).join('')}${held ? `<button type="button" data-kall="1" aria-pressed="${!!sh.all}">보유 전부</button>` : ''}</div>
+    <div class="pctnow" id="pctNow"></div>`;
+}
+function spotPctNow(ratio, all) {
+  const el = $('#pctNow'); if (!el) return;
+  el.innerHTML = all ? '<b>보유 전부</b> 매도' : ratio > 0 ? `살 수 있는 돈의 <b class="num">${ratio >= .9995 ? '100' : (ratio * 100).toFixed(ratio < .1 ? 1 : 0)}%</b> <button type="button" data-kclr="1">지우기</button>` : '';
+}

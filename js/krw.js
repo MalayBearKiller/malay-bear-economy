@@ -272,7 +272,7 @@ function renderKCoinSheet(b, sh) {
       <div>내 보유<b class="num">${held ? kQty(held) + ' ' + c.a : '-'}</b></div><div>평단<b class="num">${avg ? kWon(avg) + '원' : '-'}</b></div></div>
     ${canTrade ? `<div class="seg seg2">${[['buy', '현물 매수·매도'], ['fut', '선물 롱·숏']].map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${m === 'fut' ? sh.m === 'fut' : sh.m !== 'fut'}">${l}</button>`).join('')}</div>
       ${sh.m === 'fut' ? fFormHTML(sh) : `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.all ? '' : sh.amt || ''}" placeholder="${sh.all ? '보유 전부' : '금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
-      <div class="quick${held ? ' q5' : ''}">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}${held ? `<button type="button" data-kall="1" aria-pressed="${!!sh.all}">보유 전부</button>` : ''}</div>
+      ${spotQuickHTML(sh, held)}
       <div class="est est2" id="kEst"></div>
       <div class="pick2 bs2"><button class="cta buy" id="kBuyGo" type="button">매수하기</button><button class="cta sell" id="kSellGo" type="button">매도하기</button></div>`}` : `<p class="hint">${S.readOnly ? '관전 중이라 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}`;
   kLoadChart(c.id); requestAnimationFrame(kDrawChart); kUpdateEst();
@@ -285,6 +285,7 @@ function kUpdateEst() {
   const cb = kTradeCalc({ ...sh, m: 'buy', all: false }), cs = kTradeCalc({ ...sh, m: 'sell' }), held = ((S.me || {}).kHold || {})[sh.sym] || 0;
   // 한 번 넣은 금액으로: 사면 얼마나 받는지 / 팔면 얼마 받는지 둘 다 보여줘요
   est.innerHTML = `<span>${sh.all ? '' : `살 때 ${cb.line.replace('받을 수량 ', '')}`}${held ? `${sh.all ? '' : '<br>'}팔 때 ${cs.line.replace('받을 금액 ', '')}` : ''}</span><span class="num">현금 ${krw((S.me || {}).cash || 0)}${held ? `<br>보유 ${krw(held * kPx(sh.sym))}` : ''}</span>`;
+  { const mx = kMax('buy', sh.sym); spotPctNow(mx ? (+sh.amt || 0) / mx : 0, sh.all); }
   const fresh = kFresh(sh.sym);
   bb.textContent = S.saving ? '처리 중…' : '매수하기'; bb.disabled = S.saving || !fresh || sh.all || !cb.ok;
   sb.textContent = S.saving ? '처리 중…' : sh.all ? '전부 매도하기' : '매도하기'; sb.disabled = S.saving || !fresh || !held || !cs.ok;
@@ -371,6 +372,7 @@ function kFeedText(f) {
       return f.type === 'loot' ? ['up', '💰', `<b>${nm}</b>님이 <b>${tn}</b>님의 ${an} 수익 <b class="up">${krw(f.gain)}</b> 약탈!`]
         : f.exec ? ['down', '☠️', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} <b>참수!</b> 현상금 <b class="up">${krw(f.gain)}</b>`]
         : ['up', '🎯', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} 증거금 <b class="up">${krw(f.gain)}</b> 사냥`]; }
+    case 'k_auto': return ['gold', '🤖', `<b>${nm}</b>님 현금 <b>${krw(f.amt)}</b> 자동 투자`];
     case 'k_tax': return ['down', '💸', `<b>${nm}</b>님 현금세 <b class="down">-${krw(f.amt)}</b>`];
     case 'k_bond': return ['gold', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 <b>${f.n}장</b>을 샀어요`];
     case 'k_bsell': return ['down', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 ${f.n}장을 팔았어요`];
@@ -397,6 +399,12 @@ function kClick(t) {
   if (d.kown) { S.kOwn = d.kown; document.querySelectorAll('[data-kown]').forEach(b => b.setAttribute('aria-selected', b.dataset.kown === S.kOwn)); renderCoins(); return true; }
   if (d.km) { S.sheet.m = d.km; S.sheet.amt = ''; S.sheet.all = false; renderSheet(); return true; }
   if (d.kfrac && S.sheet.m === 'fut') { const sh = S.sheet; S.futPct = +d.kfrac; LS.set('futPct', S.futPct); sh.amtTouched = false; renderSheet(); return true; }   // 롱·숏: 비율을 기억해 두고 자동으로 채워요
+  // 현물 빠른 버튼: 누를 때마다 '살 수 있는 최대'의 1·10·25·50%씩 더해요 (최대 100%)
+  if (d.kadd || d.kclr) { const sh = S.sheet, isQ = sh.type === 'us' && uWhole(sh.sym); sh.all = false;
+    const max = isQ ? uCalc({ ...sh, m: 'buy', all: false }).maxQ || 0 : sh.type === 'us' ? uCalc({ ...sh, m: 'buy', all: false }).max : kMax('buy', sh.sym);
+    const cur = isQ ? +sh.qty || 0 : +sh.amt || 0, r = d.kclr ? 0 : Math.min(1, (max ? cur / max : 0) + +d.kadd);
+    if (isQ) { sh.qty = r ? String(Math.floor(max * r + 1e-9)) : ''; const i = $('#uQtyIn'); if (i) i.value = sh.qty; } else { sh.amt = r ? String(Math.floor(max * r / 1000) * 1000) : ''; const i = $('#kAmt'); if (i) i.value = sh.amt; }
+    document.querySelectorAll('[data-kall]').forEach(b => b.setAttribute('aria-pressed', 'false')); kUpdateEst(); uUpdateEst(); return true; }
   if (d.kall) { const sh = S.sheet; sh.all = !sh.all; sh.amt = ''; renderSheet(); return true; }
   if (d.kfrac) { const sh = S.sheet, f = +d.kfrac, mx = sh.type === 'us' ? uCalc({ ...sh, m: 'buy' }).max : sh.m === 'fut' ? fMax(sh) : kMax('buy', sh.sym); sh.all = false; sh.amt = String(Math.floor(mx * f)); const i = $('#kAmt'); if (i) i.value = sh.amt; kUpdateEst(); uUpdateEst(); return true; }
   if (d.bond) { if (!S.me && !S.readOnly) { openSheet('join'); return true; } openSheet('bond', { gu: d.bond, side: 'buy', n: 1 }); return true; }

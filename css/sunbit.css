@@ -1010,3 +1010,8 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .gamebtn:hover{box-shadow:inset 0 0 0 1px rgba(255,207,74,.8),0 4px 14px rgba(23,22,31,.25)}
 .gamebtn:active{transform:scale(.96)}
 @media (max-width:420px){.gamebtn{font-size:13px;padding:0 10px 0 9px;margin-left:8px}}
+
+.quick.qadd button{font-weight:800}
+.pctnow{min-height:16px;margin-top:-4px;font-size:12px;font-weight:700;color:var(--dim);display:flex;align-items:center;gap:6px}
+.pctnow b{color:var(--ink)}
+.pctnow button{font-size:11.5px;font-weight:800;color:var(--krw);padding:2px 6px;border-radius:6px;background:var(--krw-bg)}

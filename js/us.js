@@ -146,9 +146,9 @@ function renderUSSheet(b, sh) {
   // 현물은 매수·매도 한 화면: 한 번 넣은 수량(주식·달러) 또는 금액(원자재)으로 [매수하기] [매도하기]
   const allBtn = held ? `<button type="button" data-kall="1" aria-pressed="${!!sh.all}">보유 전부</button>` : '';
   const qtyForm = `<div class="qtyrow"><button type="button" data-uqs="-1" aria-label="줄이기">−</button><input id="uQtyIn" type="number" inputmode="numeric" min="0" step="1" value="${sh.all ? '' : sh.qty || ''}" placeholder="${sh.all ? '보유 전부' : '몇 ' + unit}" aria-label="수량"><button type="button" data-uqs="1" aria-label="늘리기">+</button></div>
-      <div class="quick${held ? ' q5' : ''}">${[['1', '1' + unit], ['10', '10' + unit], ['.5', '절반'], ['max', '최대']].map(([v, l]) => `<button type="button" data-uqset="${v}">${l}</button>`).join('')}${allBtn}</div>`;
+      ${spotQuickHTML(sh, held)}`;
   const amtForm = `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.all ? '' : sh.amt || ''}" placeholder="${sh.all ? '보유 전부' : '금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
-      <div class="quick${held ? ' q5' : ''}">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}${allBtn}</div>`;
+      ${spotQuickHTML(sh, held)}`;
   b.innerHTML = `<div class="shead">${uBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${catOf(c).n} · <span id="uSt">${uSt(c.id)}</span></small></div></div>
     <div class="bigp"><div class="p num" id="uLivePrice">${uPx(c.id) ? uPrice(c.id) : '…'}</div><div class="c num"><span class="${cls(ch)}" id="uLivePct">${pctTxt(ch)}</span> <span class="dim" id="uLiveWon">${isFx ? '1달러' : '≈ ' + krw(uWon(c.id))}</span></div>${(UP[c.id] || {}).cap ? `<div class="mcap">시가총액 <b class="num">${usdBig(UP[c.id].cap)}</b> · 약 ${krwUnits(UP[c.id].cap * FX.p)}원</div>` : ''}</div>
     <div class="chartbox"><canvas class="chart" id="uChart" aria-label="하루 차트"></canvas><i class="cpulse"></i></div>
@@ -166,6 +166,7 @@ function uUpdateEst() {
   const est = $('#kEst'), bb = $('#kBuyGo'), sb = $('#kSellGo'); if (!est || !bb) return;
   const cb = uCalc({ ...sh, m: 'buy', all: false }), cs = uCalc({ ...sh, m: 'sell' }), held = ((S.me || {}).uHold || {})[sh.sym] || 0;
   est.innerHTML = `<span>${sh.all ? '' : `살 때 ${cb.line}`}${held ? `${sh.all ? '' : '<br>'}팔 때 ${cs.line}` : ''}</span><span class="num">현금 ${krw((S.me || {}).cash || 0)}${held ? `<br>보유 ${uQty(held, sh.sym)}` : ''}</span>`;
+  { const isQ = uWhole(sh.sym), mx = isQ ? cb.maxQ : cb.max; spotPctNow(mx ? (isQ ? +sh.qty || 0 : +sh.amt || 0) / mx : 0, sh.all); }
   const fresh = uFresh(sh.sym);
   bb.textContent = S.saving ? '처리 중…' : '매수하기'; bb.disabled = S.saving || !fresh || sh.all || !cb.ok;
   sb.textContent = S.saving ? '처리 중…' : sh.all ? '전부 매도하기' : '매도하기'; sb.disabled = S.saving || !fresh || !held || !cs.ok;
