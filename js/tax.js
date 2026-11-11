@@ -11,7 +11,7 @@ const TAX = { LINE: .5, WARN: .4, LEV: .3 };
    모자라면 매시 정각에 모자란 만큼 자동 레버리지 롱이 잡혀요. 연속으로 모자랄수록 배수가 세져요: 1번째 3배 → 2번째 5배 → 3번째부터 10배(주식은 최대 3배).
    30%를 채우면 단계가 처음으로 돌아가요. 안 하는 사람(휴면: 자동 투자 뒤 아무것도 안 누름)은 멈추고 단계도 안 올라가요. 앱을 안 켠 사람은 원래 안 건드려요. */
 const levRatio = p => { const w = worth(p); return w > 0 ? futWorth(p) / w : 0; };
-const levShort = p => Math.max(0, TAX.LEV * worth(p) - futWorth(p));
+const levShort = () => 0;   // 🎯 레버리지 의무는 없앴어요(2026-11-12). 자동 투자는 '현금 50% 넘음'일 때만 걸려요
 const LEV_STEP = [3, 5, 10];
 const levX = n => LEV_STEP[Math.min(LEV_STEP.length - 1, Math.max(0, n))];   // n = 지금까지 연속으로 모자랐던 횟수
 const cashRatio = p => { const w = worth(p); return w > 0 ? (p.cash || 0) / w : 0; };
