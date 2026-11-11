@@ -270,24 +270,24 @@ function renderKCoinSheet(b, sh) {
     ${holdersHTML(c.id)}
     <div class="info info3"><div>24시간 거래대금<b class="num">${o.v ? krwUnits(o.v) : '-'}</b></div>
       <div>내 보유<b class="num">${held ? kQty(held) + ' ' + c.a : '-'}</b></div><div>평단<b class="num">${avg ? kWon(avg) + '원' : '-'}</b></div></div>
-    ${canTrade ? `<div class="seg seg3">${modes.map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${sh.m === m}">${l}</button>`).join('')}</div>
-      ${sh.m === 'fut' ? fFormHTML(sh) : `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="${sh.m === 'sell' ? '팔 금액(원)' : '주문 금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
-      <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}</div>
-      <div class="est" id="kEst"></div>
-      <button class="cta" id="kDoTrade" type="button">매수하기</button>
-      <p class="hint" id="kHint"></p>`}` : `<p class="hint">${S.readOnly ? '관전 중이라 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}`;
+    ${canTrade ? `<div class="seg seg2">${[['buy', '현물 매수·매도'], ['fut', '선물 롱·숏']].map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${m === 'fut' ? sh.m === 'fut' : sh.m !== 'fut'}">${l}</button>`).join('')}</div>
+      ${sh.m === 'fut' ? fFormHTML(sh) : `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.all ? '' : sh.amt || ''}" placeholder="${sh.all ? '보유 전부' : '금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
+      <div class="quick${held ? ' q5' : ''}">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}${held ? `<button type="button" data-kall="1" aria-pressed="${!!sh.all}">보유 전부</button>` : ''}</div>
+      <div class="est est2" id="kEst"></div>
+      <div class="pick2 bs2"><button class="cta buy" id="kBuyGo" type="button">매수하기</button><button class="cta sell" id="kSellGo" type="button">매도하기</button></div>`}` : `<p class="hint">${S.readOnly ? '관전 중이라 거래할 수 없어요.' : '참가하면 거래할 수 있어요.'}</p>`}`;
   kLoadChart(c.id); requestAnimationFrame(kDrawChart); kUpdateEst();
 }
 function kUpdateEst() {
-  const sh = S.sheet; if (!sh || sh.type !== 'kcoin') return; const est = $('#kEst'), btn = $('#kDoTrade'); if (!est || !btn) return;
+  const sh = S.sheet; if (!sh || sh.type !== 'kcoin') return;
   const i = $('#kAmt'); if (i && !sh.all) sh.amt = i.value;
   if (sh.m === 'fut') { fUpdateEst(sh); return; }
-  const c = kTradeCalc(sh), mx = kMax(sh.m, sh.sym);
-  est.innerHTML = `<span>${c.line || ''}</span><span class="num">최대 ${krw(mx)}</span>`;
-  btn.textContent = S.saving ? '처리 중…' : sh.m === 'sell' ? '매도하기' : '매수하기';
-  btn.className = 'cta ' + (sh.m === 'sell' ? 'sell' : 'buy');
-  btn.disabled = S.saving || !c.ok || !kFresh(sh.sym);
-  $('#kHint').textContent = sh.m === 'sell' ? '판 돈은 바로 원화로 들어와요.' : '업비트 현재가로 바로 체결돼요. 최소 5,000원.';
+  const est = $('#kEst'), bb = $('#kBuyGo'), sb = $('#kSellGo'); if (!est || !bb) return;
+  const cb = kTradeCalc({ ...sh, m: 'buy', all: false }), cs = kTradeCalc({ ...sh, m: 'sell' }), held = ((S.me || {}).kHold || {})[sh.sym] || 0;
+  // 한 번 넣은 금액으로: 사면 얼마나 받는지 / 팔면 얼마 받는지 둘 다 보여줘요
+  est.innerHTML = `<span>${sh.all ? '' : `살 때 ${cb.line.replace('받을 수량 ', '')}`}${held ? `${sh.all ? '' : '<br>'}팔 때 ${cs.line.replace('받을 금액 ', '')}` : ''}</span><span class="num">현금 ${krw((S.me || {}).cash || 0)}${held ? `<br>보유 ${krw(held * kPx(sh.sym))}` : ''}</span>`;
+  const fresh = kFresh(sh.sym);
+  bb.textContent = S.saving ? '처리 중…' : '매수하기'; bb.disabled = S.saving || !fresh || sh.all || !cb.ok;
+  sb.textContent = S.saving ? '처리 중…' : sh.all ? '전부 매도하기' : '매도하기'; sb.disabled = S.saving || !fresh || !held || !cs.ok;
 }
 function kLiveSheet() {
   uLiveSheet(); if (S.sheet && S.sheet.type === 'mine') renderSheet();
@@ -396,13 +396,15 @@ function kClick(t) {
   if (d.kown) { S.kOwn = d.kown; document.querySelectorAll('[data-kown]').forEach(b => b.setAttribute('aria-selected', b.dataset.kown === S.kOwn)); renderCoins(); return true; }
   if (d.km) { S.sheet.m = d.km; S.sheet.amt = ''; S.sheet.all = false; renderSheet(); return true; }
   if (d.kfrac && S.sheet.m === 'fut') { const sh = S.sheet; S.futPct = +d.kfrac; LS.set('futPct', S.futPct); sh.amtTouched = false; renderSheet(); return true; }   // 롱·숏: 비율을 기억해 두고 자동으로 채워요
-  if (d.kfrac) { const sh = S.sheet, f = +d.kfrac, mx = sh.type === 'us' ? uCalc(sh).max : sh.m === 'fut' ? fMax(sh) : kMax(sh.m, sh.sym); sh.all = sh.m === 'sell' && f === 1; sh.amt = String(Math.floor(mx * f)); const i = $('#kAmt'); if (i) i.value = sh.amt; kUpdateEst(); uUpdateEst(); return true; }
+  if (d.kall) { const sh = S.sheet; sh.all = !sh.all; sh.amt = ''; renderSheet(); return true; }
+  if (d.kfrac) { const sh = S.sheet, f = +d.kfrac, mx = sh.type === 'us' ? uCalc({ ...sh, m: 'buy' }).max : sh.m === 'fut' ? fMax(sh) : kMax('buy', sh.sym); sh.all = false; sh.amt = String(Math.floor(mx * f)); const i = $('#kAmt'); if (i) i.value = sh.amt; kUpdateEst(); uUpdateEst(); return true; }
   if (d.bond) { if (!S.me && !S.readOnly) { openSheet('join'); return true; } openSheet('bond', { gu: d.bond, side: 'buy', n: 1 }); return true; }
   if (d.bside) { S.sheet.side = d.bside; S.sheet.n = 1; renderSheet(); return true; }
   if (d.bstep) { S.sheet.n = Math.max(1, (S.sheet.n || 1) + +d.bstep); renderSheet(); return true; }
   if (d.bset) { const sh = S.sheet, g = sh.gu; sh.n = d.bset === 'max' ? Math.max(1, bondMaxBuy(g)) : d.bset === 'all' ? ((S.me.bonds || {})[g] || 1) : +d.bset; renderSheet(); return true; }
   switch (t.id) {
     case 'kDoTrade': if (S.sheet.m === 'fut') fOpen(); else if (S.sheet.type === 'us') uDoTrade(); else kDoTrade(); return true;
+    case 'kBuyGo': case 'kSellGo': S.sheet.m = t.id === 'kBuyGo' ? 'buy' : 'sell'; if (S.sheet.type === 'us') uDoTrade(); else kDoTrade(); return true;
     case 'mineFab': showMine(S.xMkt); return true;
     case 'fClose': fClose(t.dataset.sym); return true;
     case 'bDo': bondTrade(S.sheet.gu, S.sheet.side, S.sheet.n); return true;

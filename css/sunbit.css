@@ -964,3 +964,10 @@ body.noscroll{overflow:hidden}
 .xgame{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;width:52px;border-radius:12px;background:linear-gradient(150deg,#ffcf4a,#e39a00);color:#3a2400;font-size:15px;font-weight:900;line-height:1.05;box-shadow:0 3px 10px rgba(227,154,0,.3)}
 .xgame span{font-size:11px;font-weight:900}
 .xgame:active{transform:scale(.95)}
+
+/* 현물 매수·매도 한 화면 */
+.quick.q5{grid-template-columns:repeat(4,1fr) 1.25fr}
+.quick [data-kall][aria-pressed="true"]{background:var(--down);color:#fff}
+.est.est2{line-height:1.5}
+.bs2 .cta{padding:13px 8px}
+.bs2 .cta:disabled{opacity:.35}
