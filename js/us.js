@@ -70,10 +70,11 @@ async function uFetch() {
   UQ.busy = false;
 }
 function uTick() { if (Date.now() - UQ.poll > 5000) uFetch(); }
-const uPx = id => (UP[id] && UP[id].p) || 0;                 // 달러
+const uRaw = id => (UP[id] && UP[id].p) || 0;                // 진짜 달러 가격
+const uPx = id => { const o = UP[id]; if (!o || !o.p) return 0; return id === 'FX_USD' ? o.p : o.p * gmMult(id, now(), o.base ? o.p / o.base - 1 : 0); };   // 게임 가격(달러)
 const uWon = id => uPx(id) * FX.p;                           // 원화로
-const uChg = id => { if (id === 'FX_USD') return FX.c; const o = UP[id]; return o && o.base ? o.p / o.base - 1 : 0; };
-const uFresh = id => UP[id] && FX.p && Date.now() - UP[id].t < 30000;
+const uChg = id => { if (id === 'FX_USD') return FX.c; const o = UP[id]; return o && o.base ? uPx(id) / o.base - 1 : 0; };   // 게임 가격 기준
+const uFresh = id => UP[id] && FX.p && Date.now() - UP[id].t < 30000 && (id === 'FX_USD' || GM.ready);
 const uLive = () => Date.now() - UQ.last < 20000 && FX.p;
 const ST_TXT = { REG_MKT: '정규장', PRE_MKT: '프리마켓', POST_MKT: '애프터마켓' };
 const uSt = id => (UC[id] && UC[id].m !== 'us' ? '실시간' : ST_TXT[(UP[id] || {}).st] || '장 마감');
@@ -142,13 +143,14 @@ async function uLoadChart(id) {
     if (!bars.length) return;
     if (UC[id].m !== 'us') {   // 현물·달러는 거의 24시간 거래 → 최근 24시간
       const tEnd = bars[bars.length - 1].tradeTimeinMills, l2 = bars.filter(b => b.tradeTimeinMills >= tEnd - D), st2 = Math.max(1, Math.floor(l2.length / 240));
-      UCH[id] = { t: Date.now(), pts: l2.filter((b, i) => i % st2 === 0 || i === l2.length - 1).map(b => [b.tradeTimeinMills, numOf(b.close)]), t0: tEnd - D, t1: tEnd, roll: true }; uDrawChart(); return;
+      const raw2 = l2.filter((b, i) => i % st2 === 0 || i === l2.length - 1).map(b => [b.tradeTimeinMills, numOf(b.close)]);
+      UCH[id] = { t: Date.now(), pts: id === 'FX_USD' ? raw2 : gmChartPts(id, raw2, (UP[id] || {}).base, 1), t0: tEnd - D, t1: tEnd, roll: true }; uDrawChart(); return;
     }
     const day = bars[bars.length - 1].tradeTime.slice(0, 8), list = bars.filter(b => b.tradeTime.slice(0, 8) === day);
     const step = Math.max(1, Math.floor(list.length / 240)), pts = list.filter((b, i) => i % step === 0 || i === list.length - 1).map(b => [b.tradeTimeinMills, numOf(b.close)]);
     // 그날 04:00(동부시간)부터 16시간 = 20:00까지를 가로축으로
     const first = list[0], hh = +first.tradeTime.slice(8, 10), mm = +first.tradeTime.slice(10, 12), t0 = first.tradeTimeinMills - ((hh - 4) * 60 + mm) * 6e4;
-    UCH[id] = { t: Date.now(), pts, t0, t1: t0 + 16 * H };
+    UCH[id] = { t: Date.now(), pts: gmChartPts(id, pts, (UP[id] || {}).base, 1), t0, t1: t0 + 16 * H };
     uDrawChart();
   } catch {}
 }
@@ -207,7 +209,7 @@ function uRow(c) {
   const prev = UQ.shown[c.id]; const fl = prev && p && p !== prev ? (p > prev ? 'u' : 'd') : ''; UQ.shown[c.id] = p;
   const mp = me ? uPositions(me).filter(y => y.sym === c.id) : [], x = mp.find(y => y.kind === 'us'), fu = mp.find(y => y.kind === 'fut');
   const sub = fu ? `<span class="postag ${fu.d > 0 ? 'long' : 'short'}">${fu.label}</span><b class="rowpnl ${cls(fu.pnl)}">${pctTxt(fu.pct)}</b>` : x ? `<span class="mine">${uQty(x.q, c.id)}</span> <b class="rowpnl ${cls(x.pnl)}">${signKrw(x.pnl)} (${pctTxt(x.pct)})</b>` : `<span class="tk">${c.a}</span>${p ? ` · ${krw(uWon(c.id))}` : ''}`;
-  return `<div class="srow${fl ? ' row f' + fl : ''}"><button class="srow-main" type="button" data-us="${c.id}">${uBadge(c)}<span class="sname"><b>${esc(c.n)}</b><small>${sub}</small></span>
+  return `<div class="srow${fl ? ' row f' + fl : ''}"><button class="srow-main" type="button" data-us="${c.id}">${uBadge(c)}<span class="sname"><b>${esc(c.n)}${gmBadgeHTML(c.id)}</b><small>${sub}</small></span>
     <span class="sprice"><div class="p num${fl ? ' f' + fl : ''}">${p ? usd(p) : '…'}</div><div class="c num ${cls(ch)}">${p ? (ch > 0 ? '+' : '') + (ch * 100).toFixed(2) + '%' : ''}</div></span></button>
     <span class="tbtns"><button class="tb trade${mp.length ? ' lit' : ''}" type="button" data-us="${c.id}">거래</button></span></div>`;
 }
@@ -218,11 +220,11 @@ function fxRow() {
     <span class="sprice"><div class="p num${fl ? ' f' + fl : ''}">${FX.p ? FX.p.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '…'}</div><div class="c num ${cls(FX.c)}">${FX.p ? (FX.c > 0 ? '+' : '') + (FX.c * 100).toFixed(2) + '%' : ''}</div></span></button></div>`;
 }
 // 거래소 탭: [주식 | 코인 | 현물 | 채권]. 내 보유는 오른쪽 아래 떠 있는 버튼 → 아래에서 올라오는 창
-const X_TABS = [['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권']];
+const X_TABS = [['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권'], ['stake', '지분']];
 function xCtlHTML() {
   const m = S.xMkt, tab = ([k, l]) => `<button type="button" role="tab" data-xmkt="${k}" aria-selected="${m === k}">${l}</button>`;
   const h = `<div class="xtop"><div class="xtabs" role="tablist">${X_TABS.map(tab).join('')}<small class="livetag" id="kLiveTag"><i></i></small></div></div>`;
-  if (m === 'bond') return h;
+  if (m === 'bond' || m === 'stake') return h;
   const cats = m === 'us' ? UCAT : m === 'cm' ? CCAT : KCAT, sorts = m === 'coin' ? K_SORTS : U_SORTS, ck = { us: 'uCat', coin: 'kCat', cm: 'cCat' }[m], sk = { us: 'uSortKey', coin: 'kSortKey', cm: 'cSortKey' }[m];
   const opt = (v, l, cur) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`;
   return h + `<div class="krow2"><label class="ksel"><select id="xCat" aria-label="분류">${opt('all', '전체', S[ck])}${Object.entries(cats).map(([k, v]) => opt(k, v.n, S[ck])).join('')}</select></label>
@@ -230,23 +232,25 @@ function xCtlHTML() {
 }
 // ───────── 내 보유 (화면 가득) ─────────
 // 탭 4개(주식·코인·현물·채권) · 위에 그 탭의 평가금액·손익·주문 가능 · 줄마다 [전량 매도]/[종료] (한 번 더 누르면 바로 실행)
-const mktOf = sym => (KC[sym] ? 'coin' : UC[sym] ? UC[sym].m : GC[sym] ? 'bond' : 'us');
+const mktOf = sym => (KC[sym] ? 'coin' : UC[sym] ? UC[sym].m : GC[sym] ? 'bond' : BOND[sym] ? 'stake' : 'us');
 function showMine(tab) { if (S.sheet) closeSheetRaw(); openSheet('mine', { tab: X_TABS.some(([k]) => k === tab) ? tab : 'us' }); }
 function minePositions(me, tab) {
   if (!me) return [];
   if (tab === 'coin') return kPositions(me);
   if (tab === 'bond') return gPositions(me);
+  if (tab === 'stake') return stakePositions(me);
   return uPositions(me).filter(x => UC[x.sym].m === tab || (tab === 'us' && UC[x.sym].m === 'fx'));   // 달러는 주식 탭에
 }
 const myAll = me => (me ? X_TABS.flatMap(([k]) => minePositions(me, k)).sort((a, b) => b.value - a.value) : []);
 function mineRow(x) {
   let badge, name, sub, open;
-  if (GC[x.sym]) { const c = GC[x.sym], o = (S.me.gHold || {})[x.sym]; badge = `<span class="logo-b gflag">${c.f}</span>`; name = c.n; open = `data-gb="${x.sym}"`;
+  if (x.kind === 'stake') { badge = `<span class="logo-b bb" style="background:var(--krw)">${BOND[x.sym].i + 1}</span>`; name = x.sym + ' 지분' + ((guChief()[x.sym] || {}).id === S.uid ? ' 👑' : ''); sub = `${x.q}% · 평단 ${krw((S.me.bCost || {})[x.sym] || 0)}`; open = `data-bond="${x.sym}"`; }
+  else if (GC[x.sym]) { const c = GC[x.sym], o = (S.me.gHold || {})[x.sym]; badge = `<span class="logo-b gflag">${c.f}</span>`; name = c.n; open = `data-gb="${x.sym}"`;
     sub = x.kind === 'fut' ? `금리 ${gY(x.sym).toFixed(2)}%${x.dist != null ? ` · 청산까지 ${(x.dist * 100).toFixed(1)}%` : ''}` : `산 금리 ${o ? o.y.toFixed(2) : '-'}% · 지금 ${gY(x.sym).toFixed(2)}%`; }
   else { const isU = !!UC[x.sym], c = isU ? UC[x.sym] : KC[x.sym]; badge = isU ? uBadge(c) : kBadge(c); name = c.n; open = isU ? `data-us="${x.sym}"` : `data-kcoin="${x.sym}"`;
     sub = `${isU ? uQty(x.q, x.sym) + (x.kind !== 'fut' && c.m !== 'fx' ? ` · ${usd(uUsdOf(x.sym, x.q))}` : '') : kQty(x.q) + ' ' + c.a}${x.dist != null ? ` · <span class="${x.dist / x.distMax < .3 ? 'up' : ''}">청산까지 ${(x.dist * 100).toFixed(1)}%</span>` : ''}`; }
   const tag = x.kind === 'fut' ? ` <span class="postag ${x.d > 0 ? 'long' : 'short'}">${x.label}</span>` : '';
-  const key = (x.kind === 'fut' ? 'f' : x.kind === 'bond' ? 'b' : x.kind === 'gb' ? 'g' : KC[x.sym] ? 'k' : 'u') + ':' + x.sym;
+  const key = (x.kind === 'fut' ? 'f' : x.kind === 'stake' ? 'b' : x.kind === 'gb' ? 'g' : KC[x.sym] ? 'k' : 'u') + ':' + x.sym;
   const armed = S.qsArm && S.qsArm.key === key && Date.now() - S.qsArm.t < 4000;
   const lbl = x.kind === 'fut' ? (armed ? '종료할까요?' : '종료') : (armed ? '전량 매도?' : '전량 매도');
   return `<div class="mrow"><button type="button" class="srow-main" ${open}>${badge}<span class="sname"><b>${esc(name)}${tag}</b><small class="num">${sub}</small></span>
@@ -279,7 +283,7 @@ function quickSell(key) {
   if (!S.qsArm || S.qsArm.key !== key || Date.now() - S.qsArm.t > 4000) { S.qsArm = { key, t: Date.now() }; renderSheet(); return; }
   S.qsArm = null; const [k, sym] = [key[0], key.slice(2)];
   if (k === 'g') { const sh0 = S.sheet; S.sheet = { type: 'gb', sym, all: true }; gTrade('sell').finally(() => { if (S.sheet && S.sheet.type === 'gb' && S.sheet.all) S.sheet = sh0; renderSheet(); }); return; }
-  if (k === 'k') kSellAll(sym); else if (k === 'u') uSellAll(sym); else if (k === 'f') fClose(sym);
+  if (k === 'k') kSellAll(sym); else if (k === 'u') uSellAll(sym); else if (k === 'f') fClose(sym); else if (k === 'b') bondTrade(sym, 'sell', (S.me.bonds || {})[sym] || 0);
 }
 // 오른쪽 아래 떠 있는 버튼: 거래소 탭에서만. 개수와 손익을 같이 보여줘요
 function renderMineFab() {
@@ -304,13 +308,14 @@ function renderExchange(ctl) {
   if (!el.querySelector('#kList')) { el.innerHTML = `<div id="kTop"></div><div id="kCtl" class="kctl"></div><div class="slist" id="kList"></div>`; ctl = true; }
   if (ctl) $('#kCtl').innerHTML = xCtlHTML();
   const m = S.xMkt;
-  $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 1,000만원</b><small>총자산이 100만원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
-  const live = m === 'coin' ? kLive() : m === 'bond' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
-  if (m === 'bond') { const kl = $('#kList'); kl._keys = null; kl.innerHTML = worldHTML(); return; }   // 서울 구채는 없앴어요 (환불은 gbond.js gRefund)
+  $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 2억원</b><small>총자산이 2,000만원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
+  const live = m === 'coin' ? kLive() : m === 'bond' || m === 'stake' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
+  if (m === 'bond') { const kl = $('#kList'); kl._keys = null; kl.innerHTML = worldHTML(); return; }
+  if (m === 'stake') { const kl = $('#kList'); kl._keys = null; kl.innerHTML = stakesHTML(); return; }   // 서울 지분 (stake.js)
   if (m === 'coin') {
     if (!KCAT[S.kCat]) S.kCat = 'all'; if (!K_SORTS[S.kSortKey]) S.kSortKey = 'v';
     const sk = S.kSortKey, list = Object.values(KC).filter(c => S.kCat === 'all' || c.c === S.kCat);
-    const key = c => { const o = KP[c.id] || {}; return sk[0] === 'p' ? (o.p || 0) : sk[0] === 'c' ? (o.c || 0) : (o.v || 0); };
+    const key = c => { const o = KP[c.id] || {}; return sk[0] === 'p' ? kPx(c.id) : sk[0] === 'c' ? kChgG(c.id) : (o.v || 0); };
     list.sort((a, b) => (sk.endsWith('a') ? 1 : -1) * (key(a) - key(b)));
     patchList($('#kList'), list.map(c => [c.id, kRow(c)])); return;
   }

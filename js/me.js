@@ -1,7 +1,7 @@
 'use strict';
 /* ═════════ 프로필: 내 프로필 탭(하단 맨 오른쪽)과 친구 프로필이 같은 모양 ═════════
    위: 사진·이름·레벨·순위·구청장 + 총자산 · 수익률 · 현금 + 자산 구성 막대
-   아래: 가진 것 전부 한 목록 (코인·선물·주식·구채). 내 프로필이면 맨 아래 설정 한 줄. */
+   아래: 가진 것 전부 한 목록 (코인·선물·주식·국채·지분). 내 프로필이면 맨 아래 설정 한 줄. */
 // 내 자산 탭: 내 배경 사진을 화면 배경에 옅게 깔아요
 function bnBody() { const me = S.me, on = S.tab === 'assets' && me && okPhoto(me.banner); document.body.classList.toggle('bnbody', !!on); if (on) document.body.style.setProperty('--bnb', `url(${me.banner})`); }
 function allHoldings(p) {
@@ -9,8 +9,8 @@ function allHoldings(p) {
   kPositions(p).forEach(x => { const c = KC[x.sym]; out.push({ ...x, badge: kBadge(c), name: c.n, tag: x.kind === 'fut' ? x.label : '코인', tagc: x.kind === 'fut' ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: `${kQty(x.q)} ${c.a}`, open: `data-kcoin="${x.sym}"` }); });
   uPositions(p).forEach(x => { const c = UC[x.sym], fut = x.kind === 'fut'; out.push({ ...x, badge: uBadge(c), name: c.n, tag: fut ? x.label : { us: '주식', cm: '현물', fx: '외화' }[c.m], tagc: fut ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: fut ? `증거금 ${krw(x.principal)}` : uQty(x.q, x.sym) + (c.m !== 'fx' ? ` · ${usd(uUsdOf(x.sym, x.q))}` : ''), open: `data-us="${x.sym}"` }); });
   gPositions(p).forEach(x => { const c = GC[x.sym], fut = x.kind === 'fut', o = (p.gHold || {})[x.sym]; out.push({ ...x, badge: `<span class="logo-b gflag">${c.f}</span>`, name: c.n, tag: fut ? x.label : '국채', tagc: fut ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: fut ? `증거금 ${krw(x.principal)}` : `산 금리 ${o ? o.y.toFixed(2) : '-'}%`, open: `data-gb="${x.sym}"` }); });
-  const bn = bondPending(p);   // 서울 구채(없어짐): 아직 접속 안 해서 환불 대기 중인 사람만 한 줄로
-  if (bn) { const value = bondWorth(p); out.push({ sym: 'oldbond', kind: 'bond', badge: `<span class="logo-b gflag">🏛️</span>`, name: '서울 구채 (환불 대기)', tag: '구채', tagc: 'spot', sub: `${bn}장 · 다음 접속 때 원화로`, value, principal: value, pnl: 0, pct: 0, open: '' }); }
+  const top = guChief();
+  stakePositions(p).forEach(x => out.push({ ...x, badge: `<span class="logo-b bb" style="background:${chiefColor(p.id)}">${BOND[x.sym].i + 1}</span>`, name: x.sym + (top[x.sym] && top[x.sym].id === p.id ? ' 👑' : ''), tag: '지분', tagc: 'spot', sub: `${x.q}%`, open: `data-bond="${x.sym}"` }));
   return out.sort((a, b) => b.value - a.value);
 }
 function profileBody(p, isMe) {
@@ -18,7 +18,7 @@ function profileBody(p, isMe) {
   const H0 = allHoldings(p);
   const sum = f => H0.filter(f).reduce((a, x) => a + x.value, 0);
   const parts = [['현금', p.cash || 0, '#16b27e'], ['코인', sum(x => x.kind === 'spot' && KC[x.sym]), '#f08c00'], ['선물', sum(x => x.kind === 'fut'), '#f2414f'],
-    ['주식', sum(x => x.kind === 'us'), '#2b2745'], ['채권', sum(x => x.kind === 'bond' || x.kind === 'gb'), '#1450d2']].filter(x => x[1] > 0);
+    ['주식', sum(x => x.kind === 'us'), '#2b2745'], ['채권', sum(x => x.kind === 'gb' || (x.kind === 'fut' && GC[x.sym])), '#1450d2'], ['지분', sum(x => x.kind === 'stake'), '#7c3aed']].filter(x => x[1] > 0);
   const tot = parts.reduce((a, x) => a + x[1], 0) || 1;
   const bn = okPhoto(p.banner) ? ` style="--bn:url(${p.banner})"` : '';
   let h = `<div class="phero${bn ? ' bn' : ''}"${bn}>
@@ -38,9 +38,9 @@ function profileBody(p, isMe) {
   return h;
 }
 /* ───────── 가진 것: 거래소처럼 주식 · 코인 · 현물 · 채권 탭 ───────── */
-const P_TABS = [['all', '전체'], ['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권']];
+const P_TABS = [['all', '전체'], ['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권'], ['stake', '지분']];
 const pTab = () => (P_TABS.some(([k]) => k === S.pTab) ? S.pTab : 'all');
-const pTabOf = x => (KC[x.sym] ? 'coin' : UC[x.sym] ? (UC[x.sym].m === 'cm' ? 'cm' : 'us') : 'bond');   // 달러는 주식 탭(거래소와 같아요)
+const pTabOf = x => (KC[x.sym] ? 'coin' : UC[x.sym] ? (UC[x.sym].m === 'cm' ? 'cm' : 'us') : x.kind === 'stake' ? 'stake' : 'bond');   // 달러는 주식 탭(거래소와 같아요)
 function pTabsHTML(H0) {
   const cur = pTab(), list = cur === 'all' ? H0 : H0.filter(x => pTabOf(x) === cur);
   const V = list.reduce((a, x) => a + x.value, 0), P0 = list.reduce((a, x) => a + x.principal, 0), pnl = V - P0;
@@ -85,7 +85,7 @@ function pAnalysisHTML(p, w, roi, rk, H0) {
 function renderMe() {
   const el = $('#tab-wallet'); if (!el) return;
   bnBody();
-  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 프로필이 없어요.' : '참가하면 50억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
+  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 프로필이 없어요.' : '참가하면 20억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
   el.innerHTML = profileBody({ id: S.uid, ...S.me }, true);
 }
 function renderFriendProfile() {
@@ -116,7 +116,7 @@ function rivalHTML(p) {
   kPositions(p).forEach(x => add(x.kind === 'fut' ? 'kFut' : 'kHold', x.sym, x));
   uPositions(p).forEach(x => add(x.kind === 'fut' ? 'uFut' : 'uHold', x.sym, x));
   rows.sort((a, b) => b.v - a.v);
-  const obn = bondPending(p);
+  const stk = stakePositions(p), stop = guChief();
   return `<div class="rv-hero${bn ? ' bn' : ''}"${bn} style="--c:${col}${bn ? `;--bn:url(${p.banner})` : ''}">
       <div class="rv-ava${on ? ' on' : ''}">${ava(p, true)}</div>
       <h2>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></h2>
@@ -126,5 +126,5 @@ function rivalHTML(p) {
     ${S.me && revengeOn(p.id) ? `<div class="rv-rev">🔥 이 사람이 방금 나를 공격했어요 · 10분 동안 <b>반값 복수</b></div>` : ''}
     <div class="sec"><div class="sec-h"><h2>가진 것</h2><button type="button" class="atk-how" id="atkHelp">❓ 약탈·사냥이 뭐예요?</button><small>${myAtkWait() ? `· ⏳ ${Math.ceil(myAtkWait() / 6e4)}분 뒤 공격 가능` : ''}</small></div>
       <div class="slist">${rows.map(r => r.html).join('') || '<div class="empty">가진 게 없어요.</div>'}
-      ${obn ? `<div class="rvrow"><span class="logo-b gflag">🏛️</span><span class="sname"><b>서울 구채 <span class="postag spot">환불 대기</span></b><small class="num">${obn}장</small></span><span class="sprice"><div class="p num">${krw(bondWorth(p))}</div></span><span class="atkb off"><small>공격 불가</small></span></div>` : ''}</div></div>`;
+      ${stk.map(x => `<div class="rvrow"><span class="logo-b bb" style="background:var(--krw)">${BOND[x.sym].i + 1}</span><span class="sname"><b>${x.sym}${(stop[x.sym] || {}).id === p.id ? ' 👑' : ''} <span class="postag spot">지분</span></b><small class="num">${x.q}%</small></span><span class="sprice"><div class="p num">${krw(x.value)}</div></span><span class="atkb off"><small>공격 불가</small></span></div>`).join('')}</div></div>`;
 }

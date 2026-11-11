@@ -15,8 +15,8 @@ function udCardHTML() {
     <div class="ud-coins">${UD.COINS.map(k => `<button type="button" data-udsym="${k}" aria-pressed="${k === sym}" ${r ? 'disabled' : ''}>${kBadge(KC[k])}<span>${KC[k].a}</span></button>`).join('')}</div>
     <div class="ud-board${r ? ' live' : ''}">
       <svg class="ud-ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" class="bg"/><circle cx="32" cy="32" r="28" class="fg" id="udRing" pathLength="100" style="stroke-dashoffset:${r ? 100 - 100 * Math.max(0, Math.min(1, (r.end - now()) / UD.MS)) : 0}"/><text x="32" y="38" id="udSec">${r ? Math.max(0, Math.ceil((r.end - now()) / 1000)) : 60}</text></svg>
-      <div class="ud-px"><small>${esc(c.n)} 지금</small><b class="num" id="udPrice">${o.p ? kWon(o.p) + '원' : '…'}</b>
-        ${r ? `<span class="num" id="udDiff"></span>` : `<span class="num ${cls(o.c || 0)}">어제보다 ${o.p ? ((o.c > 0 ? '+' : '') + ((o.c || 0) * 100).toFixed(2) + '%') : ''}</span>`}</div>
+      <div class="ud-px"><small>${esc(c.n)} 지금</small><b class="num" id="udPrice">${kPx(sym) ? kWon(kPx(sym)) + '원' : '…'}</b>
+        ${r ? `<span class="num" id="udDiff"></span>` : `<span class="num ${cls(kChgG(sym))}">어제보다 ${kPx(sym) ? pctTxt(kChgG(sym)) : ''}</span>`}</div>
     </div>
     ${r ? `<div class="ud-live"><div class="ud-pick ${r.d > 0 ? 'up' : 'down'}">${r.d > 0 ? '📈 오른다' : '📉 내린다'} · ${won(r.bet)}<small>진입 ${kWon(r.e)}원</small></div><div class="ud-state" id="udState"></div></div>
       <canvas class="ud-chart" id="udChart" aria-label="이번 판 1분 그래프"></canvas>`
@@ -44,7 +44,7 @@ async function udEndPrice(r) {
     const to = new Date(r.end + 60e3).toISOString().slice(0, 19);
     const a = await (await fetch(`${UPBIT}/candles/minutes/1?market=${r.sym}&to=${to}&count=2`)).json();
     const c = a.find(x => Date.parse(x.candle_date_time_utc + 'Z') <= r.end) || a[a.length - 1];
-    return c ? c.trade_price : kPx(r.sym);
+    return c ? c.trade_price * gmMult(r.sym, r.end, KP[r.sym] && KP[r.sym].c) : kPx(r.sym);   // 게임 가격으로
   } catch { return kPx(r.sym); }
 }
 async function udSettle() {

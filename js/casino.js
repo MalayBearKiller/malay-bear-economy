@@ -8,6 +8,8 @@ const CG = [
   ['slot', '🎰', '슬롯', '500배'], ['race', '🏇', '경마', '3.8배'],
 ];
 const cgCur = () => (CG.some(([k]) => k === S.cg) ? S.cg : 'ud');
+// 판돈이 클수록 최대 배수가 줄어요: 1억 이하 300배 → 10억 20배 (그 사이는 로그로 이어요)
+const cgCap = bet => (bet <= 1e8 ? 300 : bet >= 1e9 ? 20 : Math.round(300 * Math.pow(20 / 300, Math.log10(bet / 1e8))));
 const fmtX = m => (m >= 10 ? m.toFixed(1) : m.toFixed(2)) + 'x';
 
 // 돈 넣고 빼기: d만큼 현금을 바꾸고 게임 손익(casino)에도 더해요
@@ -54,11 +56,12 @@ async function rocketGo() {
   const bet = cCanBet(); if (!bet) return;
   const u = Math.random(), crash = Math.min(RK.MAX, Math.max(1, Math.floor(97 / (100 * (1 - u)) * 100) / 100));
   C.busy = true; if (!(await cMoney(-bet))) { C.busy = false; return; }
-  C.live = true; C.busy = false; C.rk = { live: true, bet, m: 1, crash, t0: performance.now() };
+  C.live = true; C.busy = false; C.rk = { live: true, bet, m: 1, crash, cap: Math.min(RK.MAX, cgCap(bet)), t0: performance.now() };
   renderCasino(); buzz(20);
   const step = t => {
     const r = C.rk; if (!r || !r.live) return;
     r.m = rkAt((t - r.t0) / 1000);
+    if (r.m >= r.cap && r.crash >= r.cap) { r.m = r.cap; rocketEnd(true); return; }   // 최대 배수 도달 → 자동으로 받아요
     if (r.m >= r.crash) { r.m = r.crash; rocketEnd(false); return; }
     const x = $('#rkX'), g = $('#rkGet'), sh = $('#rkShip'), sky = $('#rkSky');
     if (x) { x.textContent = fmtX(r.m); x.style.color = r.m >= 10 ? '#ff3bd4' : r.m >= 3 ? '#ffcf4a' : r.m >= 2 ? '#5df2a0' : ''; }
@@ -118,7 +121,7 @@ async function mineOpen(i) {
 }
 async function mineCash() {
   const r = C.mn; if (!r || !r.live || !r.open.length) return; r.live = false;
-  const m = mnMult(r.open.length), pay = Math.floor(r.bet * m), net = pay - r.bet;
+  const m = Math.min(mnMult(r.open.length), cgCap(r.bet)), pay = Math.floor(r.bet * m), net = pay - r.bet;
   r.msg = `💎 ${r.open.length}개 성공 · ${fmtX(m)} <b class="up">+${won(net)}</b>`;
   C.busy = true; await cMoney(pay); C.busy = false; C.live = false; renderCasino(); cWin(net, `💎 보물 ${r.open.length}개 · ${fmtX(m)}`); cFeed('보물상자 ' + fmtX(m), +m.toFixed(2), net, r.bet); renderAll();
 }
@@ -140,7 +143,7 @@ function slotHTML() {
 }
 async function slotGo() {
   const bet = cCanBet(); if (!bet) return;
-  const res = [slPick(), slPick(), slPick()], mult = slMult(res);
+  const res = [slPick(), slPick(), slPick()], mult = Math.min(slMult(res), cgCap(bet));
   C.busy = true; C.sl = { res: null, msg: '' }; renderCasino(); buzz(15);
   // 줄마다 빠르게 돌다가 하나씩 멈춰요. 앞 두 줄이 같으면 마지막 줄을 더 오래 돌려서 쫄깃하게
   const tease = res[0] === res[1];

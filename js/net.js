@@ -5,7 +5,7 @@ function saveMe(me, before) {
   S.me = me; S.players[S.uid] = me;
   const run = async () => {
     if (S.mode === 'demo') { LS.set('demoMe', me); return true; }
-    try { await S.db.doc('sb_players/' + S.uid).set(me); return true; }
+    try { await S.db.doc(COL_P + '/' + S.uid).set(me); return true; }
     catch (e) {
       S.me = before || null; if (before) S.players[S.uid] = before; else delete S.players[S.uid];
       if (e && e.code === 'invalid_argument') { S.readOnly = true; toast(S.fb ? '저장 권한이 없어요. 로그아웃 후 다시 로그인해 보세요.' : '관전 모드예요. 방장에게 편집자 초대를 받아야 거래할 수 있어요.'); }
@@ -19,7 +19,7 @@ function saveMe(me, before) {
 function addFeed(f) {
   const item = { ...f, uid: S.uid, season: S.season.sid, ts: Date.now() };
   if (S.mode === 'demo') { S.feed.unshift(item); LS.set('demoFeedAll', S.feed.filter(x => !x.bot)); return; }
-  S.db.collection('sb_feed').add(item).catch(() => {});
+  S.db.collection(COL_F).add(item).catch(() => {});
 }
 /* ───────── demo mode ───────── */
 function makeBots() {
@@ -82,7 +82,7 @@ function startLive(db, uid) {
   S.mode = 'live'; S.db = db; S.uid = uid;
   renderAll();
   const timer = setTimeout(() => { if (!S.loaded) toast('시장 서버가 느려요. 조금만 기다려 주세요.'); }, 10000);
-  db.collection('sb_players').onSnapshot(snap => {
+  db.collection(COL_P).onSnapshot(snap => {
     const next = {}; snap.docs.forEach(d => next[d.id] = d.data());
     // 표시용 별명: 다른 사람 화면에서만 바꿔 보여줘요. 데이터는 그대로이고, 본인 화면은 원래 이름이에요.
     Object.entries(next).forEach(([id, pl]) => { if (id !== S.uid && pl && NAME_ALIAS[pl.name]) next[id] = { ...pl, name: NAME_ALIAS[pl.name] }; });
@@ -95,8 +95,8 @@ function startLive(db, uid) {
   }, () => { clearTimeout(timer); S.loaded = true; toast('순위를 불러오지 못했어요.'); renderAll(); });
   db.collection('sb_talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.board === 'talk') renderBoard(); }, () => {});
   // 나를 노린 공격 기록만 따로 (오래된 것도 빠짐없이) → 내 지갑에 반영
-  db.collection('sb_feed').where('target', '==', uid).onSnapshot(snap => { S.atkFeed = snap.docs.map(d => d.data()); atkSync(); }, () => {});
-  db.collection('sb_feed').orderBy('ts', 'desc').limit(200).onSnapshot(snap => {
+  db.collection(COL_F).where('target', '==', uid).onSnapshot(snap => { S.atkFeed = snap.docs.map(d => d.data()); atkSync(); }, () => {});
+  db.collection(COL_F).orderBy('ts', 'desc').limit(200).onSnapshot(snap => {
     S.feed = snap.docs.map(d => d.data()); evFeed(S.feed);
     renderAll();
   }, () => {});

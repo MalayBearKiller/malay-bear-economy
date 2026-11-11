@@ -1,6 +1,6 @@
 'use strict';
-/* ═════════ 실제 시세 자산: 업비트 코인 · 구채 (돈은 원화 하나) ═════════ */
-const K_RESCUE = 10_000_000, K_RESCUE_AT = 1_000_000; // 원화 총자산 100만원 밑이면 파산 지원금 1,000만원
+/* ═════════ 업비트 코인 (게임 가격은 gm.js) · 돈은 원화 하나 ═════════ */
+const K_RESCUE = 200_000_000, K_RESCUE_AT = 20_000_000; // 총자산 2,000만원 밑이면 파산 지원금 2억원
 const KFEE = 0.0005, K_MIN = 5000;        // 업비트 수수료 0.05%, 최소 주문 5,000원
 const KCOINS = [
   ['BTC', '비트코인', 'major'], ['ETH', '이더리움', 'major'], ['XRP', '리플', 'major'], ['SOL', '솔라나', 'major'], ['TRX', '트론', 'major'],
@@ -41,8 +41,11 @@ function kConnect() {
   ws.onclose = () => { KQ.ok = false; KQ.ws = null; setTimeout(kConnect, Math.min(30000, 1000 * 2 ** (KQ.retry++))); };
   ws.onerror = () => { try { ws.close(); } catch {} };
 }
-const kPx = code => (KP[code] && KP[code].p) || 0;
-const kFresh = code => KP[code] && Date.now() - KP[code].t < 15000;
+const kRaw = code => (KP[code] && KP[code].p) || 0;                                        // 진짜 업비트 가격
+const kPx = code => { const o = KP[code]; return o && o.p ? o.p * gmMult(code, now(), o.c) : 0; };   // 게임 가격 (gm.js)
+const kBase = code => { const o = KP[code]; return o && o.p ? o.p / (1 + (o.c || 0)) : 0; };      // 어제 종가(진짜)
+const kChgG = code => { const b = kBase(code); return b ? kPx(code) / b - 1 : 0; };               // 게임 가격 기준 등락률
+const kFresh = code => GM.ready && KP[code] && Date.now() - KP[code].t < 15000;
 const kLive = () => Date.now() - KQ.last < 6000;
 // 코인 가격 표시: 업비트처럼 가격대에 맞는 소수점
 function kWon(p) {
@@ -112,7 +115,7 @@ async function kStipend() {
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
   uTick(); gTick();
-  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCashTax(); fScan(); }
+  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); kCashTax(); fScan(); }
 }
 
 /* ───────── 거래 ───────── */
@@ -155,7 +158,7 @@ const canKRescue = () => S.me && !S.readOnly && kWorth(S.me) < K_RESCUE_AT;
 async function kRescue() {
   if (!canKRescue() || S.saving) return;
   const before = S.me, me = clone(before); me.cash += K_RESCUE; me.inflow = (me.inflow || CASH0) + K_RESCUE; me.kResN = (me.kResN || 0) + 1;
-  if (await kSave(me, before)) { addFeed({ kind: 'k_rescue' }); toast('💸 파산 지원금 1,000만원이 들어왔어요'); renderAll(); }
+  if (await kSave(me, before)) { addFeed({ kind: 'k_rescue' }); toast('💸 파산 지원금 2억원이 들어왔어요'); renderAll(); }
 }
 
 /* ───────── 연습봇: 원화 지갑도 채워요 ───────── */
@@ -179,13 +182,13 @@ function kOnFirstPrices() {
    드롭다운은 바뀔 때만 다시 그리고, 목록만 1초마다 다시 그려요 (펼친 목록이 안 닫히게) */
 const K_SORTS = { v: '거래대금순', pd: '가격 높은순', pa: '가격 낮은순', cd: '많이 오른순', ca: '많이 내린순' };
 function kRow(c) {
-  const o = KP[c.id] || {}, p = o.p || 0, ch = o.c || 0, me = S.me;
+  const o = KP[c.id] || {}, p = kPx(c.id), ch = kChgG(c.id), me = S.me;
   const prev = KQ.shown[c.id]; const fl = prev && p && p !== prev ? (p > prev ? 'u' : 'd') : ''; KQ.shown[c.id] = p;
   const mp = me ? kPositions(me).filter(y => y.sym === c.id) : [], sp = mp.find(y => y.kind === 'spot'), fu = mp.find(y => y.kind === 'fut');
   const pnl = mp.reduce((a, y) => a + y.pnl, 0), P = mp.reduce((a, y) => a + y.principal, 0);
   const sub = mp.length ? (fu ? `<span class="postag ${fu.d > 0 ? 'long' : 'short'}">${fu.label}</span> ` : '') + (sp ? `<span class="mine">${kQty(sp.q)} ${c.a}</span> ` : '') + `<b class="rowpnl ${cls(pnl)}">${signKrw(pnl)} (${pctTxt(P ? pnl / P : 0)})</b>`
     : `<span class="tk">${c.a}</span>${o.v ? ` · ${krwUnits(o.v)}` : ''}`;
-  return `<div class="srow${fl ? ' row f' + fl : ''}"><button class="srow-main" type="button" data-kcoin="${c.id}">${kBadge(c)}<span class="sname"><b>${esc(c.n)}</b><small>${sub}</small></span>
+  return `<div class="srow${fl ? ' row f' + fl : ''}"><button class="srow-main" type="button" data-kcoin="${c.id}">${kBadge(c)}<span class="sname"><b>${esc(c.n)}${gmBadgeHTML(c.id)}</b><small>${sub}</small></span>
     <span class="sprice"><div class="p num${fl ? ' f' + fl : ''}">${p ? kWon(p) : '…'}</div><div class="c num ${cls(ch)}">${p ? (ch > 0 ? '+' : '') + (ch * 100).toFixed(2) + '%' : ''}</div></span></button>
     <span class="tbtns"><button class="tb trade${mp.length ? ' lit' : ''}" type="button" data-kcoin="${c.id}">거래</button></span></div>`;
 }
@@ -197,22 +200,22 @@ async function kLoadChart(sym) {
   const ent = KQ.chart[sym]; if (ent && Date.now() - ent.t < 60e3) return;
   KQ.chart[sym] = { t: Date.now(), pts: ent ? ent.pts : null };
   try { const a = await (await fetch(`${UPBIT}/candles/minutes/15?market=${sym}&count=96`)).json();
-    KQ.chart[sym] = { t: Date.now(), pts: a.reverse().map(c => [Date.parse(c.candle_date_time_utc + 'Z'), c.trade_price]) }; kDrawChart(); } catch {}
+    KQ.chart[sym] = { t: Date.now(), pts: gmChartPts(sym, a.reverse().map(c => [Date.parse(c.candle_date_time_utc + 'Z'), c.trade_price]), kBase(sym), 3) }; kDrawChart(); } catch {}
 }
 function kDrawChart() {
   const cv = $('#kChart'), sh = S.sheet; if (!cv || !sh || !sh.sym) return; const ent = KQ.chart[sh.sym]; if (!ent || !ent.pts || !ent.pts.length) return;
   const pts = ent.pts.slice(), p = kPx(sh.sym), o = KP[sh.sym] || {}; if (p) pts.push([now(), p]);
-  drawTChart(cv, pts, { t0: now() - D, t1: now(), base: o.p ? o.p / (1 + (o.c || 0)) : undefined, fmt: kWon, stepH: 6 });
+  drawTChart(cv, pts, { t0: now() - D, t1: now(), base: kBase(sh.sym) || undefined, fmt: kWon, stepH: 6 });
 }
 function renderKCoinSheet(b, sh) {
   const c = KC[sh.sym], o = KP[sh.sym] || {}, me = S.me;
   if (sh.m !== 'sell' && sh.m !== 'fut') sh.m = 'buy'; sh.fd ||= 1; sh.fx ||= 10;
   const held = me && (me.kHold || {})[c.id], avg = held ? me.kCost[c.id] : 0;
-  const holders = activePlayers().filter(p => ((p.kHold || {})[c.id] || 0) * (o.p || 0) >= 10000);
+  const holders = activePlayers().filter(p => ((p.kHold || {})[c.id] || 0) * kPx(c.id) >= 10000);
   const canTrade = me && !S.readOnly;
   const modes = [['buy', '매수'], ['sell', '매도'], ['fut', '선물 롱·숏']];
   b.innerHTML = `<div class="shead">${kBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${KCAT[c.c].n} · 업비트 원화마켓</small></div></div>
-    <div class="bigp"><div class="p num" id="kLivePrice">${o.p ? kWon(o.p) + '원' : '…'}</div><div class="c num"><span class="${cls(o.c || 0)}" id="kLivePct">어제보다 ${o.p ? ((o.c > 0 ? '+' : '') + ((o.c || 0) * 100).toFixed(2) + '%') : ''}</span></div></div>
+    <div class="bigp"><div class="p num" id="kLivePrice">${kPx(c.id) ? kWon(kPx(c.id)) + '원' : '…'}</div><div class="c num"><span class="${cls(kChgG(c.id))}" id="kLivePct">어제보다 ${kPx(c.id) ? pctTxt(kChgG(c.id)) : ''}</span> <span id="kBadge">${gmBadgeHTML(c.id)}</span></div><div class="realpx">진짜 시세 <b class="num">${o.p ? kWon(o.p) + '원' : '…'}</b></div></div>
     <div class="chartbox"><canvas class="chart" id="kChart" aria-label="최근 24시간 차트"></canvas><i class="cpulse"></i></div>
     ${holdersHTML(c.id)}
     <div class="info info3"><div>24시간 거래대금<b class="num">${o.v ? krwUnits(o.v) : '-'}</b></div>
@@ -241,8 +244,10 @@ function kLiveSheet() {
   uLiveSheet(); gLiveSheet(); if (S.sheet && S.sheet.type === 'mine') renderSheet();
   const sh = S.sheet; if (!sh || sh.type !== 'kcoin') return; const o = KP[sh.sym] || {};
   const lp = $('#kLivePrice'), pc = $('#kLivePct');
-  if (lp && o.p) flashText(lp, kWon(o.p) + '원');
-  if (pc && o.p) { pc.className = 'num ' + cls(o.c || 0); pc.textContent = '어제보다 ' + ((o.c > 0 ? '+' : '') + ((o.c || 0) * 100).toFixed(2) + '%'); }
+  const gp = kPx(sh.sym), gc = kChgG(sh.sym);
+  if (lp && gp) flashText(lp, kWon(gp) + '원');
+  if (pc && gp) { pc.className = 'num ' + cls(gc); pc.textContent = '어제보다 ' + pctTxt(gc); }
+  const bd = $('#kBadge'); if (bd) bd.innerHTML = gmBadgeHTML(sh.sym); const rp = document.querySelector('.realpx b'); if (rp && o.p) rp.textContent = kWon(o.p) + '원';
   kDrawChart(); kUpdateEst();
 }
 
@@ -268,15 +273,15 @@ function kFeedText(f) {
     case 'k_gbuy': return GC[f.sym] ? ['up', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
     case 'k_gsell': return GC[f.sym] ? [f.pnl >= 0 ? 'up' : 'down', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) 팔았어요 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null;
     case 'k_tax': return ['down', '💸', `<b>${nm}</b>님 현금세 <b class="down">-${krw(f.amt)}</b>`];
-    case 'k_bond': return ['gold', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 <b>${f.n}장</b>을 샀어요`];
-    case 'k_bsell': return ['down', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 ${f.n}장을 팔았어요`];
+    case 'k_bond': return ['gold', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 지분 <b>${f.n}%</b>를 샀어요`];
+    case 'k_bsell': return ['down', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 지분 ${f.n}%를 팔았어요`];
     case 'k_rescue': return ['down', '🆘', `<b>${nm}</b>님이 파산해서 지원금을 받았어요`];
     default: return null;
   }
 }
 
 /* ───────── 시트 · 클릭 연결 ───────── */
-const KSHEETS = { mine: renderMineSheet, us: renderUSSheet, kcoin: renderKCoinSheet };
+const KSHEETS = { mine: renderMineSheet, us: renderUSSheet, kcoin: renderKCoinSheet, bond: renderBondSheet };
 function kClick(t) {
   const d = t.dataset;
   if (d.kcoin) { if (!S.me && !S.readOnly) { openSheet('join'); return true; } if (S.sheet) closeSheetRaw(); openSheet('kcoin', { sym: d.kcoin, m: 'buy' }); return true; }

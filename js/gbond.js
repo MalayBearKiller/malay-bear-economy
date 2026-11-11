@@ -31,7 +31,7 @@ async function gFetch() {
   } catch {}
 }
 let G_POLL = 0;
-function gTick() { if (Date.now() - G_POLL > 15000) { G_POLL = Date.now(); gFetch(); } gRefund(); }
+function gTick() { if (Date.now() - G_POLL > 15000) { G_POLL = Date.now(); gFetch(); } }
 // 보유 1건 평가: 수량 × 지금 가격 + 쌓인 이자
 const gLotVal = (id, o) => o.q * (gPx(id) || 100) + o.a * (o.y / 100) * Math.max(0, now() - o.at) / YEAR_MS;
 const YEAR_MS = 365 * D;
@@ -131,26 +131,6 @@ function worldHTML() {
         <span class="sprice"><div class="p num">${gY(c.id) ? gY(c.id).toFixed(3) + '%' : '…'}</div><div class="c num ${bp > 0 ? 'down' : bp < 0 ? 'up' : 'flat'}">${bp > 0 ? '+' : ''}${bp.toFixed(1)}bp</div></span></button>
         <span class="tbtns"><button class="tb trade${o || (me.gFut || {})[c.id] ? ' lit' : ''}" type="button" data-gb="${c.id}">거래</button></span></div>`; }).join('')}
     <p class="gnote">지도를 좌우로 넘기면 다른 지역이에요. 나라마다 국채를 가장 많이 넣은 사람의 프로필이 찍혀요. 금리가 오르면(빨간 bp) 국채 가격은 내려요.</p>`;
-}
-/* ───────── 서울 구채·브라질 국채 정리: 지금 값으로 한 번 환불 ─────────
-   구채는 장당 지금 시세(다음 1장 가격, 수수료 없음), 브라질은 지금 평가액(이자 포함, 롱·숏은 지금 남은 증거금)으로 원화를 돌려줘요.
-   환불한 구채 장수는 bondsRef에 남겨서, 나중에 환불받는 사람도 같은 시세(팔린 장수)로 계산돼요. */
-async function gRefund() {
-  const m0 = S.me; if (!m0 || !S.loaded || S.saving || S.readOnly || m0.refundAt) return;
-  const bs = Object.entries(m0.bonds || {}).filter(([g, n]) => BOND[g] && n > 0), br = (m0.gHold || {}).BR10Y, bf = (m0.gFut || {}).BR10Y;
-  const me = clone(m0); me.refundAt = now();
-  if (!bs.length && !br && !bf) { await kSave(me, m0); return; }
-  if ((br || bf) && !gFresh('BR10Y')) return;   // 브라질 시세 받을 때까지 기다려요
-  let seoul = 0, brz = 0;
-  bs.forEach(([g, n]) => { seoul += bondRefundOf(g, n); });   // 지금 다 팔면 받는 돈(수수료 없음)
-  if (br) brz += gLotVal('BR10Y', br);
-  if (bf) brz += fVal(bf, fPx('BR10Y') || bf.e);
-  me.bondsRef = { ...(m0.bonds || {}) }; me.bonds = {}; me.bCost = {}; me.bAt = {};
-  if (me.gHold) delete me.gHold.BR10Y; if (me.gFut) delete me.gFut.BR10Y;
-  const amt = Math.round(seoul + brz); me.cash = Math.round(me.cash + amt);
-  if (!(await kSave(me, m0))) return;
-  addFeed({ kind: 'k_refund', amt, n: bs.reduce((a, [, n]) => a + n, 0), br: brz ? 1 : 0 });
-  toast(`🏛️ ${seoul ? `서울 구채 ${bs.reduce((a, [, n]) => a + n, 0)}장` : ''}${seoul && brz ? ' · ' : ''}${brz ? '브라질 국채' : ''}를 없애면서 지금 값 ${krw(amt)}을(를) 원화로 돌려드렸어요`); buzz(40); renderAll();
 }
 /* ───────── 거래창 ───────── */
 const GCH = {};

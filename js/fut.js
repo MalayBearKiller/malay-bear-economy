@@ -38,7 +38,7 @@ function fPositions(p, field) {
 
 /* ───────── 청산: 실시간 시세 + 앱이 꺼져 있던 동안은 분봉 최저·최고가 ───────── */
 const FQ = { busy: false, scanned: {} };
-function fLiveCheck(sym) { const o = S.me && (S.me[fField(sym)] || {})[sym]; if (o && !S.readOnly) { const p = fPx(sym); if (p && fDead(o, p)) fLiquidate(sym); } }
+function fLiveCheck(sym) { if (!GM.ready && !GC[sym]) return; const o = S.me && (S.me[fField(sym)] || {})[sym]; if (o && !S.readOnly) { const p = fPx(sym); if (p && fDead(o, p)) fLiquidate(sym); } }
 async function fLiquidate(sym) {
   const f = fField(sym); if (FQ.busy || S.saving || !S.me || !(S.me[f] || {})[sym]) return;
   FQ.busy = true;
@@ -47,7 +47,7 @@ async function fLiquidate(sym) {
   if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(`💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
 }
 async function fScan() {
-  if (!S.me || S.readOnly) return;
+  if (!S.me || S.readOnly || !GM.ready) return;
   for (const f of ['kFut', 'uFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {
     const key = sym + ':' + o.at; if (FQ.scanned[key] && Date.now() - FQ.scanned[key] < 60e3) continue; FQ.scanned[key] = Date.now();
     try {
@@ -56,13 +56,14 @@ async function fScan() {
       if (f === 'kFut') {
         let oldest = Infinity;
         (await (await fetch(`${UPBIT}/candles/minutes/1?market=${sym}&count=200`)).json()).forEach(c => {
-          const ts = Date.parse(c.candle_date_time_utc + 'Z'); oldest = Math.min(oldest, ts); if (ts >= from) { lo = Math.min(lo, c.low_price); hi = Math.max(hi, c.high_price); } });
+          const ts = Date.parse(c.candle_date_time_utc + 'Z'); oldest = Math.min(oldest, ts); if (ts >= from) { const [a] = gmRange(sym, ts, 6e4, c.low_price), [, b] = gmRange(sym, ts, 6e4, c.high_price); lo = Math.min(lo, a); hi = Math.max(hi, b); } });
         if (from < oldest) (await (await fetch(`${UPBIT}/candles/minutes/60?market=${sym}&count=200`)).json()).forEach(c => {
-          const ts = Date.parse(c.candle_date_time_utc + 'Z'); if (ts >= Math.ceil(o.at / H) * H && ts < oldest) { lo = Math.min(lo, c.low_price); hi = Math.max(hi, c.high_price); } });
+          const ts = Date.parse(c.candle_date_time_utc + 'Z'); if (ts >= Math.ceil(o.at / H) * H && ts < oldest) { const [a] = gmRange(sym, ts, H, c.low_price), [, b] = gmRange(sym, ts, H, c.high_price); lo = Math.min(lo, a); hi = Math.max(hi, b); } });
       } else {
         if (!FX.p) continue;
         const bars = ((((await (await fetch('https://ts-api.cnbc.com/harmony/app/charts/1D.json?symbol=' + encodeURIComponent(UC[sym].s))).json()) || {}).barData || {}).priceBars) || [];
-        bars.forEach(b => { if (b.tradeTimeinMills >= from) { lo = Math.min(lo, numOf(b.low) * FX.p); hi = Math.max(hi, numOf(b.high) * FX.p); } });
+        const ub = (UP[sym] || {}).base;
+        bars.forEach(b => { if (b.tradeTimeinMills >= from) { const lw = numOf(b.low), hg = numOf(b.high), [a] = gmRange(sym, b.tradeTimeinMills, 6e4, lw, ub ? lw / ub - 1 : 0), [, c2] = gmRange(sym, b.tradeTimeinMills, 6e4, hg, ub ? hg / ub - 1 : 0); lo = Math.min(lo, a * FX.p); hi = Math.max(hi, c2 * FX.p); } });
       }
       const cur = (S.me[f] || {})[sym];
       if (cur && cur.at === o.at && (cur.d > 0 ? lo <= fLiqP(cur) : hi >= fLiqP(cur))) await fLiquidate(sym);

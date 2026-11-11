@@ -15,7 +15,7 @@ function renderHome() {
     <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>`;
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
-    h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">50억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
+    h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">20억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
   if (S.readOnly) h += `<p class="hint keep" style="margin:-8px 0 0">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
 
@@ -82,7 +82,7 @@ function renderCasino() {
   let h = `<div class="card bal"><span class="dim" style="font-weight:700;font-size:13px">현금</span><b class="num">${won(S.me.cash)}</b></div>
     <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>내 총자산 기준 · 한 판 최대 10억</small></div>
     <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${String(S.betPct) === v}" ${C.busy || C.live ? 'disabled' : ''}>${l}</button>`).join('')}</div>
-    <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b>${bet >= BET_CAP ? ' <span class="dim">(한 판 최대)</span>' : bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부 올인!)</span>' : ''}</p></div>
+    <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b> · 최대 <b class="num" id="betCap">${cgCap(bet)}배</b>${bet >= BET_CAP ? ' <span class="dim">(한 판 최대)</span>' : bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부 올인!)</span>' : ''}</p></div>
     ${casinoPickerHTML()}
     ${casinoGameHTML()}
     <p class="hint">게임 결과도 총자산에 그대로 반영돼요. 로켓·보물상자는 도중에 앱을 끄면 그 판은 잃어요.</p>`;
@@ -97,7 +97,7 @@ function betAmount() {
 }
 function updateBetLabels() {
   const b = betAmount(), ok = b >= MINBET && !C.busy;
-  const n = $('#betNow'); if (n) n.textContent = won(b);
+  const n = $('#betNow'); if (n) n.textContent = won(b); const cp = $('#betCap'); if (cp) cp.textContent = cgCap(b) + '배';
   document.querySelectorAll('[data-betlbl]').forEach(x => { x.textContent = won(b); });
   document.querySelectorAll('[data-ud]').forEach(x => x.disabled = !ok);
 }
@@ -205,7 +205,7 @@ const brag = f => f && (f.kind === 'k_fliq' || f.kind === 'k_bond' || (f.pnl || 
 function renderFeed() {
   const el = $('#tab-feed');
   const items = S.feed.filter(brag).map(f => [f, feedText(f)]).filter(x => x[1]);
-  let h = `<div class="sec"><div class="sec-h"><h2>소식</h2><small>큰 수익 · 청산 · 구채</small></div><div class="slist">`;
+  let h = `<div class="sec"><div class="sec-h"><h2>소식</h2><small>큰 수익 · 청산 · 지분</small></div><div class="slist">`;
   if (!items.length) h += `<div class="empty">아직 조용해요.</div>`;
   items.slice(0, 40).forEach(([f, [c, ic, tx]]) => { h += `<div class="fitem"><span class="ic ${c}">${ic}</span><span>${tx}</span><time>${timeAgo(f.ts)}</time></div>`; });
   h += `</div></div>`; el.innerHTML = h;
@@ -319,8 +319,8 @@ function closeProfile() { closeProfileRaw(); guardOff(); }
 function renderProfile() { renderFriendProfile(); } // 새 프로필 화면 (me.js)
 function renderJoinSheet(b) {
   const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '') || '존버의신';
-  b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>50억원으로 시작</h3></div>
-    <p class="hint keep" style="text-align:center">진짜 시세 코인(선물 롱·숏)과 미국 주식, 세계 국채를 한 지갑으로 굴려요. 총자산 1등을 노려 보세요.</p>
+  b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>20억원으로 시작</h3></div>
+    <p class="hint keep" style="text-align:center">코인·미국 주식·현물·세계 국채·서울 지분을 한 지갑으로 굴려요. 가격은 진짜 시세를 따라가되 훨씬 크게 출렁여요. 총자산 1등을 노려 보세요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
     <p class="hint nickwarn">⚠️ 실명은 쓰지 마세요. 닉네임은 순위·채팅에서 모두에게 보여요.</p>
     <button class="cta" type="button" id="joinBtn">참가하기</button>`;
@@ -336,13 +336,13 @@ async function doJoin() {
 // ? 도움말: 지금 보고 있는 탭에 맞는 설명을 보여줘요
 const HELP = {
   home: ['홈', '총자산 순위', [
-    '돈은 <b>원화</b> 하나예요. 처음 <b>50억원</b>. 진짜 시세 코인·주식·국채와 게임·상점에 다 같이 써요.',
+    '돈은 <b>원화</b> 하나예요. 처음 <b>20억원</b>. 코인·주식·현물·국채·지분과 게임·상점에 다 같이 써요.',
     '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 국채. 순위는 총자산 순서예요.',
     '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
     '<b>🤖 현금 자동 투자</b>: 총자산 중 <b>현금이 50% 이상</b>이면 매시 정각에 <b>50%를 넘는 현금</b>이 코인·미국 주식 3~5개에 <b>무작위 레버리지 롱</b>(코인 2·3·5배, 주식 2·3배)으로 들어가요. 자동 투자 뒤 아무것도 안 하면 <b>휴면</b>이 돼서 더는 안 사고, 다시 접속하면 다시 켜져요. 40%부터 화면 아래에 경고가 떠요. 직접 골라 사 두면 자동으로 안 사져요.',
     '<b>🎯 레버리지 의무</b>: 롱·숏(증거금 평가액)을 <b>총자산의 30% 이상</b> 들고 있어야 해요. 모자라면 매시 정각에 모자란 만큼 <b>강제 레버리지 롱</b>이 잡혀요. 연속으로 모자랄수록 <b>3배 → 5배 → 10배</b>(주식은 3배까지)로 세지고, 30%를 채우면 처음으로 돌아가요. 휴면이면 멈춰요.',
     '<b>📜 로그</b>: 홈 위쪽 로그 버튼. 모든 거래·공격(뽑은 번호까지)·청산·세금이 다 같이 보는 기록으로 남아요.',
-    '<b>파산</b>: 총자산이 100만원 밑으로 떨어지면 거래소 탭에서 <b>1,000만원</b>을 받을 수 있어요.',
+    '<b>파산</b>: 총자산이 2,000만원 밑으로 떨어지면 거래소 탭에서 <b>2억원</b>을 받을 수 있어요.',
     '이름을 누르면 그 사람 지갑이 다 보여요.']],
   coin: ['거래소', '주식 · 코인 · 현물 · 채권', [
     '<b>주식</b>: 미국 99종목(빅테크·반도체·AI·전기차·코인주·양자·금융·소비재·헬스케어·산업·ETF), 실시간(프리·애프터 포함). 원화를 실시간 환율로 자동 환전해서 사요. 1주 단위 거래, 수수료 0.1%. <b>롱·숏 2·3배</b>(해외주식 CFD 방식).',
@@ -355,14 +355,14 @@ const HELP = {
     '나라별 <b>10년물 국채</b>를 실시간 금리로 사고팔아요. 금리가 오르면 가격이 내리고, 산 금리만큼 이자가 시간에 따라 쌓여요.',
     '세계 지도에서 <b>지역을 누르면 확대</b>돼요. 나라마다 국채를 <b>가장 많이 넣은 사람</b>(현물 원금 + 롱·숏 증거금)의 프로필이 지도에 찍혀요.',
     '현물 수수료 0.05%, 롱·숏 2·5·10배. 국채 롱은 금리가 내리면, 숏은 오르면 이득이에요.',
-    '서울 구채와 브라질 국채는 없어졌어요. 가지고 있던 사람은 접속하면 지금 값으로 원화 환불돼요.']],
+    '<b>🏛️ 서울 지분</b>(거래소 맨 오른쪽 탭): 구마다 지분 100%. 가장 많이 가진 사람이 <b>구청장</b>. 팔릴수록 1% 값이 비싸지고(최대 2.5배), 매시간 <b>배당</b>(강남 0.03% ~ 도봉 0.08%)이 들어와요. 팔 때 수수료 1%.']],
   atk: ['공격', '친구 프로필의 💰·🎯 버튼', [
     '<b>💰 수익 약탈</b>: 친구가 <b>수익 보고 있는</b> 코인·주식을 털어요. 성공(20%)하면 그 종목에서 <b>번 돈만큼</b> 가져와요. 친구 원금은 안 건드려요.',
     '<b>🎯 마진 사냥</b>: 친구의 <b>롱·숏</b>을 노려요. 성공하면 증거금 <b>50%</b>를 가져와요(비용은 증거금의 15%). 그걸로 청산 직전까지 몰리면 <b>☠️ 참수</b>, 증거금을 <b>전부</b> 가져와요. 배수가 높은 친구일수록 조금 더 잘 털려요(10배 22% · 50배 30% · 최대 40%).',
     '성공하면 낸 돈을 돌려받고, <b>실패하면 낸 돈을 잃어요</b>. 그중 절반은 친구가 위자료로 받아요.',
     '공격은 10분에 1번이에요. 털린 종목은 3시간 동안 못 털고, 공격당한 사람은 10분 동안 <b>반값으로 복수</b>할 수 있어요.']],
   assets: ['내 자산', '나와 내 자산 · 분석', [
-    '맨 위에 총자산·수익률·현금과 자산 구성(현금·코인·선물·주식·구채)이 보여요.',
+    '맨 위에 총자산·수익률·현금과 자산 구성(현금·코인·선물·주식·채권·지분)이 보여요.',
     '<b>가진 것</b>: 내가 가진 걸 전부 평가금액 순으로 모았어요. 누르면 바로 거래창이 열려요.',
     '사진을 누르면 바꿀 수 있어요. 맨 아래에서 <b>순위 배경</b>(200만원)·<b>닉네임</b>(200만원)을 바로 바꿔요. 친구 프로필도 같은 모양이에요.']],
   shop: ['상점', '현금으로 사는 것들', [

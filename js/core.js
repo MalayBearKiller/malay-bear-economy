@@ -1,7 +1,9 @@
 'use strict';
 /* ═════════ 공통: 상수 · 상태 · 포맷 · 사진/닉네임 · 순위 ═════════ */
 /* ───────── constants ───────── */
-const FEE = 0.003, CASH0 = 5_000_000_000 /* 시작 50억원 (2026-11-12부터) */, NT = 21;
+// 🗂️ 저장 위치: 2026-11-12 리셋으로 새 컬렉션(sb2_)에서 다시 시작해요. 예전 sb_players·sb_feed는 지우지 않고 그대로 둬요. 건의(sb_talk)는 이어서 써요.
+const COL_P = 'sb2_players', COL_F = 'sb2_feed';
+const FEE = 0.003, CASH0 = 2_000_000_000 /* 시작 20억원 (2026-11-12 리셋부터) */, NT = 21;
 const BONUS = 200_000_000, MAXBET = 200_000_000, MINBET = 1_000_000;
 // 10x 대박 룰렛: 20칸, 평균 0.975배 (홀짝과 같은 2.5% 하우스 엣지)
 const WHEEL = [0, 1.5, 0, 0.5, 2, 0, 1.5, 0, 10, 0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0];
@@ -120,7 +122,7 @@ const NAME_ALIAS = { '무늬수': '새벽코끼리', '박원국': '파란고슴�
 const nameOf = id => (S.players[id] && S.players[id].name) || '누군가';
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
 const roiOf = (p, w) => { const b = (p && p.inflow) || CASH0; return (w - b) / b; };
-// 총자산 = 현금 + 실제 시세 자산(코인 현물·선물, 미국주식, 구채)
+// 총자산 = 현금 + 코인(현물·선물) + 미국주식·현물 + 국채 + 서울 지분
 function worth(p) { return p ? Math.round((p.cash || 0) + kAssets(p)) : 0; }
 function syncTime() { const se = seasonAt(now()); if (!S.season || S.season.sid !== se.sid) S.season = se; return false; }
 
