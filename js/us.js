@@ -28,18 +28,24 @@ const UQ = { last: 0, poll: 0, busy: false, shown: {} };
 const U_FEE = 0.001;
 const CNBC = 'https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?requestMethod=itv&noform=0&partnerId=2&fund=1&exthrs=1&output=json&events=0&symbols=';
 const numOf = s => parseFloat(String(s || '').replace(/[,%+]/g, '')) || 0;
+// 시가총액 "5.065T" → 달러 숫자
+const capOf = s => { const m = /^([\d.]+)\s*([TBMK]?)/i.exec(String(s || '')); return m ? +m[1] * ({ T: 1e12, B: 1e9, M: 1e6, K: 1e3 }[m[2].toUpperCase()] || 1) : 0; };
+const usdBig = v => (v >= 1e12 ? '$' + (v / 1e12).toFixed(2) + 'T' : v >= 1e9 ? '$' + (v / 1e9).toFixed(1) + 'B' : '$' + Math.round(v / 1e6) + 'M');
+// 나스닥 종합지수: 값 · 전날 종가 · 하루 그래프(1분봉, 동부시간 04:00~20:00)
+const IXQ = { p: 0, base: 0, st: '', t: 0 }, IXC = { t: 0, pts: null, t0: 0, t1: 0 };
 async function uFetch() {
   if (UQ.busy) return; UQ.busy = true; UQ.poll = Date.now();
   try {
-    const r = await fetch(CNBC + encodeURIComponent([...Object.values(UC).filter(c => c.m !== 'fx').map(c => c.s), 'KRW='].join('|')));
+    const r = await fetch(CNBC + encodeURIComponent([...Object.values(UC).filter(c => c.m !== 'fx').map(c => c.s), 'KRW=', '.IXIC'].join('|')));
     const list = (((await r.json()) || {}).FormattedQuoteResult || {}).FormattedQuote || [];
     list.forEach(q => {
       if (!q || q.code !== 0) return;
       if (q.symbol === 'KRW=') { const p = numOf(q.last); if (p) { FX.p = p; FX.c = numOf(q.change_pct) / 100; FX.t = Date.now(); UP.FX_USD = { p: 1, base: 1, st: 'REG_MKT', t: Date.now() }; } return; }
+      if (q.symbol === '.IXIC') { const p = numOf(q.last); if (p) Object.assign(IXQ, { p, base: p - numOf(q.change), st: q.curmktstatus, t: Date.now() }); return; }
       const id = U_BY[q.symbol]; if (!id) return;
       const last = numOf(q.last), base = last - numOf(q.change), ext = q.ExtendedMktQuote;
       const useExt = ext && numOf(ext.last) && q.curmktstatus !== 'REG_MKT';
-      UP[id] = { p: useExt ? numOf(ext.last) : last, base: base || last, st: useExt ? ext.type : q.curmktstatus, t: Date.now() };
+      UP[id] = { p: useExt ? numOf(ext.last) : last, base: base || last, st: useExt ? ext.type : q.curmktstatus, t: Date.now(), cap: capOf((useExt && ext.mktcapView) || q.mktcapView) };
     });
     UQ.last = Date.now();
     if (S.me && S.me.uFut) Object.keys(S.me.uFut).forEach(fLiveCheck);
@@ -145,7 +151,7 @@ function renderUSSheet(b, sh) {
   const amtForm = `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="${sh.m === 'sell' ? '팔 금액(원)' : '주문 금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
       <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}</div>`;
   b.innerHTML = `<div class="shead">${uBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${catOf(c).n} · <span id="uSt">${uSt(c.id)}</span></small></div></div>
-    <div class="bigp"><div class="p num" id="uLivePrice">${uPx(c.id) ? uPrice(c.id) : '…'}</div><div class="c num"><span class="${cls(ch)}" id="uLivePct">${pctTxt(ch)}</span> <span class="dim" id="uLiveWon">${isFx ? '1달러' : '≈ ' + krw(uWon(c.id))}</span></div></div>
+    <div class="bigp"><div class="p num" id="uLivePrice">${uPx(c.id) ? uPrice(c.id) : '…'}</div><div class="c num"><span class="${cls(ch)}" id="uLivePct">${pctTxt(ch)}</span> <span class="dim" id="uLiveWon">${isFx ? '1달러' : '≈ ' + krw(uWon(c.id))}</span></div>${(UP[c.id] || {}).cap ? `<div class="mcap">시가총액 <b class="num">${usdBig(UP[c.id].cap)}</b> · 약 ${krwUnits(UP[c.id].cap * FX.p)}원</div>` : ''}</div>
     <div class="chartbox"><canvas class="chart" id="uChart" aria-label="하루 차트"></canvas><i class="cpulse"></i></div>
     ${held ? `<div class="kline"><span>내 보유 <b class="num">${uQty(held, c.id)}</b>${isFx ? '' : ` · ${usd(uUsdOf(c.id, held))}`} · 평단 ${krw(avg)}</span><span><b class="num ${cls(pos.pnl)}">${signKrw(pos.pnl)}</b></span></div>` : ''}
     ${holdersHTML(c.id)}
@@ -279,7 +285,8 @@ function renderExchange(ctl) {
   if (!cats[S[ck]]) S[ck] = 'all'; if (!U_SORTS[S[skk]]) S[skk] = 'v';
   const sk = S[skk], list = Object.values(UC).filter(c => c.m === m && (S[ck] === 'all' || c.c === S[ck]));
   if (sk !== 'v') { const key = c => sk[0] === 'p' ? uPx(c.id) : uChg(c.id); list.sort((a, b) => (sk.endsWith('a') ? 1 : -1) * (key(a) - key(b))); }
-  $('#kList').innerHTML = fxRow() + list.map(uRow).join('');
+  $('#kList').innerHTML = ixCard() + fxRow() + list.map(uRow).join('');
+  ixLoad(); requestAnimationFrame(ixDraw);
 }
 uFetch();
 
@@ -299,4 +306,38 @@ function holdersHTML(sym) {
     .filter(x => x.v >= 10000).sort((a, b) => b.v - a.v);
   if (!list.length) return `<div class="holders"><span class="hl-t">보유한 친구</span><span class="dim">아직 없어요</span></div>`;
   return `<div class="holders"><span class="hl-t">보유한 친구 ${list.length}</span><div class="hl-list">${list.slice(0, 8).map(x => `<button type="button" class="hl-c${x.p.id === S.uid ? ' me' : ''}" data-player="${esc(x.p.id)}">${ava(x.p)}<span><b>${esc(x.p.id === S.uid ? '나' : x.p.name)}</b><small class="num">${x.o ? `${x.o.x}배 ${x.o.d > 0 ? '롱' : '숏'}` : !isK ? uQty(x.q, sym) : kQty(x.q) + ' ' + KC[sym].a}${x.o && x.q ? ' +현물' : ''} · ${man(x.v)}원</small></span></button>`).join('')}</div></div>`;
+}
+
+/* ───────── 나스닥 카드 (주식 탭 맨 위) ───────── */
+function ixCard() {
+  if (!IXQ.p) return '';
+  const ch = IXQ.base ? IXQ.p / IXQ.base - 1 : 0;
+  return `<div class="ixcard ${cls(ch)}"><div class="ix-l"><small>나스닥 종합 <i>${ST_TXT[IXQ.st] || '장 마감'}</i></small><b class="num">${IXQ.p.toLocaleString('en-US', { maximumFractionDigits: 2 })}</b>
+    <span class="num ${cls(ch)}">${ch > 0 ? '+' : ''}${(IXQ.p - IXQ.base).toLocaleString('en-US', { maximumFractionDigits: 2 })} (${(ch * 100).toFixed(2)}%)</span></div><canvas id="ixChart" class="ix-c" aria-label="나스닥 하루 그래프"></canvas></div>`;
+}
+async function ixLoad() {
+  if (Date.now() - IXC.t < 60e3) return; IXC.t = Date.now();
+  try {
+    const bars = ((((await (await fetch('https://ts-api.cnbc.com/harmony/app/charts/1D.json?symbol=.IXIC')).json()) || {}).barData || {}).priceBars) || [];
+    if (!bars.length) return;
+    const day = bars[bars.length - 1].tradeTime.slice(0, 8), list = bars.filter(b => b.tradeTime.slice(0, 8) === day);
+    const step = Math.max(1, Math.floor(list.length / 120));
+    IXC.pts = list.filter((b, i) => i % step === 0 || i === list.length - 1).map(b => [b.tradeTimeinMills, numOf(b.close)]);
+    const f = list[0], hh = +f.tradeTime.slice(8, 10), mm = +f.tradeTime.slice(10, 12); IXC.t0 = f.tradeTimeinMills - ((hh - 9) * 60 + mm - 30) * 6e4; IXC.t1 = IXC.t0 + 6.5 * H;   // 정규장 09:30~16:00
+    ixDraw();
+  } catch {}
+}
+// 작은 그래프: 선 + 옅은 채움 + 전날 종가 점선 (축 글자 없이)
+function ixDraw() {
+  const cv = $('#ixChart'); if (!cv || !IXC.pts || IXC.pts.length < 2) return;
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+  cv.width = w * dpr; cv.height = h * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const pts = IXC.pts.filter(([t]) => t >= IXC.t0 - 6e4); if (pts.length < 2) return;
+  const base = IXQ.base || pts[0][1], ps = pts.map(x => x[1]), lo = Math.min(...ps, base), hi = Math.max(...ps, base), sp = hi - lo || 1;
+  const X = t => 2 + (w - 4) * Math.min(1, (t - IXC.t0) / (IXC.t1 - IXC.t0)), Y = v => 3 + (h - 6) * (1 - (v - lo) / sp);
+  const cs = getComputedStyle(document.documentElement), col = (ps[ps.length - 1] >= base ? cs.getPropertyValue('--up') : cs.getPropertyValue('--down')).trim();
+  g.strokeStyle = cs.getPropertyValue('--faint').trim(); g.setLineDash([2, 3]); g.lineWidth = 1; g.beginPath(); g.moveTo(0, Y(base)); g.lineTo(w, Y(base)); g.stroke(); g.setLineDash([]);
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, col + '40'); gr.addColorStop(1, col + '00');
+  g.beginPath(); pts.forEach(([t, v], i) => i ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v))); g.lineTo(X(pts[pts.length - 1][0]), h); g.lineTo(X(pts[0][0]), h); g.closePath(); g.fillStyle = gr; g.fill();
+  g.beginPath(); pts.forEach(([t, v], i) => i ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v))); g.strokeStyle = col; g.lineWidth = 1.5; g.lineJoin = 'round'; g.stroke();
 }

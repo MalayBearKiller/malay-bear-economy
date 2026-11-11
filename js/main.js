@@ -65,8 +65,8 @@ document.addEventListener('keydown', e => {
 // 1초마다: 시세 확인·이자·청산 확인 → 열린 거래창 갱신 → 지금 탭 다시 그리기
 setInterval(() => {
   syncTime(); kTick(); kLiveSheet(); heartbeat(); atkSync();
-  // 홈: 순위 ↔ 지도 5초마다 번갈아 (고정 안 했을 때, 창이 안 떠 있을 때)
-  if (S.tab === 'home' && !S.homePin && !S.sheet && !S.profile && !S.board && Date.now() - (S.homeFlipAt || 0) >= 5000) { S.homeView = S.homeView === 'map' ? 'rank' : 'map'; S.homeFlipAt = Date.now(); renderHome(); }
+  // 홈: 순위 ↔ 지도 10초마다 번갈아 (고정 안 했을 때, 창이 안 떠 있을 때)
+  if (S.tab === 'home' && !S.homePin && !S.sheet && !S.profile && !S.board && Date.now() - (S.homeFlipAt || 0) >= 10000) { S.homeView = S.homeView === 'map' ? 'rank' : 'map'; S.homeFlipAt = Date.now(); renderHome(); }
   S.liveOnly = true; renderAll(); S.liveOnly = false;
 }, 1000);
 window.__sunbit = { S };

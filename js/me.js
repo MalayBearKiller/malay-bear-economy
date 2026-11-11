@@ -76,7 +76,7 @@ function rivalHTML(p) {
     </div>
     <div class="rv-stats"><div><small>총자산</small><b class="num">${won(w)}</b></div><div><small>수익률</small><b class="num ${cls(roi)}">${pctTxt(roi)}</b></div><div><small>공격 전적</small><b class="num">${won_}승 ${lost_}패</b></div></div>
     ${S.me && revengeOn(p.id) ? `<div class="rv-rev">🔥 이 사람이 방금 나를 공격했어요 · 10분 동안 <b>반값 복수</b></div>` : ''}
-    <div class="sec"><div class="sec-h"><h2>가진 것</h2><small>💰 약탈 · 🎯 사냥 ${myAtkWait() ? `· ⏳ ${Math.ceil(myAtkWait() / 6e4)}분 뒤 공격 가능` : ''}</small></div>
+    <div class="sec"><div class="sec-h"><h2>가진 것</h2><button type="button" class="atk-how" id="atkHelp">❓ 약탈·사냥이 뭐예요?</button><small>${myAtkWait() ? `· ⏳ ${Math.ceil(myAtkWait() / 6e4)}분 뒤 공격 가능` : ''}</small></div>
       <div class="slist">${rows.map(r => r.html).join('') || '<div class="empty">가진 게 없어요.</div>'}
       ${bonds.map(([g, n]) => `<div class="rvrow"><span class="logo-b bb" style="background:var(--krw)">${BOND[g].i + 1}</span><span class="sname"><b>${g}${(top[g] || {}).id === p.id ? ' 👑' : ''} <span class="postag spot">구채</span></b><small class="num">${n}장</small></span><span class="sprice"><div class="p num">${krw(bondSellGet(g, n))}</div></span><span class="atkb off"><small>공격 불가</small></span></div>`).join('')}</div></div>`;
 }

@@ -17,16 +17,16 @@ function renderHome() {
   }
   if (S.readOnly) h += `<p class="hint keep" style="margin:-8px 0 0">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
 
-  // 순위 | 지도: 5초마다 번갈아 보여주고, 📌 고정을 누르면 멈춰요. 두 화면 높이를 같게 해서 바뀔 때 화면이 출렁이지 않게
+  // 순위 | 지도: 10초마다 번갈아 보여주고, '고정하기'를 체크하면 멈춰요. 두 화면 높이를 같게 해서 바뀔 때 화면이 출렁이지 않게
   const RPG = 5, cur = S.mode === 'loading' ? [] : ranking(), rPages = Math.max(1, Math.ceil(cur.length / RPG));
   S.rankPage = Math.max(0, Math.min(S.rankPage || 0, rPages - 1));
   if (S.homeView !== 'map') S.homeView = 'rank';
   const isMap = S.homeView === 'map', pin = !!S.homePin;
   const top = guChief(), myGu = GU_RANK.filter(g => (top[g] || {}).id === S.uid).length, taken = Object.keys(top).length;
   h += `<div class="sec homesw"><div class="sec-h hsw"><span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${!isMap}">순위</button><button type="button" role="tab" data-homeview="map" aria-selected="${isMap}">지도</button></span>
-    <button type="button" class="pinbtn${pin ? ' on' : ''}" id="homePin" aria-pressed="${pin}" aria-label="자동 전환 멈추기">📌${pin ? ' 고정됨' : ''}</button>
+    <button type="button" class="fixchk${pin ? ' on' : ''}" id="homePin" role="checkbox" aria-checked="${pin}"><i></i>고정하기</button>
     ${isMap ? `<small class="mapinfo2">구청장 ${taken}/25${myGu ? ` · 내 구 ${myGu}` : ''}</small>` : `<small class="livecnt"><i></i>${liveCount()}명 접속</small>`}</div>
-    <div class="flipbar${pin ? ' off' : ''}"><i style="animation-duration:5s;animation-delay:-${Math.min(5000, Date.now() - (S.homeFlipAt || 0))}ms"></i></div><div class="hview">`;
+    <div class="flipbar${pin ? ' off' : ''}"><i style="animation-duration:10s;animation-delay:-${Math.min(10000, Date.now() - (S.homeFlipAt || 0))}ms"></i></div><div class="hview">`;
   if (isMap) h += `<div class="card bmapbox homemap">${bondMapSVG()}</div>`;
   else if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
   else if (!cur.length) h += `<div class="empty">아직 아무도 없어요. 첫 번째로 참가해보세요.</div>`;
@@ -380,11 +380,11 @@ const HELP = {
     '1장 기본값은 땅값 순서로 <b>강남 1억 ~ 도봉 500만원</b>이에요. 팔린 장수가 늘수록 비싸져서 다 팔리면 2.5배가 되고, 시간에 따라 시세도 출렁여요.',
     '매시간 정각에 <b>이자</b>가 원화로 들어와요. 비싼 구일수록 이자율은 낮아요(강남 0.03% ~ 도봉 0.08%/시간).',
     '팔 때(환매)는 1% 수수료. 남이 사면 내 구채 값도 올라요. 구청장 혜택은 전투 업데이트 때 스탯 보너스로 붙어요.']],
-  atk: ['공격', '친구 프로필에서', [
-    '<b>💰 수익 약탈</b>: 수익 중인 코인·주식·원자재만 털 수 있어요. 비용 = 그 종목 수익의 25%, 성공 20%. 성공하면 <b>수익 전부</b>를 뺏어 오고 비용도 돌려받아요. 상대 원금은 안 건드려요.',
-    '<b>🎯 마진 사냥</b>: 모든 롱·숏. 비용 = 남은 증거금의 10%, 성공 20% + 배수×0.6 (최대 60%). 성공하면 <b>증거금 30%</b>를 뺏고, 그 바람에 청산가에 닿으면 <b>☠️ 참수</b>: 증거금 전부.',
-    '실패하면 비용을 잃고 <b>절반은 상대에게 위자료</b>예요.',
-    '공격은 10분에 1번, 같은 종목은 30분에 1번. 털린 종목은 <b>3시간 보호막</b>. 공격당하면 10분 동안 그 사람에게 <b>반값 복수</b>.']],
+  atk: ['공격', '친구 프로필의 💰·🎯 버튼', [
+    '<b>💰 수익 약탈</b>: 친구가 <b>수익 보고 있는</b> 코인·주식을 털어요. 성공(20%)하면 그 종목에서 <b>번 돈만큼</b> 가져와요. 친구 원금은 안 건드려요.',
+    '<b>🎯 마진 사냥</b>: 친구의 <b>롱·숏</b>을 노려요. 성공하면 증거금 <b>30%</b>를 가져와요. 그걸로 청산 직전까지 몰리면 <b>☠️ 참수</b>, 증거금을 <b>전부</b> 가져와요. 배수가 높은 친구일수록 잘 털려요(최대 60%).',
+    '성공하면 낸 돈을 돌려받고, <b>실패하면 낸 돈을 잃어요</b>. 그중 절반은 친구가 위자료로 받아요.',
+    '공격은 10분에 1번이에요. 털린 종목은 3시간 동안 못 털고, 공격당한 사람은 10분 동안 <b>반값으로 복수</b>할 수 있어요.']],
   assets: ['프로필', '나와 내 자산', [
     '맨 위에 총자산·수익률·현금과 자산 구성(현금·코인·선물·주식·구채)이 보여요.',
     '<b>가진 것</b>: 내가 가진 걸 전부 평가금액 순으로 모았어요. 누르면 바로 거래창이 열려요.',

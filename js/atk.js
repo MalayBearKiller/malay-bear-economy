@@ -117,6 +117,10 @@ function renderAtkSheet(b, sh) {
       <div class="lose"><small>실패하면</small><b class="num">-${krw(I.cost || 0)}</b><span>절반은 상대 위자료</span></div>
     </div>
     ${!I.ok ? `<p class="atk-why">${esc(I.why)}</p>` : wait ? `<p class="atk-why">⏳ ${Math.ceil(wait / 6e4)}분 뒤에 다시 공격할 수 있어요</p>` : S.me && S.me.cash < I.cost ? '<p class="atk-why">현금이 부족해요</p>' : ''}
+    <details class="atk-help"${sh.help ? ' open' : ''}><summary>❓ ${isFut ? '마진 사냥' : '수익 약탈'}이 뭐예요?</summary>${isFut
+      ? `<p>상대가 <b>롱·숏</b>으로 걸어 둔 돈(증거금)을 노려요.</p><ul><li>성공하면 상대 증거금의 <b>30%</b>를 가져와요. 낸 돈도 돌려받아요.</li><li>그걸로 상대가 청산 직전까지 몰리면 <b>☠️ 참수</b> — 증거금을 <b>전부</b> 가져와요.</li><li>배수가 높은 사람일수록 <b>성공 확률이 높아요</b> (최대 60%).</li><li>실패하면 낸 돈을 잃고, 절반은 상대가 가져가요.</li></ul>`
+      : `<p>상대가 <b>수익 보고 있는</b> 코인·주식을 노려요. 손해 중인 건 못 털어요.</p><ul><li>성공(20%)하면 그 종목의 <b>번 돈만큼</b>을 내 것으로 가져와요. 낸 돈도 돌려받아요.</li><li>상대가 처음 넣은 원금은 안 건드려요.</li><li>실패하면 낸 돈(수익의 25%)을 잃고, 절반은 상대가 가져가요.</li></ul>`}
+      <p class="atk-rule">공격은 10분에 1번 · 털린 종목은 3시간 보호막 · 당하면 10분 동안 반값 복수</p></details>
     <button class="cta atk-go" id="atkGo" type="button" ${can ? '' : 'disabled'}>💥 공격하기 · ${krw(I.cost || 0)}</button>`;
 }
 KSHEETS.atk = renderAtkSheet;
@@ -124,6 +128,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest && e.target.closest('button'); if (!t) return;
   if (t.dataset.atk) { e.stopPropagation(); const [tid, f, sym] = t.dataset.atk.split('|'); if (!S.me) { openSheet('join'); return; } if (S.sheet) closeSheetRaw(); openSheet('atk', { tid, f, sym }); $('#sheetWrap').classList.add('center'); return; }
   if (t.id === 'atkGo' && S.sheet && S.sheet.type === 'atk') doAttack(S.sheet.tid, S.sheet.f, S.sheet.sym);
+  if (t.id === 'atkHelp') openSheet('help');
 }, true);
 
 /* ───────── 접속 중(LIVE): 2분마다 내 지갑에 '마지막 접속 시각'을 남겨요 (화면 보고 있을 때만) ───────── */
@@ -136,3 +141,5 @@ async function heartbeat() {
   const before = S.me, me = clone(before); me.seen = now(); await kSave(me, before);
 }
 const liveCount = () => activePlayers().filter(isOn).length;
+
+document.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('atk-help') && S.sheet && S.sheet.type === 'atk') S.sheet.help = e.target.open; }, true);
