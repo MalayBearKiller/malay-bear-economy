@@ -994,3 +994,11 @@ body.has-taxbar .minefab{bottom:calc(128px + env(safe-area-inset-bottom,0px))}
 body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .logbtn[hidden] + .helpbtn{margin-left:auto}
 .boardbtn{white-space:nowrap;padding:0 10px;font-size:12.5px;height:32px}@media (max-width:400px){.brand .logo{font-size:20px}.brand .bear{width:32px;height:32px}}
+
+/* ⚡ 게임 버튼: SUNBIT 옆에 크게 */
+.gamebtn{margin-left:10px;height:36px;padding:0 14px;border-radius:12px;font-weight:900;font-size:15px;background:linear-gradient(150deg,#ffcf4a,#e39a00);color:#3a2400;box-shadow:0 3px 10px rgba(227,154,0,.35);animation:gamep 2.4s ease-in-out infinite}
+.gamebtn.on{box-shadow:0 0 0 2px var(--ink)}
+@keyframes gamep{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.gamebtn:active{transform:scale(.95)}
+@media (max-width:420px){.boardbtn .bt{display:none}.boardbtn{padding:0 9px;font-size:15px}.gamebtn{font-size:14px;padding:0 12px;margin-left:8px}}
+.gamebtn{white-space:nowrap;flex:none}

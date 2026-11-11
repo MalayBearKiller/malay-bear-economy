@@ -260,7 +260,7 @@ function goTab(name) {
   ['home', 'coin', 'shop', 'assets'].forEach(n => $('#tab-' + (n === 'assets' ? 'wallet' : n)).hidden = n !== name);
   const bb = $('#boardBtn'); if (bb) bb.hidden = name !== 'home';
   const lb = $('#logBtn'); if (lb) lb.hidden = name !== 'home';
-  const gb = $('#gameBtn'); if (gb) gb.hidden = name !== 'shop';
+  const gb = $('#gameBtn'); if (gb) gb.classList.toggle('on', name === 'shop' && S.shopView === 'game');   // 게임 버튼은 늘 보여요
   renderAll(); window.scrollTo({ top: 0 });
 }
 /* ───────── chart ───────── */

@@ -8,7 +8,7 @@ async function boot() {
 }
 
 document.addEventListener('click', e => {
-  if (e.target.closest('#brandBtn')) { location.reload(); return; }   // SUNBIT 누르면 새로고침
+  if (e.target.closest('#brandBtn') && !e.target.closest('button')) { location.reload(); return; }   // 로고 옆 게임 버튼은 제외   // SUNBIT 누르면 새로고침
   const t = e.target.closest('button'); if (!t) return;
   if (kClick(t)) return;
   const d = t.dataset;
