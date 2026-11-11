@@ -14,7 +14,7 @@ function renderHome() {
     <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>`;
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
-    h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">10억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
+    h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">50억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
   if (S.readOnly) h += `<p class="hint keep" style="margin:-8px 0 0">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
 
@@ -83,10 +83,7 @@ function renderCasino() {
     <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>내 총자산 기준 · 한 판 최대 10억</small></div>
     <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${String(S.betPct) === v}">${l}</button>`).join('')}</div>
     <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b>${bet >= BET_CAP ? ' <span class="dim">(한 판 최대)</span>' : bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부 올인!)</span>' : ''}</p></div>
-    <div class="card game"><div><h3>홀짝</h3><p class="desc">맞히면 1.95배. 50% 확률.</p></div>
-      <div class="coin" id="coin">${C.coinFace}</div>
-      <p class="res" id="coinMsg">${C.coinMsg}</p>
-      <div class="pick2"><button class="cta" type="button" data-coin="홀" ${C.busy || bet < MINBET ? 'disabled' : ''}>홀</button><button class="cta sell" type="button" data-coin="짝" ${C.busy || bet < MINBET ? 'disabled' : ''}>짝</button></div></div>
+    ${udCardHTML()}
     <div class="card game"><div><h3>룰렛</h3><p class="desc">0배부터 대박 10배까지! 한 방에 인생 역전.</p></div>
       <div class="wheel-wrap"><div class="pointer"></div><div class="wheel" id="wheel" style="background:${wheelBg()};transform:rotate(${C.wheelRot}deg)">${WHEEL.map((m, i) => `<span style="transform:rotate(${i * WSEG + WSEG / 2}deg) translateY(-96px)"><i>${m}x</i></span>`).join('')}</div><div class="hub"></div></div>
       <p class="res" id="wheelMsg">${C.wheelMsg}</p>
@@ -105,7 +102,7 @@ function updateBetLabels() {
   const b = betAmount(), ok = b >= MINBET && !C.busy;
   const n = $('#betNow'); if (n) n.textContent = won(b);
   const sp = $('#spinBtn'); if (sp) { sp.textContent = `${won(b)} 걸고 돌리기`; sp.disabled = !ok; }
-  document.querySelectorAll('[data-coin]').forEach(x => x.disabled = !ok);
+  document.querySelectorAll('[data-ud]').forEach(x => x.disabled = !ok);
 }
 const BET_CAP = 1_000_000_000;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -229,7 +226,7 @@ function renderShop() {
   const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv), plan = S.me ? lvMaxPlan(S.me.cash, lv) : { to: lv, spent: 0 }, armed = S.lvArm && Date.now() - S.lvArm < 4000;
   el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 1.14배</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
     ${plan.to > lv + 1 ? `<button type="button" class="cta ${armed ? 'buy' : 'soft'} lvmax" id="lvMax" ${S.saving || S.readOnly ? 'disabled' : ''}>${armed ? `한 번 더 누르면 LV.${plan.to}까지 · ${won(plan.spent)} 결제` : `⏫ 최대한 올리기 · LV.${plan.to}까지 ${won(plan.spent)}`}</button>` : ''}
-<div class="sec"><div class="sec-h"><h2>게임</h2></div><button type="button" class="card shopitem" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>홀짝 · 룰렛</b><small>한 판에 크게</small></span><span class="si-go">›</span></button></div>`;
+<div class="sec"><div class="sec-h"><h2>게임</h2></div><button type="button" class="card shopitem" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>⚡ 1분 업다운 · 룰렛</b><small>진짜 시세로 1분 승부</small></span><span class="si-go">›</span></button></div>`;
 }
 // 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
 // 소식 알림 점: 큰 청산·큰 수익·구채·게임 대박만
@@ -348,7 +345,7 @@ function closeProfile() { closeProfileRaw(); guardOff(); }
 function renderProfile() { renderFriendProfile(); } // 새 프로필 화면 (me.js)
 function renderJoinSheet(b) {
   const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '') || '존버의신';
-  b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>10억원으로 시작</h3></div>
+  b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>50억원으로 시작</h3></div>
     <p class="hint keep" style="text-align:center">진짜 시세 코인(선물 롱·숏)과 미국 주식, 서울 구채를 한 지갑으로 굴려요. 총자산 1등을 노려 보세요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
     <p class="hint nickwarn">⚠️ 실명은 쓰지 마세요. 닉네임은 순위·채팅에서 모두에게 보여요.</p>
@@ -358,14 +355,14 @@ async function doJoin() {
   const inputEl = $('#nick');
   const nick = ((inputEl && inputEl.value) || '').trim().slice(0, 10) || '존버의신';
   LS.set('nick', nick);
-  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H), stipS: stipSlot() });
+  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H), stipS: stipSlot(), g40: 1 });
   S.saving = true; const ok = await saveMe(me, S.me); S.saving = false;
   if (ok) { addFeed({ kind: 'join' }); closeSheet(); toast('참가 완료!'); renderAll(); }
 }
 // ? 도움말: 지금 보고 있는 탭에 맞는 설명을 보여줘요
 const HELP = {
   home: ['홈', '총자산 순위', [
-    '돈은 <b>원화</b> 하나예요. 처음 <b>10억원</b>. 진짜 시세 코인·주식·구채와 게임·상점에 다 같이 써요.',
+    '돈은 <b>원화</b> 하나예요. 처음 <b>50억원</b>. 진짜 시세 코인·주식·구채와 게임·상점에 다 같이 써요.',
     '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 구채. 순위는 총자산 순서예요.',
     '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
     '<b>파산</b>: 총자산이 100만원 밑으로 떨어지면 거래소 탭에서 <b>1,000만원</b>을 받을 수 있어요.',
@@ -394,7 +391,8 @@ const HELP = {
   shop: ['상점', '현금으로 사는 것들', [
     '<b>⭐ 레벨업</b>: 현금으로 올려요. 올릴 때마다 가격이 1.14배가 돼요.',
     
-    '<b>🎰 게임</b>: 홀짝(1.95배)·룰렛(0~10배). 평균 0.975배라 오래 하면 조금씩 잃어요.']],
+    '<b>⚡ 1분 업다운</b>: 진짜 업비트 시세로 1분 뒤 오를지 내릴지 맞혀요. 맞히면 1.9배, 3연승째부터 2.0배, 5연승째부터 2.3배. 가격이 똑같으면 돌려받아요. 앱을 꺼도 1분 뒤 시세로 결과가 정해져요.',
+    '<b>🎡 룰렛</b>: 0배부터 10배까지. 평균 0.975배라 오래 하면 조금씩 잃어요.']],
 };
 function renderHelp(b) {
   const [t, sub, items] = (S.profile ? HELP.atk : HELP[S.tab]) || HELP.home;

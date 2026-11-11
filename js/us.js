@@ -197,7 +197,7 @@ function fxRow() {
 const X_TABS = [['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권']];
 function xCtlHTML() {
   const m = S.xMkt, tab = ([k, l]) => `<button type="button" role="tab" data-xmkt="${k}" aria-selected="${m === k}">${l}</button>`;
-  const h = `<div class="xtabs" role="tablist">${X_TABS.map(tab).join('')}<small class="livetag" id="kLiveTag"><i></i></small></div>`;
+  const h = `<div class="xtop"><div class="xtabs" role="tablist">${X_TABS.map(tab).join('')}<small class="livetag" id="kLiveTag"><i></i></small></div><button type="button" class="xgame" id="goGame" aria-label="게임하러 가기">⚡<span>게임</span></button></div>`;
   if (m === 'bond') return h;
   const cats = m === 'us' ? UCAT : m === 'cm' ? CCAT : KCAT, sorts = m === 'coin' ? K_SORTS : U_SORTS, ck = { us: 'uCat', coin: 'kCat', cm: 'cCat' }[m], sk = { us: 'uSortKey', coin: 'kSortKey', cm: 'cSortKey' }[m];
   const opt = (v, l, cur) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`;

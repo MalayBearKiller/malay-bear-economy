@@ -36,7 +36,7 @@ function profileBody(p, isMe) {
 }
 function renderMe() {
   const el = $('#tab-wallet'); if (!el) return;
-  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 프로필이 없어요.' : '참가하면 10억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
+  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 프로필이 없어요.' : '참가하면 50억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
   el.innerHTML = profileBody({ id: S.uid, ...S.me }, true);
 }
 function renderFriendProfile() {

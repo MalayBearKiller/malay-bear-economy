@@ -88,7 +88,7 @@ function kPositions(p) {
 async function kSave(me, before) { S.saving = true; const ok = await saveMe(me, before); S.saving = false; return ok; }
 
 /* ───────── 구채: 25개 구마다 100장. 많이 팔릴수록 비싸지고, 시간 따라 시세도 출렁여요 ───────── */
-// 땅값 순서. 1장 가격은 강남 1억 ~ 도봉 500만원 (시작 자금 10억의 10% ~ 0.5%)
+// 땅값 순서. 1장 가격은 강남 1억 ~ 도봉 500만원 (처음엔 시작 자금 10억 기준으로 잡았어요. 값은 바꾸면 안 돼요)
 const GU_RANK = ['강남구', '서초구', '송파구', '용산구', '성동구', '마포구', '영등포구', '종로구', '중구', '강동구', '광진구', '양천구', '동작구',
   '강서구', '서대문구', '성북구', '동대문구', '은평구', '관악구', '구로구', '노원구', '금천구', '중랑구', '강북구', '도봉구'];
 const BOND_N = 100, BOND_SELL = 0.01, BOND_CURVE = 1.5;   // 다 팔리면 2.5배, 중도환매 수수료 1%
@@ -132,6 +132,14 @@ async function kCoupon() {
 const STIP = 4_200_000, STIP_MS = 2 * H, STIP_MAX = 84;
 const stipSlot = (t = now()) => Math.floor((t + KST) / STIP_MS);
 const stipNext = () => (stipSlot() + 1) * STIP_MS - KST;
+// 🎁 시작 자금 10억 → 50억 상향(2026-11-12): 그 전에 참가한 사람은 각자 앱을 열 때 한 번만 +40억 (g40 표시로 두 번 안 받아요)
+// 남의 지갑은 못 고치니까 본인 앱이 스스로 넣어요. 받은 돈은 수익률 기준(inflow)에도 더해요.
+const G40 = 4_000_000_000;
+async function kGrant40() {
+  const m0 = S.me; if (!m0 || m0.g40 || S.saving || S.readOnly) return;
+  const me = clone(m0); me.g40 = 1; me.cash = Math.round((me.cash || 0) + G40); me.inflow = (me.inflow || 1_000_000_000) + G40;
+  if (await kSave(me, m0)) { bigWin(G40, '🎁 시작 자금 상향! 40억 지급'); renderAll(); }
+}
 async function kStipend() {
   const m0 = S.me; if (!m0 || S.saving || S.readOnly) return;
   const s = stipSlot();
@@ -144,7 +152,7 @@ async function kStipend() {
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
   uTick();
-  if (S.me && !S.readOnly && S.loaded) { kStipend(); kCoupon(); fScan(); }
+  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); fScan(); }
 }
 
 /* ───────── 거래 ───────── */
@@ -204,6 +212,7 @@ async function bondTrade(gu, side, n) {
 function kBotSeed(bots) {
   const plan = [{ '강남구': 3, '마포구': 4, '노원구': 6 }, { '서초구': 2, '용산구': 3, '송파구': 2 }, { '강남구': 2, '성동구': 5, '도봉구': 9 }];
   Object.values(bots).forEach((p, i) => {
+    p.g40 = 1;
     p.cash = CASH0; p.inflow = CASH0;
     kInit(p); p.bonds = plan[i] || {}; p.bAt = Object.fromEntries(Object.keys(p.bonds).map((g, j) => [g, S.season.start + i * 1000 + j]));
     let spent = 0; Object.entries(p.bonds).forEach(([g, n]) => { const b = BOND[g]; spent += b.base * n * 1.05; p.bCost[g] = b.base * 1.05; });
