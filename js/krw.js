@@ -372,7 +372,7 @@ function kFeedText(f) {
       return f.type === 'loot' ? ['up', '💰', `<b>${nm}</b>님이 <b>${tn}</b>님의 ${an} 수익 <b class="up">${krw(f.gain)}</b> 약탈!`]
         : f.exec ? ['down', '☠️', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} <b>참수!</b> 현상금 <b class="up">${krw(f.gain)}</b>`]
         : ['up', '🎯', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} 증거금 <b class="up">${krw(f.gain)}</b> 사냥`]; }
-    case 'k_auto': return ['gold', '🤖', `<b>${nm}</b>님 현금 <b>${krw(f.amt)}</b> 자동 투자`];
+    case 'k_auto': return ['gold', f.lx ? '🎯' : '🤖', f.lx ? `<b>${nm}</b>님 레버리지 부족 → <b>${krw(f.amt)}</b> ${f.lx}배 강제 롱` : `<b>${nm}</b>님 현금 <b>${krw(f.amt)}</b> 자동 투자`];
     case 'k_refund': return ['gold', '🏛️', `<b>${nm}</b>님이 ${f.n ? `서울 구채 ${f.n}장` : ''}${f.n && f.br ? '·' : ''}${f.br ? '브라질 국채' : ''}를 지금 값 <b>${krw(f.amt)}</b>으로 환불받았어요`];
     case 'k_gbuy': return GC[f.sym] ? ['up', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
     case 'k_gsell': return GC[f.sym] ? [f.pnl >= 0 ? 'up' : 'down', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) 팔았어요 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null;

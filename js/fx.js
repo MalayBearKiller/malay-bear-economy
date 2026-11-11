@@ -90,18 +90,3 @@ function spotPctNow(ratio, all) {
   const el = $('#pctNow'); if (!el) return;
   el.innerHTML = all ? '<b>보유 전부</b> 매도' : ratio > 0 ? `살 수 있는 돈의 <b class="num">${ratio >= .9995 ? '100' : (ratio * 100).toFixed(ratio < .1 ? 1 : 0)}%</b> <button type="button" data-kclr="1">지우기</button>` : '';
 }
-
-/* ───────── 🎰 거래소 맨 위 게임 배너 (한 번만 그리고, 숫자만 1초마다 바꿔요 → 반짝이 애니메이션이 안 끊겨요) ───────── */
-function promoHTML() {
-  return `<button type="button" class="promo" id="promoGo" aria-label="1분 업다운 하러 가기">
-    <span class="pr-shine"></span><span class="pr-spark s1">✦</span><span class="pr-spark s2">✦</span><span class="pr-spark s3">✦</span>
-    <span class="pr-l"><span class="pr-tag">🔥 HOT · 진짜 시세</span>
-      <b class="pr-h"><span class="pr-roll"><i>⚡ 1분 만에 <em>2배</em></i><i>🎡 룰렛 최대 <em>10배</em></i><i>🔥 5연승 <em>2.3배</em></i><i>⚡ 1분 만에 <em>2배</em></i></span></b>
-      <small class="pr-s" id="prLive">비트코인 지금 …</small></span>
-    <span class="pr-go">GO<small>지금 도전</small></span></button>`;
-}
-function promoTick() {
-  const el = $('#prLive'); if (!el) return; const o = KP['KRW-BTC'] || {};
-  const hot = activePlayers().filter(p => (p.udStreak || 0) >= 2).sort((a, b) => b.udStreak - a.udStreak)[0];
-  el.innerHTML = hot ? `🔥 <b>${esc(hot.name)}</b>님 ${hot.udStreak}연승 중 · BTC ${o.p ? kWon(o.p) : '…'}` : `BTC <b class="num">${o.p ? kWon(o.p) + '원' : '…'}</b> <span class="${cls(o.c || 0)}">${o.p ? ((o.c > 0 ? '▲' : o.c < 0 ? '▼' : '') + Math.abs((o.c || 0) * 100).toFixed(2) + '%') : ''}</span> · 오를까 내릴까?`;
-}

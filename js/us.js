@@ -273,8 +273,7 @@ function renderMineFab() {
 function renderExchange(ctl) {
   const el = $('#tab-coin'); if (!el) return;
   if (!X_TABS.some(([k]) => k === S.xMkt)) S.xMkt = 'us';
-  if (!el.querySelector('#kList')) { el.innerHTML = promoHTML() + `<div id="kTop"></div><div id="kCtl" class="kctl"></div><div class="slist" id="kList"></div>`; ctl = true; }
-  promoTick();
+  if (!el.querySelector('#kList')) { el.innerHTML = `<div id="kTop"></div><div id="kCtl" class="kctl"></div><div class="slist" id="kList"></div>`; ctl = true; }
   if (ctl) $('#kCtl').innerHTML = xCtlHTML();
   const m = S.xMkt;
   $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 1,000만원</b><small>총자산이 100만원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';

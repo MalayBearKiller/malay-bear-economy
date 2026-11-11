@@ -1076,3 +1076,12 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .gtops{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:8px;align-content:center}
 .gtops button{display:flex;align-items:center;gap:6px;min-width:0;height:30px;padding:0 8px;border-radius:9px;background:rgba(255,255,255,.75);font-size:12px;text-align:left}
 .gtops b{font-weight:800;flex:none}.gtops small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim);font-weight:700;font-size:11px}
+.promo.mini{flex:1;min-width:0;width:auto;height:40px;margin:0 0 0 4px;padding:0 4px 0 10px;gap:6px;border-radius:12px;box-shadow:0 4px 12px rgba(157,23,77,.3),inset 0 0 0 1.5px rgba(255,215,0,.55)}
+.promo.mini[hidden]{display:none}
+.promo.mini .pr-h{flex:1;min-width:0;height:20px;line-height:20px;font-size:14px}
+.promo.mini .pr-roll{animation-name:prroll2}.promo.mini .pr-roll i{height:20px;overflow:hidden;text-overflow:ellipsis}
+.promo.mini .pr-roll em{font-size:16px}
+@keyframes prroll2{0%,28%{transform:translateY(0)}33%,61%{transform:translateY(-20px)}66%,94%{transform:translateY(-40px)}100%{transform:translateY(-60px)}}
+.promo.mini .pr-go{width:40px;height:32px;border-radius:9px;font-size:14px;box-shadow:0 3px 0 #a16207}
+.promo.mini .pr-spark.s1{top:3px;right:50px}.promo.mini .pr-spark.s2{bottom:3px;right:80px}
+.promo.mini~.boardbtn{flex:none}
