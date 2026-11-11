@@ -16,6 +16,9 @@ const KQ = { ws: null, ok: false, last: 0, retry: 0, poll: 0, shown: {}, flash: 
 
 /* ───────── 시세: 업비트 웹소켓 (안 되면 2~3초마다 REST) ───────── */
 const UPBIT = 'https://api.upbit.com/v1';
+// 업비트 REST는 브라우저(Origin) 요청 제한이 빡빡해서, 한 번에 하나씩 1.5초 간격으로 보내요 (넘치면 한동안 다 막혀요)
+const UQUEUE = { last: 0, chain: Promise.resolve() };
+function upFetch(url) { const p = UQUEUE.chain.then(async () => { const wait = UQUEUE.last + 1500 - Date.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait)); UQUEUE.last = Date.now(); return fetch(url); }); UQUEUE.chain = p.catch(() => {}); return p; }
 function kApply(d) {
   const code = d.code || d.market; if (!KC[code] || !(d.trade_price > 0)) return;
   const o = KP[code] || (KP[code] = {});
@@ -26,7 +29,7 @@ function kApply(d) {
 async function kFetchTickers() {
   KQ.poll = Date.now();
   try {
-    const r = await fetch(UPBIT + '/ticker?markets=' + Object.keys(KC).join(','));
+    const r = await upFetch(UPBIT + '/ticker?markets=' + Object.keys(KC).join(','));
     if (!r.ok) return;
     (await r.json()).forEach(kApply);
     if (!KQ.first) { KQ.first = true; kOnFirstPrices(); renderAll(); }
@@ -199,7 +202,7 @@ function renderCoins(ctl) { renderExchange(ctl); }   // 거래소 탭(코인 | �
 async function kLoadChart(sym) {
   const ent = KQ.chart[sym]; if (ent && Date.now() - ent.t < 60e3) return;
   KQ.chart[sym] = { t: Date.now(), pts: ent ? ent.pts : null };
-  try { const a = await (await fetch(`${UPBIT}/candles/minutes/15?market=${sym}&count=96`)).json();
+  try { const a = await (await upFetch(`${UPBIT}/candles/minutes/15?market=${sym}&count=96`)).json();
     KQ.chart[sym] = { t: Date.now(), pts: gmChartPts(sym, a.reverse().map(c => [Date.parse(c.candle_date_time_utc + 'Z'), c.trade_price]), kBase(sym), 3) }; kDrawChart(); } catch {}
 }
 function kDrawChart() {

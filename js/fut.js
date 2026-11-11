@@ -49,15 +49,15 @@ async function fLiquidate(sym) {
 async function fScan() {
   if (!S.me || S.readOnly || !GM.ready) return;
   for (const f of ['kFut', 'uFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {
-    const key = sym + ':' + o.at; if (FQ.scanned[key] && Date.now() - FQ.scanned[key] < 60e3) continue; FQ.scanned[key] = Date.now();
+    const key = sym + ':' + o.at; if (FQ.scanned[key]) continue;   // 포지션마다 앱을 켤 때 한 번만 (켜져 있는 동안은 실시간으로 확인해요) FQ.scanned[key] = Date.now();
     try {
       const from = Math.floor(o.at / 6e4) * 6e4 + 6e4;   // 들어간 다음 분부터
       let lo = Infinity, hi = 0;
       if (f === 'kFut') {
         let oldest = Infinity;
-        (await (await fetch(`${UPBIT}/candles/minutes/1?market=${sym}&count=200`)).json()).forEach(c => {
+        (await (await upFetch(`${UPBIT}/candles/minutes/1?market=${sym}&count=200`)).json()).forEach(c => {
           const ts = Date.parse(c.candle_date_time_utc + 'Z'); oldest = Math.min(oldest, ts); if (ts >= from) { const [a] = gmRange(sym, ts, 6e4, c.low_price), [, b] = gmRange(sym, ts, 6e4, c.high_price); lo = Math.min(lo, a); hi = Math.max(hi, b); } });
-        if (from < oldest) (await (await fetch(`${UPBIT}/candles/minutes/60?market=${sym}&count=200`)).json()).forEach(c => {
+        if (from < oldest) (await (await upFetch(`${UPBIT}/candles/minutes/60?market=${sym}&count=200`)).json()).forEach(c => {
           const ts = Date.parse(c.candle_date_time_utc + 'Z'); if (ts >= Math.ceil(o.at / H) * H && ts < oldest) { const [a] = gmRange(sym, ts, H, c.low_price), [, b] = gmRange(sym, ts, H, c.high_price); lo = Math.min(lo, a); hi = Math.max(hi, b); } });
       } else {
         if (!FX.p) continue;

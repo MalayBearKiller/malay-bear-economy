@@ -2,7 +2,7 @@
 /* ═════════ 🎢 게임 가격 엔진 (2026-11-12 리워크) ═════════
    게임 가격 = 진짜 시세 × 배율.  배율 = exp( 현실 증폭 + 빠른 물결 + 10분 물결 + 2시간 물결 + 급등·급락 이벤트 ), 0.6~1.6배로 고정
    · 현실 증폭: 진짜 시세의 하루 등락을 k배로 (코인 3배, 주식 4배). 기준가가 바뀌는 시각(자정 등) 앞뒤 30분은 0으로 서서히 → 가격이 안 튀어요
-   · 물결·이벤트: 종목 + 시각(분) + '3분 전 비트코인 1분봉 종가'로 정해지는 난수 → 모든 폰에서 똑같고, 미래는 아무도 몰라요
+   · 물결·이벤트: 종목 + 시각(분) + '5분 전 비트코인 1분봉 종가(CNBC)'로 정해지는 난수 → 모든 폰에서 똑같고, 미래는 아무도 몰라요
    · 이벤트: 종목마다 평균 25분에 한 번. 2~6분 동안 치솟거나 꽂히고, 그 뒤는 ① 원래대로 ② 일부 남음 ③ 한 번 더 폭주 중 하나
    ⚠️ 시드 문자열('gm1')과 계수는 한 번 정하면 바꾸지 마세요. 바꾸면 지난 가격이 전부 다시 계산돼서 평단·포지션이 망가져요.
    적용: 코인·미국 주식·원자재. 원/달러 환율과 국채는 진짜 그대로예요. */
@@ -15,7 +15,7 @@ function gmHash(s) {
   h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
 }
-const gmE = m => { const v = GM.E[m - 3]; return v == null ? 'x' : v; };   // 3분 전 비트코인 1분봉 종가
+const gmE = m => { const v = GM.E[m - 5]; return v == null ? 'x' : v; };   // 5분 전 비트코인 1분봉 종가 (늦게 받아도 모두 같은 값이 되게 넉넉히)
 const gmR = (sym, tag, m) => gmHash(`gm1|${sym}|${tag}|${m}|${gmE(m)}`);
 const gmSm = p => p * p * (3 - 2 * p);
 
@@ -39,7 +39,7 @@ function gmAR(sym, m) {
   if (!c.m0 || m < c.m0) { c.m0 = m - 720; c.y = [[0, 0]]; }
   // 비트코인 종가를 아직 못 받은 분은 저장하지 않고 그때그때 계산해요 (나중에 받으면 모두와 같은 값으로 맞춰져요)
   const step = (prev, mm) => GM_RHO.map((r, j) => r * prev[j] + Math.sqrt(1 - r * r) * Math.sqrt(3) * (gmR(sym, j ? 'b' : 'a', mm) * 2 - 1));
-  const safe = Math.min(m, GM.lastE + 3) - c.m0;
+  const safe = Math.min(m, GM.lastE + 5) - c.m0;
   for (let i = c.y.length; i <= safe; i++) c.y[i] = step(c.y[i - 1], c.m0 + i);
   let y = c.y[Math.min(m - c.m0, c.y.length - 1)];
   for (let mm = c.m0 + c.y.length; mm <= m; mm++) y = step(y, mm);
@@ -64,7 +64,7 @@ function gmEvents(sym, m, P) {
   const c = GM.cache[sym] || (GM.cache[sym] = { m0: 0, y: [] }); c.ev ||= {};
   const out = [];
   for (let j = m - GM_EV_BACK; j <= m + 1; j++) {
-    let e = c.ev[j]; if (e === undefined) { e = gmR(sym, 'v0', j) < P.p ? 1 : 0; if (j <= GM.lastE + 3) c.ev[j] = e; }
+    let e = c.ev[j]; if (e === undefined) { e = gmR(sym, 'v0', j) < P.p ? 1 : 0; if (j <= GM.lastE + 5) c.ev[j] = e; }
     if (e) out.push(j);
   }
   return out;
@@ -108,22 +108,19 @@ function gmBadge(sym, t = now()) {
 }
 const gmBadgeHTML = sym => { const b = gmBadge(sym); return b === 'up' ? '<span class="gmb up">🔥 폭주</span>' : b === 'down' ? '<span class="gmb down">💧 폭락</span>' : ''; };
 
-/* ───────── 비트코인 1분봉 받기: 처음에 약 35시간치, 그다음엔 20초마다 최근 것만 ───────── */
-async function gmFetch(to, count) {
-  const r = await fetch(`${UPBIT}/candles/minutes/1?market=KRW-BTC&count=${count}${to ? '&to=' + encodeURIComponent(new Date(to).toISOString().slice(0, 19) + 'Z') : ''}`);
-  if (!r.ok) throw new Error('upbit'); const a = await r.json();
-  a.forEach(c => { const m = Math.floor(Date.parse(c.candle_date_time_utc + 'Z') / MIN); if (m * MIN + MIN <= Date.now()) { GM.E[m] = c.trade_price; GM.lastE = Math.max(GM.lastE, m); } });   // 끝난 분봉만
-  return a;
+/* ───────── 비트코인 1분봉 받기: CNBC(BTC.CM=) 1분봉 이틀치를 45초마다 (업비트는 브라우저 요청 제한이 빡빡해서 안 써요) ───────── */
+async function gmFetch() {
+  const j = await (await fetch('https://ts-api.cnbc.com/harmony/app/charts/1D.json?symbol=BTC.CM%3D')).json();
+  const bars = ((((j || {}).barData || {}).priceBars) || []), cut = Date.now() - 30e3;
+  bars.forEach(b => { const t = b.tradeTimeinMills; if (!(t > 0) || t + MIN > cut) return; const m = Math.floor(t / MIN), v = numOf(b.close); if (v) { GM.E[m] = v; GM.lastE = Math.max(GM.lastE, m); } });   // 끝난 분봉만
+  return bars.length;
 }
 async function gmInit() {
   if (GM.loading) return; GM.loading = true;
-  try {
-    let to = 0;
-    for (let i = 0; i < 11; i++) { const a = await gmFetch(to, 200); if (!a.length) break; to = Date.parse(a[a.length - 1].candle_date_time_utc + 'Z'); await new Promise(r => setTimeout(r, 120)); }
-    GM.ready = true; GM.poll = Date.now(); renderAll();
-  } catch { GM.loading = false; setTimeout(gmInit, 3000); }
+  try { if (!(await gmFetch())) throw new Error('empty'); GM.ready = true; GM.poll = Date.now(); renderAll(); }
+  catch { GM.loading = false; setTimeout(gmInit, 5000); }
 }
-function gmTick() { if (GM.ready && Date.now() - GM.poll > 20000) { GM.poll = Date.now(); gmFetch(0, 6).catch(() => {}); } }
+function gmTick() { if (GM.ready && Date.now() - GM.poll > 45000 && !document.hidden) { GM.poll = Date.now(); gmFetch().catch(() => {}); } }
 
 // 차트: 진짜 가격 점들을 게임 가격으로 (점 사이를 every분 간격으로 채워서 이벤트가 보이게)
 function gmChartPts(sym, pts, base, every) {

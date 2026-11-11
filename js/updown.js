@@ -42,7 +42,7 @@ async function udEndPrice(r) {
   if (now() - r.end < 5000 && kFresh(r.sym)) return kPx(r.sym);
   try {
     const to = new Date(r.end + 60e3).toISOString().slice(0, 19);
-    const a = await (await fetch(`${UPBIT}/candles/minutes/1?market=${r.sym}&to=${to}&count=2`)).json();
+    const a = await (await upFetch(`${UPBIT}/candles/minutes/1?market=${r.sym}&to=${to}&count=2`)).json();
     const c = a.find(x => Date.parse(x.candle_date_time_utc + 'Z') <= r.end) || a[a.length - 1];
     return c ? c.trade_price * gmMult(r.sym, r.end, KP[r.sym] && KP[r.sym].c) : kPx(r.sym);   // 게임 가격으로
   } catch { return kPx(r.sym); }
