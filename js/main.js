@@ -1,7 +1,7 @@
 'use strict';
 /* ═════════ 시작 · 클릭 연결 · 1초 타이머 ═════════ */
 async function boot() {
-  syncTime(); S.betPct = LS.get('betPct', '0.1'); if (S.betPct === 'custom') S.betPct = '0.1'; S.feedSeen = LS.get('feedSeen', 0); S.homePin = LS.get('homePin', false); S.udSym = LS.get('udSym', 'KRW-BTC'); S.homeFlipAt = Date.now(); renderAll();
+  syncTime(); S.betPct = LS.get('betPct', '0.1'); if (S.betPct === 'custom') S.betPct = '0.1'; S.feedSeen = LS.get('feedSeen', 0); S.homePin = LS.get('homePin', false); S.udSym = LS.get('udSym', 'KRW-BTC'); S.cg = LS.get('cg', 'ud'); S.homeFlipAt = Date.now(); renderAll();
   const cfg = window.FIREBASE_CONFIG;
   if (cfg && cfg.apiKey) { bootFirebase(cfg); return; }
   startDemo();
@@ -18,7 +18,6 @@ document.addEventListener('click', e => {
   if (d.homeview) { S.homeView = d.homeview; S.homeFlipAt = Date.now(); renderHome(); return; }
   if (d.rankpg) { S.rankPage = (S.rankPage || 0) + +d.rankpg; renderHome(); return; }
   if (d.bet) { S.betPct = d.bet; LS.set('betPct', S.betPct); renderCasino(); return; }
-  if (d.coin) { playCasino('coin', d.coin); return; }
   if (d.like) { toggleLike(d.like); return; }
   if (d.del) { deleteTalk(d.del); return; }
   if (t.hasAttribute('data-player')) { if (S.sheet) closeSheet(); openProfile(d.player); return; }
@@ -34,7 +33,6 @@ document.addEventListener('click', e => {
     case 'lvMax': levelMax(); break;
     case 'shopGame': case 'gameBtn': case 'goGame': case 'promoGo': S.shopView = 'game'; goTab('shop'); break;
     case 'shopBack': S.shopView = null; renderShop(); break;
-    case 'spinBtn': playCasino('wheel'); break;
     case 'photoBtn': case 'photoBtn2': pickPhoto('photo'); break;
     case 'photoDel': clearPhoto(); break;
     case 'bannerBtn': if (!S.me || !(S.me.bannerTk > 0)) { toast('🔒 변경권이 없어요'); break; } pickPhoto('banner'); break;

@@ -1117,3 +1117,67 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .pr-msg.sm{font-size:12px}.pr-msg.sm em{font-size:13px}
 .krwwal.bn{background:linear-gradient(150deg,rgba(28,95,230,.5),rgba(11,47,122,.78)),var(--bn) center/cover no-repeat}
 .krwwal.bn b,.krwwal.bn .wl-s{text-shadow:0 1px 6px rgba(0,0,0,.35)}
+/* 🎰 도박장 게임 고르기 */
+.cgames{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.cgames button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 0 7px;border-radius:14px;background:var(--paper);color:var(--ink)}
+.cgames .cg-ic{font-size:22px;line-height:1.1}.cgames b{font-size:12px;font-weight:900}.cgames small{font-size:9.5px;font-weight:800;color:var(--dim)}
+.cgames button[aria-pressed="true"]{background:linear-gradient(150deg,#3b0764,#9d174d);color:#fff;box-shadow:0 4px 14px rgba(157,23,77,.35),inset 0 0 0 1.5px rgba(255,215,0,.6)}
+.cgames button[aria-pressed="true"] small{color:#ffe27a}
+.cgames button:disabled{opacity:.5}
+.cgame .cg-h h3{font-size:18px}
+.cg-hist{display:flex;gap:4px;flex-wrap:wrap}.cg-hist i{font-style:normal;font-size:11px;font-weight:800;padding:2px 7px;border-radius:99px;background:var(--paper);color:var(--dim)}
+.cg-hist i.hi{background:var(--mint-bg);color:var(--mint)}.cg-hist i.lo{background:var(--up-bg);color:var(--up)}
+.cgame .res{min-height:20px;text-align:center;font-weight:800}
+/* 🚀 로켓 */
+.rk-sky{--spd:1.6s;position:relative;height:200px;border-radius:18px;overflow:hidden;background:radial-gradient(120% 90% at 50% 110%,#5b21b6 0%,#1e1b4b 45%,#0b0a1f 100%);display:flex;align-items:center;justify-content:center}
+.rk-stars{position:absolute;inset:-200px 0 0 0;background-image:radial-gradient(1.5px 1.5px at 20px 30px,#fff,transparent),radial-gradient(1px 1px at 120px 80px,#fff,transparent),radial-gradient(1.5px 1.5px at 220px 150px,#ffe27a,transparent),radial-gradient(1px 1px at 300px 40px,#fff,transparent),radial-gradient(1px 1px at 60px 170px,#fff,transparent);background-size:340px 200px;opacity:.7}
+.rocket.live .rk-stars{animation:rkstar var(--spd) linear infinite}.rocket.live .rk-stars.s2{animation-duration:calc(var(--spd) * 1.7);opacity:.4}
+@keyframes rkstar{from{transform:translateY(0)}to{transform:translateY(200px)}}
+.rk-ship{position:absolute;left:50%;top:50%;margin:-22px 0 0 -22px;font-size:44px;transform:translate(-40px,40px);filter:drop-shadow(0 0 12px rgba(255,140,0,.8))}
+.rk-x{position:relative;font-size:52px;font-weight:900;color:#fff;letter-spacing:-.03em;text-shadow:0 0 24px rgba(255,255,255,.35)}
+.rk-msg{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;font-size:13px;font-weight:800;opacity:.9}
+.rk-msg .dim{color:#c7c2ff}
+.rocket.boom .rk-sky{animation:rkboom .5s}.rocket.boom .rk-ship{opacity:0}
+@keyframes rkboom{0%{background:#ff5a1f}30%{background:#ffb703}100%{}}
+.rk-stop{font-size:17px;animation:prgo .5s ease-in-out infinite}
+/* 💣 보물상자 */
+.mn-steps{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.mn-steps i{flex:1 0 auto;font-style:normal;text-align:center;font-size:11px;font-weight:800;padding:4px 6px;border-radius:8px;background:var(--paper);color:var(--dim)}
+.mn-steps i.done{background:var(--mint-bg);color:var(--mint)}.mn-steps i.next{background:var(--gold-bg);color:#8a5a00;box-shadow:inset 0 0 0 1.5px var(--gold)}
+.mn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mn-box{aspect-ratio:1;border-radius:16px;font-size:34px;background:linear-gradient(160deg,#fde68a,#f59e0b);box-shadow:0 4px 0 #b45309;transition:transform .1s}
+.mn-box:not(:disabled):active{transform:translateY(3px);box-shadow:0 1px 0 #b45309}
+.mn-box:disabled{cursor:default}
+.mn-box.gem{background:linear-gradient(160deg,#a7f3d0,#10b981);box-shadow:0 4px 0 #047857}
+.mn-box.bomb{background:linear-gradient(160deg,#fecaca,#ef4444);box-shadow:0 4px 0 #991b1b}
+.mn-box.dim{opacity:.45;filter:grayscale(.5)}
+.mn-box.pop{animation:mnpop .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes mnpop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+.mine.boom .mn-grid{animation:shk .4s}
+@keyframes shk{0%,100%{transform:none}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+/* 🎰 슬롯 */
+.sl-box{position:relative;padding:12px;border-radius:20px;background:linear-gradient(160deg,#7f1d1d,#3b0764);box-shadow:inset 0 0 0 3px #facc15,0 8px 20px rgba(59,7,100,.3)}
+.sl-reels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sl-reel{height:96px;border-radius:12px;background:linear-gradient(180deg,#e5e7eb,#fff 30%,#fff 70%,#e5e7eb);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:inset 0 3px 8px rgba(0,0,0,.25)}
+.sl-strip{font-size:52px;line-height:1}
+.sl-reel.spin .sl-strip{filter:blur(2px);transform:translateY(6px)}
+.sl-reel.stop .sl-strip{animation:slstop .3s cubic-bezier(.2,1.6,.4,1)}
+@keyframes slstop{from{transform:translateY(-30px)}to{transform:none}}
+.sl-box.tease{animation:sltease .25s ease-in-out infinite alternate}
+@keyframes sltease{to{box-shadow:inset 0 0 0 3px #fff,0 0 28px #facc15}}
+.sl-line{position:absolute;left:8px;right:8px;top:50%;height:2px;background:rgba(250,204,21,.7);pointer-events:none}
+.slot.jack .sl-box{animation:sltease .2s ease-in-out 8 alternate}
+.sl-pay{display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;font-size:11.5px;font-weight:700;color:var(--dim)}.sl-pay b{color:var(--ink)}
+/* 🏇 경마 */
+.rc-track{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:repeating-linear-gradient(90deg,#3f8f3a 0 22px,#46a041 22px 44px)}
+.rc-lane{position:relative;height:38px;border-radius:10px;background:rgba(255,255,255,.18);box-shadow:inset 3px 0 0 var(--c)}
+.rc-lane.mine{background:rgba(255,255,255,.34);box-shadow:inset 3px 0 0 var(--c),0 0 0 2px #fff}
+.rc-lane.win{background:rgba(255,226,122,.7)}
+.rc-no{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:99px;background:var(--c);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;z-index:1}
+.rc-horse{position:absolute;top:50%;margin-left:28px;font-size:26px;transform:translateY(-55%) scaleX(-1);transition:left .05s linear}
+.rc-lane.lead .rc-horse{filter:drop-shadow(0 0 6px #fff)}
+.rc-goal{position:absolute;right:6px;top:4px;bottom:4px;width:6px;background:repeating-linear-gradient(180deg,#fff 0 5px,#111 5px 10px);border-radius:2px}
+.rc-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rc-pick button{display:flex;flex-direction:column;align-items:center;padding:8px 0;border-radius:12px;background:var(--paper);box-shadow:inset 0 -3px 0 var(--c)}
+.rc-pick button b{font-size:13px;font-weight:900}.rc-pick button small{font-size:10.5px;color:var(--dim);font-weight:700}
+.rc-pick button[aria-pressed="true"]{background:var(--c);color:#fff}.rc-pick button[aria-pressed="true"] small{color:#fff}

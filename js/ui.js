@@ -73,7 +73,6 @@ const boom = () => { confetti(['#f2414f', '#ff9f1c', '#ffd23f', '#3a3346']); doc
 const buzz = (ms = 40) => { try { if (navigator.vibrate && navigator.userActivation && navigator.userActivation.isActive) navigator.vibrate(ms); } catch {} };
 /* ───────── casino ───────── */
 const C = { coinFace: '?', coinMsg: '', wheelRot: 0, wheelMsg: '', busy: false };
-function wheelBg() { const cols = ['#6a4cf5', '#f5f5f9']; return 'conic-gradient(' + WHEEL.map((m, i) => `${m === 0 ? '#ececf2' : m >= 2 ? '#ffcf4a' : m >= 1 ? '#c3b7ff' : '#e4deff'} ${i * WSEG}deg ${(i + 1) * WSEG}deg`).join(',') + ')'; }
 function renderCasino() {
   const el = $('#tab-casino');
   if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 게임을 할 수 없어요.' : '참가하면 게임을 할 수 있어요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
@@ -82,14 +81,11 @@ function renderCasino() {
   const bets = [['0.1', '10%'], ['0.25', '25%'], ['0.5', '50%'], ['1', '🔥올인']];
   let h = `<div class="card bal"><span class="dim" style="font-weight:700;font-size:13px">현금</span><b class="num">${won(S.me.cash)}</b></div>
     <div class="sec"><div class="sec-h"><h2>베팅 금액</h2><small>내 총자산 기준 · 한 판 최대 10억</small></div>
-    <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${String(S.betPct) === v}">${l}</button>`).join('')}</div>
+    <div class="betrow">${bets.map(([v, l]) => `<button type="button" data-bet="${v}" aria-pressed="${String(S.betPct) === v}" ${C.busy || C.live ? 'disabled' : ''}>${l}</button>`).join('')}</div>
     <p class="betnow">이번 판 <b class="num" id="betNow">${won(bet)}</b>${bet >= BET_CAP ? ' <span class="dim">(한 판 최대)</span>' : bet >= S.me.cash && bet > 0 ? ' <span class="up">(현금 전부 올인!)</span>' : ''}</p></div>
-    ${udCardHTML()}
-    <div class="card game"><div><h3>룰렛</h3><p class="desc">0배부터 대박 10배까지! 한 방에 인생 역전.</p></div>
-      <div class="wheel-wrap"><div class="pointer"></div><div class="wheel" id="wheel" style="background:${wheelBg()};transform:rotate(${C.wheelRot}deg)">${WHEEL.map((m, i) => `<span style="transform:rotate(${i * WSEG + WSEG / 2}deg) translateY(-96px)"><i>${m}x</i></span>`).join('')}</div><div class="hub"></div></div>
-      <p class="res" id="wheelMsg">${C.wheelMsg}</p>
-      <button class="cta" type="button" id="spinBtn" ${C.busy || bet < MINBET ? 'disabled' : ''}>${won(bet)} 걸고 돌리기</button></div>
-    <p class="hint">게임 결과도 총자산에 그대로 반영돼요. 올인으로 단숨에 1,000억·1조를 노려보세요!</p>`;
+    ${casinoPickerHTML()}
+    ${casinoGameHTML()}
+    <p class="hint">게임 결과도 총자산에 그대로 반영돼요. 로켓·보물상자는 도중에 앱을 끄면 그 판은 잃어요.</p>`;
   if (mx < MINBET) h = `<div class="empty">현금이 부족해요. 지원금을 받거나 주식을 팔아보세요.</div>`;
   el.innerHTML = h;
 }
@@ -102,38 +98,11 @@ function betAmount() {
 function updateBetLabels() {
   const b = betAmount(), ok = b >= MINBET && !C.busy;
   const n = $('#betNow'); if (n) n.textContent = won(b);
-  const sp = $('#spinBtn'); if (sp) { sp.textContent = `${won(b)} 걸고 돌리기`; sp.disabled = !ok; }
+  document.querySelectorAll('[data-betlbl]').forEach(x => { x.textContent = won(b); });
   document.querySelectorAll('[data-ud]').forEach(x => x.disabled = !ok);
 }
 const BET_CAP = 1_000_000_000;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-async function playCasino(game, choice) {
-  if (!S.me || S.saving || C.busy || seasonOver()) { if (seasonOver()) toast('시즌이 끝나서 게임도 닫혔어요'); return; }
-  const bet = betAmount();
-  if (bet < MINBET) { toast('걸 금액을 정해주세요 (최소 10만원)'); return; }
-  C.busy = true; let mult, label;
-  if (game === 'coin') {
-    const face = Math.random() < .5 ? '홀' : '짝'; mult = face === choice ? COIN_PAY : 0;
-    C.coinMsg = ''; renderCasino(); const coin = $('#coin'); coin.textContent = '?'; coin.classList.add('spin');
-    await sleep(950); C.coinFace = face; label = '홀짝';
-  } else {
-    const i = Math.floor(Math.random() * WHEEL.length); mult = WHEEL[i];
-    const target = 360 - (i * WSEG + WSEG / 2) + (Math.random() - .5) * WSEG * .6;
-    const cur = C.wheelRot % 360; C.wheelRot += 360 * 5 + ((target - cur) % 360 + 360) % 360;
-    C.wheelMsg = ''; renderCasino(); await sleep(30); $('#wheel').style.transform = `rotate(${C.wheelRot}deg)`;
-    await sleep(2900); label = '룰렛';
-  }
-  const payout = Math.floor(bet * mult), net = payout - bet;
-  if (mult >= 2) { confetti(); buzz(80); } else if (mult === 0) buzz(20);
-  const before = S.me; const me = JSON.parse(JSON.stringify(before));
-  me.cash = Math.round(me.cash + net); me.casino = (me.casino || 0) + net;
-  const ok = await saveMe(me, before);
-  const msg = net > 0 ? `<b class="up">+${won(net)}</b> ${mult}배!` : net < 0 ? `<b class="down">-${won(-net)}</b> ${mult ? mult + '배' : '꽝'}` : '본전';
-  if (game === 'coin') C.coinMsg = ok ? `${C.coinFace} · ${msg}` : ''; else C.wheelMsg = ok ? msg : '';
-  C.busy = false;
-  if (ok && (mult >= 2 || (mult === 0 && bet >= 1e7))) addFeed({ kind: 'casino', game: label, mult, amt: net });
-  renderAll();
-}
 /* ───────── feed ───────── */
 function feedText(f) {
   if (!f || typeof f.kind !== 'string') return null;
@@ -223,12 +192,12 @@ function renderShop() {
   const el = $('#tab-shop');
   if (S.shopView === 'game') {
     if (!el.querySelector('#tab-casino')) el.innerHTML = `<button type="button" class="back-link" id="shopBack">← 상점으로</button><section class="sec" id="tab-casino" style="gap:18px"></section>`;
-    if (!C.busy) renderCasino(); return;
+    if (!C.busy && !C.live) renderCasino(); return;
   }
   const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv), plan = S.me ? lvMaxPlan(S.me.cash, lv) : { to: lv, spent: 0 }, armed = S.lvArm && Date.now() - S.lvArm < 4000;
   el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 1.14배</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
     ${plan.to > lv + 1 ? `<button type="button" class="cta ${armed ? 'buy' : 'soft'} lvmax" id="lvMax" ${S.saving || S.readOnly ? 'disabled' : ''}>${armed ? `한 번 더 누르면 LV.${plan.to}까지 · ${won(plan.spent)} 결제` : `⏫ 최대한 올리기 · LV.${plan.to}까지 ${won(plan.spent)}`}</button>` : ''}
-<div class="sec"><div class="sec-h"><h2>게임</h2></div><button type="button" class="card shopitem" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>⚡ 1분 업다운 · 룰렛</b><small>진짜 시세로 1분 승부</small></span><span class="si-go">›</span></button></div>`;
+<div class="sec"><div class="sec-h"><h2>게임</h2></div><button type="button" class="card shopitem" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>도박장 · 게임 5개</b><small>⚡업다운 🚀로켓 💣보물상자 🎰슬롯 🏇경마</small></span><span class="si-go">›</span></button></div>`;
 }
 // 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
 // 소식 알림 점: 큰 청산·큰 수익·구채·게임 대박만
@@ -399,7 +368,11 @@ const HELP = {
     '<b>⭐ 레벨업</b>: 현금으로 올려요. 올릴 때마다 가격이 1.14배가 돼요.',
     
     '<b>⚡ 1분 업다운</b>: 진짜 업비트 시세로 1분 뒤 오를지 내릴지 맞혀요. 맞히면 1.9배, 3연승째부터 2.0배, 5연승째부터 2.3배. 가격이 똑같으면 돌려받아요. 앱을 꺼도 1분 뒤 시세로 결과가 정해져요.',
-    '<b>🎡 룰렛</b>: 0배부터 10배까지. 평균 0.975배라 오래 하면 조금씩 잃어요.']],
+    '<b>🚀 로켓</b>: 배수가 1.00x부터 계속 올라가요. 터지기 전에 <b>STOP</b>을 누르면 그 배수만큼 받아요. 최대 100배. 3%는 출발하자마자 터져요.',
+    '<b>💣 보물상자</b>: 상자 9개 중 폭탄 2개. 💎를 열 때마다 1.25배 → 1.66배 → … 최대 35배까지 올라가요. 언제든 그만두고 받을 수 있고, 폭탄이면 다 잃어요.',
+    '<b>🎰 슬롯</b>: 세 줄이 같으면 🍒3배 · 🍋8배 · 🔔30배 · 💎80배 · 7️⃣500배. 🍒가 딱 2개면 본전.',
+    '<b>🏇 경마</b>: 4마리 중 1등할 말을 고르면 3.8배.',
+    '모든 게임은 평균 94~97%를 돌려줘요. 오래 하면 조금씩 잃어요.']],
 };
 function renderHelp(b) {
   const [t, sub, items] = (S.profile ? HELP.atk : HELP[S.tab]) || HELP.home;
