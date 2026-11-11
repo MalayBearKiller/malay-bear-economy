@@ -244,7 +244,8 @@ function renderKCoinSheet(b, sh) {
   b.innerHTML = `<div class="shead">${kBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${KCAT[c.c].n} · 업비트 원화마켓</small></div></div>
     <div class="bigp"><div class="p num" id="kLivePrice">${o.p ? kWon(o.p) + '원' : '…'}</div><div class="c num"><span class="${cls(o.c || 0)}" id="kLivePct">어제보다 ${o.p ? ((o.c > 0 ? '+' : '') + ((o.c || 0) * 100).toFixed(2) + '%') : ''}</span></div></div>
     <div class="chartbox"><canvas class="chart" id="kChart" aria-label="최근 24시간 차트"></canvas><i class="cpulse"></i></div>
-    <div class="info"><div>친구 보유<b>${holders.length}명</b></div><div>24시간 거래대금<b class="num">${o.v ? krwUnits(o.v) : '-'}</b></div>
+    ${holdersHTML(c.id)}
+    <div class="info info3"><div>24시간 거래대금<b class="num">${o.v ? krwUnits(o.v) : '-'}</b></div>
       <div>내 보유<b class="num">${held ? kQty(held) + ' ' + c.a : '-'}</b></div><div>평단<b class="num">${avg ? kWon(avg) + '원' : '-'}</b></div></div>
     ${canTrade ? `<div class="seg seg3">${modes.map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${sh.m === m}">${l}</button>`).join('')}</div>
       ${sh.m === 'fut' ? fFormHTML(sh) : `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="${sh.m === 'sell' ? '팔 금액(원)' : '주문 금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
@@ -359,7 +360,7 @@ const KSHEETS = { mine: renderMineSheet, us: renderUSSheet, kcoin: renderKCoinSh
 function kClick(t) {
   const d = t.dataset;
   if (d.kcoin) { if (!S.me && !S.readOnly) { openSheet('join'); return true; } if (S.sheet) closeSheetRaw(); openSheet('kcoin', { sym: d.kcoin, m: 'buy' }); return true; }
-  if (d.fxinfo) { toast(`💵 지금 1달러 = ${FX.p.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원. 주식을 살 때 이 환율로 자동 환전돼요`); return true; }
+  if (false && d.fxinfo) { toast(`💵 지금 1달러 = ${FX.p.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원. 주식을 살 때 이 환율로 자동 환전돼요`); return true; }
   if (d.us) { if (!S.me && !S.readOnly) { openSheet('join'); return true; } if (S.sheet) closeSheetRaw(); openSheet('us', { sym: d.us, m: 'buy' }); return true; }
   if (d.xmkt) { S.xMkt = d.xmkt; renderExchange(true); return true; }
   if (d.mtab) { S.sheet.tab = d.mtab; S.qsArm = null; renderSheet(); $('#sheetWrap .sheet').scrollTop = 0; return true; }

@@ -5,7 +5,7 @@
 function allHoldings(p) {
   const out = [];
   kPositions(p).forEach(x => { const c = KC[x.sym]; out.push({ ...x, badge: kBadge(c), name: c.n, tag: x.kind === 'fut' ? x.label : '코인', tagc: x.kind === 'fut' ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: `${kQty(x.q)} ${c.a}`, open: `data-kcoin="${x.sym}"` }); });
-  uPositions(p).forEach(x => { const c = UC[x.sym]; out.push({ ...x, badge: uBadge(c), name: c.n, tag: '주식', tagc: 'spot', sub: uQty(x.q), open: `data-us="${x.sym}"` }); });
+  uPositions(p).forEach(x => { const c = UC[x.sym], fut = x.kind === 'fut'; out.push({ ...x, badge: uBadge(c), name: c.n, tag: fut ? x.label : { us: '주식', cm: '현물', fx: '외화' }[c.m], tagc: fut ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: fut ? `증거금 ${krw(x.principal)}` : uQty(x.q, x.sym) + (c.m !== 'fx' ? ` · ${usd(uUsdOf(x.sym, x.q))}` : ''), open: `data-us="${x.sym}"` }); });
   const top = guChief();
   Object.entries(p.bonds || {}).forEach(([g, n]) => { if (!BOND[g] || !n) return; const value = bondSellGet(g, n), principal = n * ((p.bCost || {})[g] || 0);
     out.push({ sym: g, kind: 'bond', badge: `<span class="logo-b bb" style="background:${chiefColor(p.id)}">${BOND[g].i + 1}</span>`, name: g + (top[g] && top[g].id === p.id ? ' 👑' : ''), tag: '구채', tagc: 'spot', sub: `${n}장`, value, principal, pnl: value - principal, pct: principal ? value / principal - 1 : 0, open: `data-bond="${g}"` }); });
@@ -22,7 +22,7 @@ function profileBody(p, isMe) {
   let h = `<div class="phero${bn ? ' bn' : ''}"${bn}>
       <div class="ph-id">${isMe ? `<button type="button" class="ph-ava" id="photoBtn" aria-label="사진 바꾸기">${ava(p, true)}<i>📷</i></button>` : ava(p, true)}
         <div class="ph-nm"><b>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></b><small>${rk ? rk + '위' : ''}${lord ? ` · 👑 ${lord}` : ''}</small></div></div>
-      <div class="ph-w"><small>총자산</small><b class="num" data-roll="ph-${p.id}" data-v="${w}">${won(w)}</b><span class="num"><b class="${cls(roi)}">${pctTxt(roi)}</b> · 현금 ${won(p.cash || 0)}</span></div>
+      ${(() => { const u = uPositions(p).filter(x => x.kind === 'us').reduce((a, x) => a + uUsdOf(x.sym, x.q), 0); return u ? `<div class="ph-usd">💵 달러 자산 <b class="num">${usd(u)}</b> <small>(${krw(u * FX.p)})</small></div>` : ''; })()}<div class="ph-w"><small>총자산</small><b class="num" data-roll="ph-${p.id}" data-v="${w}">${won(w)}</b><span class="num"><b class="${cls(roi)}">${pctTxt(roi)}</b> · 현금 ${won(p.cash || 0)}</span></div>
       <div class="ws-bar">${parts.map(x => `<i style="width:${(x[1] / tot * 100).toFixed(2)}%;background:${x[2]}"></i>`).join('')}</div>
       <div class="ph-leg">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} <b class="num">${(x[1] / tot * 100).toFixed(0)}%</b></span>`).join('')}</div>
     </div>
@@ -58,7 +58,8 @@ function rivalHTML(p) {
     const a = assetOf(sym); if (!a) return; const I = atkInfo(p, field, sym), isFut = field === 'kFut' || field === 'uFut';
     const badge = KC[sym] ? kBadge(a) : uBadge(a);
     const tag = isFut ? `<span class="postag ${x.d > 0 ? 'long' : 'short'}">${x.label}</span>` : '';
-    const sub = isFut ? `증거금 ${krw(I.E || x.value)}${x.dist != null ? ` · 청산까지 ${(x.dist * 100).toFixed(1)}%` : ''}` : (I.profit > 0 ? `<span class="up">수익 +${krw(I.profit)}</span>` : I.profit < 0 ? `<span class="down">손해 중</span>` : '본전');
+    const usdTxt = UC[sym] && !isFut && UC[sym].m !== 'fx' ? ` · ${usd(uUsdOf(sym, x.q))}` : '';
+    const sub = isFut ? `증거금 ${krw(I.E || x.value)}${x.dist != null ? ` · 청산까지 ${(x.dist * 100).toFixed(1)}%` : ''}` : (I.profit > 0 ? `<span class="up">수익 +${krw(I.profit)}</span>` : I.profit < 0 ? `<span class="down">손해 중</span>` : '본전') + usdTxt;
     const btn = I.ok ? `<button type="button" class="atkb ${isFut ? 'hunt' : 'loot'}" data-atk="${p.id}|${field}|${sym}"><b>${isFut ? '🎯' : '💰'} ${Math.round(I.prob * 100)}%</b><small>${isFut ? '사냥' : '약탈'}</small></button>`
       : `<span class="atkb off"><small>${esc(I.why || '')}</small></span>`;
     rows.push({ v: x.value, html: `<div class="rvrow">${badge}<span class="sname"><b>${esc(a.n)} ${tag}</b><small class="num">${sub}</small></span><span class="sprice"><div class="p num">${krw(x.value)}</div></span>${btn}</div>` });

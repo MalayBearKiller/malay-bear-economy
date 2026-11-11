@@ -25,8 +25,11 @@ function atkInfo(p, field, sym) {
   let info;
   if (!isFut) {
     const q = (p[field] || {})[sym] || 0, cost0 = ((field === 'kHold' ? p.kCost : p.uCost) || {})[sym] || price, profit = q * (price - cost0);
-    info = { type: 'loot', q, price, profit, prob: ATK.LOOT_P, cost: Math.round(profit * ATK.LOOT_COST), win: Math.round(profit), dq: profit > 0 ? profit / price : 0, a };
+    // 주식·달러는 1주(1달러) 단위로만 뺏어요 → 수익으로 살 수 있는 만큼만
+    const whole = UC[sym] && UC[sym].m !== 'cm', dq = profit > 0 ? (whole ? Math.floor(profit / price) : profit / price) : 0, loot = dq * price;
+    info = { type: 'loot', q, price, profit, prob: ATK.LOOT_P, cost: Math.round(loot * ATK.LOOT_COST), win: Math.round(loot), dq, a };
     if (!(profit > 0)) return { ...info, ok: false, why: '손해 중이라 못 털어요' };
+    if (whole && dq < 1) return { ...info, ok: false, why: '수익이 1주 미만' };
     if (profit < ATK.MIN) return { ...info, ok: false, why: '수익이 너무 작아요' };
   } else {
     const o = (p[field] || {})[sym]; if (!o) return { ok: false, why: '포지션 없음' };
@@ -73,8 +76,9 @@ function atkApplyTo(t, evs) {   // t = 지갑 객체(직접 고침)
     if (e.type === 'loot') {
       const hf = e.f, cf = hf === 'kHold' ? 'kCost' : 'uCost', q = (t[hf] || {})[e.sym] || 0; if (!q) return;
       const left = Math.max(0, q - e.dq); t[cf] ||= {};
-      // 수익분만 빠지니까 남은 수량의 평단 = 그때 가격 (원금은 그대로)
-      if (left * e.px < 1) { delete t[hf][e.sym]; delete t[cf][e.sym]; } else { t[cf][e.sym] = e.px; t[hf][e.sym] = left; }
+      // 수익분만 빠지니까 원금(산 돈 합계)은 그대로 → 남은 수량에 원금을 나눠 평단을 다시 잡아요
+      const principal = (t[cf][e.sym] || e.px) * q;
+      if (left * e.px < 1) { delete t[hf][e.sym]; delete t[cf][e.sym]; } else { t[cf][e.sym] = Math.min(e.px, principal / left); t[hf][e.sym] = left; }
     } else {
       const o = (t[e.f] || {})[e.sym]; if (!o || o.at !== e.oat) return;
       if (e.exec) { delete t[e.f][e.sym]; return; }

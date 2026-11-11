@@ -7,31 +7,28 @@ function renderHome() {
   const el = $('#tab-home');
   let h = '';
   if (S.me) {
-    const me = kInit(S.me), w = worth(me, S.tick), r = roiOf(me, w), rk = ranking(S.tick).findIndex(p => p.id === S.uid) + 1;
+    const me = kInit(S.me), w = worth(me), r = roiOf(me, w), rk = ranking().findIndex(p => p.id === S.uid) + 1;
     const chief = GU_RANK.filter(g => (guChief()[g] || {}).id === S.uid);
     h += `<button type="button" class="wal krwwal one" data-tab-go="assets"><span class="wl-h"><span class="wl-ic">₩</span>내 총자산<small>${rk ? rk + '위' : ''}</small></span>
-      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}</span></button>
-    <div class="walbar"><span>${chief.length ? `👑 ${chief.length > 2 ? chief[0] + ' 외 ' + (chief.length - 1) + '곳 구청장' : chief.join('·') + '청장'}` : '🏛️ 구채를 사서 구청장이 되어 보세요'}</span></div>`;
+      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.length > 1 ? chief.length + '곳' : chief[0]}` : ''}</span></button>`;
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">10억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
-  // 서울 구청장 지도: 구마다 구채 1등의 도장. 구를 누르면 그 구 구채 창
-  if (S.readOnly) h += `<p class="hint" style="margin-top:-10px">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
+  if (S.readOnly) h += `<p class="hint keep" style="margin:-8px 0 0">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
 
-  const RPG = 8, cur = S.mode === 'loading' ? [] : ranking(S.tick), rPages = Math.max(1, Math.ceil(cur.length / RPG));
+  // 순위 | 지도: 5초마다 번갈아 보여주고, 📌 고정을 누르면 멈춰요. 두 화면 높이를 같게 해서 바뀔 때 화면이 출렁이지 않게
+  const RPG = 5, cur = S.mode === 'loading' ? [] : ranking(), rPages = Math.max(1, Math.ceil(cur.length / RPG));
   S.rankPage = Math.max(0, Math.min(S.rankPage || 0, rPages - 1));
-  // 순위 | 지도: 5초마다 번갈아 보여주고, 📌 고정을 누르면 멈춰요
   if (S.homeView !== 'map') S.homeView = 'rank';
   const isMap = S.homeView === 'map', pin = !!S.homePin;
   const top = guChief(), myGu = GU_RANK.filter(g => (top[g] || {}).id === S.uid).length, taken = Object.keys(top).length;
-  h += `<div class="sec"><div class="sec-h hsw"><span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${!isMap}">순위</button><button type="button" role="tab" data-homeview="map" aria-selected="${isMap}">지도</button></span>
-    <button type="button" class="pinbtn${pin ? ' on' : ''}" id="homePin" aria-pressed="${pin}" title="자동 전환 멈추기">📌 ${pin ? '고정됨' : '고정'}</button>
-    ${isMap ? `<small class="mapinfo2">구청장 ${taken}/25${myGu ? ` · 내 구 ${myGu}` : ''}</small>` : `<small class="livecnt">● ${liveCount()}명 접속</small>`}</div>
-    ${pin ? '' : `<div class="flipbar"><i style="animation-duration:5s;animation-delay:-${Math.min(5000, Date.now() - (S.homeFlipAt || 0))}ms"></i></div>`}`;
-  if (isMap) { h += `<div class="card bmapbox homemap">${bondMapSVG()}</div></div>`; el.innerHTML = h; return; }
-  h += `<div class="rpagerow"><span class="rpager"><button type="button" data-rankpg="-1" aria-label="이전 순위" ${S.rankPage ? '' : 'disabled'}>◀</button><small class="num">${S.rankPage + 1}/${rPages}</small><button type="button" data-rankpg="1" aria-label="다음 순위" ${S.rankPage < rPages - 1 ? '' : 'disabled'}>▶</button></span></div>`;
-  if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
+  h += `<div class="sec homesw"><div class="sec-h hsw"><span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${!isMap}">순위</button><button type="button" role="tab" data-homeview="map" aria-selected="${isMap}">지도</button></span>
+    <button type="button" class="pinbtn${pin ? ' on' : ''}" id="homePin" aria-pressed="${pin}" aria-label="자동 전환 멈추기">📌${pin ? ' 고정됨' : ''}</button>
+    ${isMap ? `<small class="mapinfo2">구청장 ${taken}/25${myGu ? ` · 내 구 ${myGu}` : ''}</small>` : `<small class="livecnt"><i></i>${liveCount()}명 접속</small>`}</div>
+    <div class="flipbar${pin ? ' off' : ''}"><i style="animation-duration:5s;animation-delay:-${Math.min(5000, Date.now() - (S.homeFlipAt || 0))}ms"></i></div><div class="hview">`;
+  if (isMap) h += `<div class="card bmapbox homemap">${bondMapSVG()}</div>`;
+  else if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
   else if (!cur.length) h += `<div class="empty">아직 아무도 없어요. 첫 번째로 참가해보세요.</div>`;
   else {
     const TOPS = topOwners();
@@ -43,8 +40,9 @@ function renderHome() {
         <span class="r num"><b>${man(p.w)}원</b><small class="${cls(r)}">${pctTxt(r)}</small></span></button>`;
     });
     h += `</div>`;
+    if (rPages > 1) h += `<div class="rpagerow"><span class="rpager"><button type="button" data-rankpg="-1" aria-label="이전 순위" ${S.rankPage ? '' : 'disabled'}>◀</button><small class="num">${S.rankPage + 1}/${rPages}</small><button type="button" data-rankpg="1" aria-label="다음 순위" ${S.rankPage < rPages - 1 ? '' : 'disabled'}>▶</button></span></div>`;
   }
-  h += `</div>`;
+  h += `</div></div>`;
   el.innerHTML = h;
 }
 function ownerColor(uid) { return uid === S.uid ? 'var(--violet)' : avaColor(uid); }

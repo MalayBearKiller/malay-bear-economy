@@ -18,6 +18,10 @@ const UC = {}, U_BY = {};   // UC: id → 종목 (m: 'us' 주식 / 'cm' 현물),
 USX.forEach(([a, n, c]) => { UC['US_' + a] = { id: 'US_' + a, a, n, c, s: a, m: 'us' }; });
 CMX.forEach(([s, a, n, c, unit]) => { UC['CM_' + a] = { id: 'CM_' + a, a, n, c, s, m: 'cm', unit }; });
 Object.values(UC).forEach(c => { U_BY[c.s] = c.id; });
+// 달러: 사고팔 수 있는 자산 (가격 = 실시간 원/달러 환율). 주식 탭 맨 위 '달러 환율' 줄에서 거래해요
+UC.FX_USD = { id: 'FX_USD', a: 'USD', n: '달러', c: 'fx', s: 'KRW=', m: 'fx', unit: '달러' };
+const catOf = c => UCAT[c.c] || CCAT[c.c] || { n: '환율', c: '#0f9d58' };
+const uWhole = id => UC[id] && UC[id].m !== 'cm';   // 주식·달러는 1주·1달러 단위, 원자재만 소수점
 const UP = {};                     // id → { p 달러 가격, base 전날 종가, st 장 상태, t 받은 시각 }
 const FX = { p: 0, c: 0, t: 0 };   // 원/달러 환율
 const UQ = { last: 0, poll: 0, busy: false, shown: {} };
@@ -27,11 +31,11 @@ const numOf = s => parseFloat(String(s || '').replace(/[,%+]/g, '')) || 0;
 async function uFetch() {
   if (UQ.busy) return; UQ.busy = true; UQ.poll = Date.now();
   try {
-    const r = await fetch(CNBC + encodeURIComponent([...Object.values(UC).map(c => c.s), 'KRW='].join('|')));
+    const r = await fetch(CNBC + encodeURIComponent([...Object.values(UC).filter(c => c.m !== 'fx').map(c => c.s), 'KRW='].join('|')));
     const list = (((await r.json()) || {}).FormattedQuoteResult || {}).FormattedQuote || [];
     list.forEach(q => {
       if (!q || q.code !== 0) return;
-      if (q.symbol === 'KRW=') { const p = numOf(q.last); if (p) { FX.p = p; FX.c = numOf(q.change_pct) / 100; FX.t = Date.now(); } return; }
+      if (q.symbol === 'KRW=') { const p = numOf(q.last); if (p) { FX.p = p; FX.c = numOf(q.change_pct) / 100; FX.t = Date.now(); UP.FX_USD = { p: 1, base: 1, st: 'REG_MKT', t: Date.now() }; } return; }
       const id = U_BY[q.symbol]; if (!id) return;
       const last = numOf(q.last), base = last - numOf(q.change), ext = q.ExtendedMktQuote;
       const useExt = ext && numOf(ext.last) && q.curmktstatus !== 'REG_MKT';
@@ -45,22 +49,25 @@ async function uFetch() {
 function uTick() { if (Date.now() - UQ.poll > 5000) uFetch(); }
 const uPx = id => (UP[id] && UP[id].p) || 0;                 // 달러
 const uWon = id => uPx(id) * FX.p;                           // 원화로
-const uChg = id => { const o = UP[id]; return o && o.base ? o.p / o.base - 1 : 0; };
+const uChg = id => { if (id === 'FX_USD') return FX.c; const o = UP[id]; return o && o.base ? o.p / o.base - 1 : 0; };
 const uFresh = id => UP[id] && FX.p && Date.now() - UP[id].t < 30000;
 const uLive = () => Date.now() - UQ.last < 20000 && FX.p;
 const ST_TXT = { REG_MKT: '정규장', PRE_MKT: '프리마켓', POST_MKT: '애프터마켓' };
-const uSt = id => (UC[id] && UC[id].m === 'cm' ? '실시간' : ST_TXT[(UP[id] || {}).st] || '장 마감');
+const uSt = id => (UC[id] && UC[id].m !== 'us' ? '실시간' : ST_TXT[(UP[id] || {}).st] || '장 마감');
 const usd = p => '$' + (p >= 1000 ? p.toLocaleString('en-US', { maximumFractionDigits: 2 }) : p.toFixed(2));
 // 주식 로고: 공개 로고 이미지(우리 서버 용량 0). 현물은 코드로 그린 아이콘
-const uBadge = c => (c.m === 'cm' ? cmIcon(c) : logoBadge(`https://financialmodelingprep.com/image-stock/${encodeURIComponent(c.a)}.png`, c.a, (UCAT[c.c] || CCAT[c.c]).c));
-const uQty = (q, id) => (+q.toPrecision(6)).toLocaleString('ko-KR', { maximumFractionDigits: 6 }) + (id && UC[id] && UC[id].unit ? ' ' + UC[id].unit : '주');
+const uBadge = c => (c.m === 'fx' ? CM_SVG.USD : c.m === 'cm' ? cmIcon(c) : logoBadge(`https://financialmodelingprep.com/image-stock/${encodeURIComponent(c.a)}.png`, c.a, catOf(c).c));
+// 가격 표시: 주식·원자재는 달러, 달러 자체는 원화(환율)
+const uPrice = (id, p = uPx(id)) => (UC[id] && UC[id].m === 'fx' ? FX.p.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '원' : usd(p));
+const uUsdOf = (id, q) => (UC[id] && UC[id].m === 'fx' ? q : q * uPx(id));   // 보유분의 달러 가치
+const uQty = (q, id) => (+q.toPrecision(8)).toLocaleString('ko-KR', { maximumFractionDigits: uWhole(id) ? 2 : 6 }) + (id && UC[id] && UC[id].unit ? ' ' + UC[id].unit : '주');
 
 function usWorth(p) { let v = 0; for (const [id, q] of Object.entries((p && p.uHold) || {})) if (UC[id] && q) v += q * (uWon(id) || (p.uCost || {})[id] || 0); return v; }
 function uPositions(p) {
   const out = [];
   Object.entries((p && p.uHold) || {}).forEach(([id, q]) => {
     if (!UC[id] || !q) return; const w = uWon(id) || p.uCost[id], principal = q * (p.uCost[id] || w), value = q * w * (1 - U_FEE);
-    out.push({ sym: id, kind: 'us', label: UC[id].m === 'cm' ? '현물' : '주식', principal, value, q, pnl: value - principal, pct: principal ? value / principal - 1 : 0 });
+    out.push({ sym: id, kind: 'us', label: { cm: '현물', fx: '외화', us: '주식' }[UC[id].m], principal, value, q, pnl: value - principal, pct: principal ? value / principal - 1 : 0 });
   });
   fPositions(p, 'uFut').forEach(x => { x.pnl = x.value - x.principal; x.pct = x.principal ? x.pnl / x.principal : 0; out.push(x); });
   return out;
@@ -68,8 +75,16 @@ function uPositions(p) {
 
 /* ───────── 주문 ───────── */
 function uCalc(sh) {
-  const w = uWon(sh.sym), amt = Math.max(0, Math.floor(+sh.amt || 0)), me = S.me || {};
-  if (sh.m === 'sell') { const held = (me.uHold || {})[sh.sym] || 0, q = sh.all ? held : Math.min(held, w ? amt / w : 0), get = q * w * (1 - U_FEE);
+  const w = uWon(sh.sym), me = S.me || {}, held = (me.uHold || {})[sh.sym] || 0;
+  if (uWhole(sh.sym)) {   // 주식·달러: 개수로 사고팔아요
+    const q = sh.all && sh.m === 'sell' ? held : Math.max(0, Math.floor(+sh.qty || 0)), unit = UC[sh.sym].m === 'fx' ? '달러' : '주';
+    if (sh.m === 'sell') { const get = q * w * (1 - U_FEE);
+      return { q, get, ok: q > 0 && q <= held + 1e-9, line: `받을 금액 <b class="num">${krw(get)}</b>`, maxQ: held, maxTxt: uQty(held, sh.sym) }; }
+    const amt = Math.ceil(q * w * (1 + U_FEE)), maxQ = w ? Math.floor((me.cash || 0) / (w * (1 + U_FEE))) : 0;
+    return { q, amt, ok: q >= 1 && amt <= (me.cash || 0), line: `필요 금액 <b class="num">${krw(amt)}</b>${UC[sh.sym].m === 'fx' ? '' : ` · ${usd(q * uPx(sh.sym))}`}`, maxQ, maxTxt: maxQ.toLocaleString('ko-KR') + unit };
+  }
+  const amt = Math.max(0, Math.floor(+sh.amt || 0));
+  if (sh.m === 'sell') { const q = sh.all ? held : Math.min(held, w ? amt / w : 0), get = q * w * (1 - U_FEE);
     return { q, get, ok: q > 0 && q <= held + 1e-12, line: `받을 금액 <b class="num">${krw(get)}</b>`, max: Math.floor(held * w) }; }
   const q = w ? amt / (w * (1 + U_FEE)) : 0;
   return { q, amt, ok: amt >= K_MIN && amt <= (me.cash || 0), line: `받을 수량 <b class="num">${uQty(q, sh.sym)}</b> · ${usd(q * uPx(sh.sym))}`, max: Math.floor((me.cash || 0) / (1 + U_FEE)) };
@@ -86,7 +101,7 @@ async function uDoTrade() {
   const n = UC[sh.sym].n;
   if (sh.m === 'sell') { const pnl = Math.round(c.get - c.q * ((before.uCost || {})[sh.sym] || w)); addFeed({ kind: 'k_usell', sym: sh.sym, amt: Math.round(c.get), pnl }); toast(`💸 ${n} 매도 · ${signKrw(pnl)}`); if (pnl > 0) bigWin(pnl); }
   else { addFeed({ kind: 'k_ubuy', sym: sh.sym, amt: c.amt }); toast(`🛒 ${n} ${krw(c.amt)} 매수!`); showMine(UC[sh.sym].m); return; }
-  sh.amt = ''; sh.all = false; renderAll(); renderSheet();
+  sh.amt = ''; sh.qty = ''; sh.all = false; renderAll(); renderSheet();
 }
 
 /* ───────── 차트: CNBC 1분봉, 가장 최근 거래일(프리 04:00 ~ 애프터 20:00, 미국 동부시간) ───────── */
@@ -97,7 +112,7 @@ async function uLoadChart(id) {
   try {
     const bars = ((((await (await fetch('https://ts-api.cnbc.com/harmony/app/charts/1D.json?symbol=' + encodeURIComponent(UC[id].s))).json()) || {}).barData || {}).priceBars) || [];
     if (!bars.length) return;
-    if (UC[id].m === 'cm') {   // 현물은 거의 24시간 거래 → 최근 24시간
+    if (UC[id].m !== 'us') {   // 현물·달러는 거의 24시간 거래 → 최근 24시간
       const tEnd = bars[bars.length - 1].tradeTimeinMills, l2 = bars.filter(b => b.tradeTimeinMills >= tEnd - D), st2 = Math.max(1, Math.floor(l2.length / 240));
       UCH[id] = { t: Date.now(), pts: l2.filter((b, i) => i % st2 === 0 || i === l2.length - 1).map(b => [b.tradeTimeinMills, numOf(b.close)]), t0: tEnd - D, t1: tEnd, roll: true }; uDrawChart(); return;
     }
@@ -111,38 +126,47 @@ async function uLoadChart(id) {
 }
 function uDrawChart() {
   const cv = $('#uChart'), sh = S.sheet; if (!cv || !sh || sh.type !== 'us') return; const ent = UCH[sh.sym]; if (!ent || !ent.pts) return;
-  const pts = ent.pts.slice(), p = uPx(sh.sym), t = now(), roll = ent.roll; if (p && t > pts[pts.length - 1][0] && (roll || t < ent.t1)) pts.push([t, p]);
-  drawTChart(cv, pts, { t0: roll ? t - D : ent.t0, t1: roll ? t : ent.t1, base: (UP[sh.sym] || {}).base, fmt: v => '$' + v.toFixed(2), stepH: roll ? 6 : 4 });
+  const pts = ent.pts.slice(), p = sh.sym === 'FX_USD' ? FX.p : uPx(sh.sym), t = now(), roll = ent.roll; if (p && t > pts[pts.length - 1][0] && (roll || t < ent.t1)) pts.push([t, p]);
+  const isFx = sh.sym === 'FX_USD'; if (isFx && FX.p) pts[pts.length - 1] = [t, FX.p];
+  drawTChart(cv, pts, { t0: roll ? t - D : ent.t0, t1: roll ? t : ent.t1, base: isFx ? FX.p / (1 + FX.c) : (UP[sh.sym] || {}).base, fmt: v => isFx ? v.toFixed(1) : '$' + v.toFixed(2), stepH: roll ? 6 : 4 });
 }
 
 /* ───────── 시트 ───────── */
 function renderUSSheet(b, sh) {
-  const c = UC[sh.sym], me = S.me, p = uPx(c.id), ch = uChg(c.id);
+  const c = UC[sh.sym], me = S.me, ch = uChg(c.id), whole = uWhole(c.id), isFx = c.m === 'fx';
   if (sh.m !== 'sell' && sh.m !== 'fut') sh.m = 'buy';
   const held = me && (me.uHold || {})[c.id], avg = held ? me.uCost[c.id] : 0, pos = held ? uPositions(me).find(x => x.sym === c.id && x.kind === 'us') : null;
-  b.innerHTML = `<div class="shead">${uBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${(UCAT[c.c] || CCAT[c.c]).n} · <span id="uSt">${uSt(c.id)}</span></small></div></div>
-    <div class="bigp"><div class="p num" id="uLivePrice">${p ? usd(p) : '…'}</div><div class="c num"><span class="${cls(ch)}" id="uLivePct">${pctTxt(ch)}</span> <span class="dim" id="uLiveWon">≈ ${krw(uWon(c.id))}</span></div></div>
+  const unit = isFx ? '달러' : '주';
+  const qtyForm = sh.m === 'sell'
+    ? `<div class="qtyrow"><button type="button" data-uqs="-1" aria-label="줄이기">−</button><input id="uQtyIn" type="number" inputmode="numeric" min="0" step="1" value="${sh.all ? '' : sh.qty || ''}" placeholder="${sh.all ? '전부' : '몇 ' + unit}" aria-label="수량"><button type="button" data-uqs="1" aria-label="늘리기">+</button></div>
+      <div class="quick">${[['1', '1' + unit], ['10', '10' + unit], ['.5', '절반'], ['all', '전부']].map(([v, l]) => `<button type="button" data-uqset="${v}">${l}</button>`).join('')}</div>`
+    : `<div class="qtyrow"><button type="button" data-uqs="-1" aria-label="줄이기">−</button><input id="uQtyIn" type="number" inputmode="numeric" min="0" step="1" value="${sh.qty || ''}" placeholder="몇 ${unit}" aria-label="수량"><button type="button" data-uqs="1" aria-label="늘리기">+</button></div>
+      <div class="quick">${[['1', '1' + unit], ['10', '10' + unit], ['.5', '절반'], ['max', '최대']].map(([v, l]) => `<button type="button" data-uqset="${v}">${l}</button>`).join('')}</div>`;
+  const amtForm = `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="${sh.m === 'sell' ? '팔 금액(원)' : '주문 금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
+      <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}</div>`;
+  b.innerHTML = `<div class="shead">${uBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${catOf(c).n} · <span id="uSt">${uSt(c.id)}</span></small></div></div>
+    <div class="bigp"><div class="p num" id="uLivePrice">${uPx(c.id) ? uPrice(c.id) : '…'}</div><div class="c num"><span class="${cls(ch)}" id="uLivePct">${pctTxt(ch)}</span> <span class="dim" id="uLiveWon">${isFx ? '1달러' : '≈ ' + krw(uWon(c.id))}</span></div></div>
     <div class="chartbox"><canvas class="chart" id="uChart" aria-label="하루 차트"></canvas><i class="cpulse"></i></div>
-    ${held ? `<div class="kline"><span>내 보유 <b class="num">${uQty(held, c.id)}</b> · 평단 ${krw(avg)}</span><span><b class="num ${cls(pos.pnl)}">${signKrw(pos.pnl)}</b></span></div>` : ''}
+    ${held ? `<div class="kline"><span>내 보유 <b class="num">${uQty(held, c.id)}</b>${isFx ? '' : ` · ${usd(uUsdOf(c.id, held))}`} · 평단 ${krw(avg)}</span><span><b class="num ${cls(pos.pnl)}">${signKrw(pos.pnl)}</b></span></div>` : ''}
+    ${holdersHTML(c.id)}
     ${me && !S.readOnly ? `<div class="seg seg3">${[['buy', '매수'], ['sell', '매도'], ['fut', '롱·숏']].map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${sh.m === m}">${l}</button>`).join('')}</div>
-      ${sh.m === 'fut' ? fFormHTML(sh) : `<div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="${sh.m === 'sell' ? '팔 금액(원)' : '주문 금액(원)'}" aria-label="금액"><span class="unit">원</span></div>
-      <div class="quick">${[['.1', '10%'], ['.25', '25%'], ['.5', '50%'], ['1', '최대']].map(([f, l]) => `<button type="button" data-kfrac="${f}">${l}</button>`).join('')}</div>
-      <div class="est" id="kEst"></div><button class="cta" id="kDoTrade" type="button"></button>`}` : ''}`;
+      ${sh.m === 'fut' ? fFormHTML(sh) : `${whole ? qtyForm : amtForm}<div class="est" id="kEst"></div><button class="cta" id="kDoTrade" type="button"></button>`}` : ''}`;
   uLoadChart(c.id); requestAnimationFrame(uDrawChart); uUpdateEst();
 }
 function uUpdateEst() {
   const sh = S.sheet; if (!sh || sh.type !== 'us') return; const est = $('#kEst'), btn = $('#kDoTrade'); if (!est || !btn) return;
   const i = $('#kAmt'); if (i && !sh.all) sh.amt = i.value;
+  const qi = $('#uQtyIn'); if (qi && !(sh.all && sh.m === 'sell')) sh.qty = qi.value;
   if (sh.m === 'fut') { fUpdateEst(sh); return; }
   const c = uCalc(sh);
-  est.innerHTML = `<span>${c.line}</span><span class="num">최대 ${krw(c.max)}</span>`;
+  est.innerHTML = `<span>${c.line}</span><span class="num">최대 ${c.maxTxt || krw(c.max)}</span>`;
   btn.textContent = S.saving ? '처리 중…' : sh.m === 'sell' ? '매도하기' : '매수하기';
   btn.className = 'cta ' + (sh.m === 'sell' ? 'sell' : 'buy'); btn.disabled = S.saving || !c.ok || !uFresh(sh.sym);
 }
 function uLiveSheet() {
   const sh = S.sheet; if (!sh || sh.type !== 'us') return; const p = uPx(sh.sym), ch = uChg(sh.sym);
   const a = $('#uLivePrice'), b = $('#uLivePct'), w = $('#uLiveWon'), s = $('#uSt');
-  if (a && p) flashText(a, usd(p)); if (b) { b.textContent = pctTxt(ch); b.className = cls(ch); } if (w) w.textContent = '≈ ' + krw(uWon(sh.sym)); if (s) s.textContent = uSt(sh.sym);
+  if (a && p) flashText(a, uPrice(sh.sym)); if (b) { b.textContent = pctTxt(ch); b.className = cls(ch); } if (w && sh.sym !== 'FX_USD') w.textContent = '≈ ' + krw(uWon(sh.sym)); if (s) s.textContent = uSt(sh.sym);
   uLoadChart(sh.sym); uDrawChart(); uUpdateEst();
 }
 
@@ -160,7 +184,7 @@ function uRow(c) {
 // 환율 한 칸: 목록 맨 위에 다른 종목처럼 보여요 (누르면 아무 일 없음)
 function fxRow() {
   const prev = UQ.shown.FX; const fl = prev && FX.p && FX.p !== prev ? (FX.p > prev ? 'u' : 'd') : ''; UQ.shown.FX = FX.p;
-  return `<div class="srow fxrow${fl ? ' row f' + fl : ''}"><button type="button" class="srow-main" data-fxinfo="1">${CM_SVG.USD}<span class="sname"><b>달러 환율</b><small><span class="tk">USD/KRW</span> · 실시간</small></span>
+  return `<div class="srow fxrow${fl ? ' row f' + fl : ''}"><button type="button" class="srow-main" data-us="FX_USD">${CM_SVG.USD}<span class="sname"><b>달러</b><small>${(S.me && (S.me.uHold || {}).FX_USD) ? `<span class="mine">${uQty(S.me.uHold.FX_USD, 'FX_USD')}</span>` : '<span class="tk">USD/KRW</span> · 실시간 환율'}</small></span>
     <span class="sprice"><div class="p num${fl ? ' f' + fl : ''}">${FX.p ? FX.p.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '…'}</div><div class="c num ${cls(FX.c)}">${FX.p ? (FX.c > 0 ? '+' : '') + (FX.c * 100).toFixed(2) + '%' : ''}</div></span></button></div>`;
 }
 // 거래소 탭: [주식 | 코인 | 현물 | 채권]. 내 보유는 오른쪽 아래 떠 있는 버튼 → 아래에서 올라오는 창
@@ -183,7 +207,7 @@ function minePositions(me, tab) {
   if (tab === 'coin') return kPositions(me);
   if (tab === 'bond') return Object.entries(me.bonds || {}).filter(([g, n]) => BOND[g] && n > 0).map(([g, n]) => { const value = bondSellGet(g, n), principal = n * ((me.bCost || {})[g] || 0);
     return { sym: g, kind: 'bond', q: n, value, principal, pnl: value - principal, pct: principal ? value / principal - 1 : 0 }; });
-  return uPositions(me).filter(x => UC[x.sym].m === tab);
+  return uPositions(me).filter(x => UC[x.sym].m === tab || (tab === 'us' && UC[x.sym].m === 'fx'));   // 달러는 주식 탭에
 }
 const myAll = me => (me ? X_TABS.flatMap(([k]) => minePositions(me, k)).sort((a, b) => b.value - a.value) : []);
 function mineRow(x) {
@@ -191,7 +215,7 @@ function mineRow(x) {
   let badge, name, sub, open;
   if (x.kind === 'bond') { badge = `<span class="logo-b bb" style="background:var(--krw)">${BOND[x.sym].i + 1}</span>`; name = x.sym + (chief ? ' 👑' : ''); sub = `${x.q}장 · 평단 ${krw((S.me.bCost || {})[x.sym] || 0)}`; open = `data-bond="${x.sym}"`; }
   else { const isU = !!UC[x.sym], c = isU ? UC[x.sym] : KC[x.sym]; badge = isU ? uBadge(c) : kBadge(c); name = c.n; open = isU ? `data-us="${x.sym}"` : `data-kcoin="${x.sym}"`;
-    sub = `${isU ? uQty(x.q, x.sym) : kQty(x.q) + ' ' + c.a}${x.dist != null ? ` · <span class="${x.dist / x.distMax < .3 ? 'up' : ''}">청산까지 ${(x.dist * 100).toFixed(1)}%</span>` : ''}`; }
+    sub = `${isU ? uQty(x.q, x.sym) + (x.kind !== 'fut' && c.m !== 'fx' ? ` · ${usd(uUsdOf(x.sym, x.q))}` : '') : kQty(x.q) + ' ' + c.a}${x.dist != null ? ` · <span class="${x.dist / x.distMax < .3 ? 'up' : ''}">청산까지 ${(x.dist * 100).toFixed(1)}%</span>` : ''}`; }
   const tag = x.kind === 'fut' ? ` <span class="postag ${x.d > 0 ? 'long' : 'short'}">${x.label}</span>` : '';
   const key = (x.kind === 'fut' ? 'f' : x.kind === 'bond' ? 'b' : KC[x.sym] ? 'k' : 'u') + ':' + x.sym;
   const armed = S.qsArm && S.qsArm.key === key && Date.now() - S.qsArm.t < 4000;
@@ -206,7 +230,7 @@ function renderMineSheet(b, sh) {
   const cnt = k => minePositions(me, k).length;
   b.innerHTML = `<div class="mhead"><h3>💼 내 보유</h3></div>
     <div class="xtabs" role="tablist">${X_TABS.map(([k, l]) => `<button type="button" role="tab" data-mtab="${k}" aria-selected="${tab === k}">${l}${cnt(k) ? ` <i class="mcnt">${cnt(k)}</i>` : ''}</button>`).join('')}</div>
-    ${me ? `<div class="msum"><div><small>평가금액</small><b class="num" data-roll="mV-${tab}" data-v="${V}">${krw(V)}</b></div><div><small>손익</small><b class="num ${cls(V - P)}"><span data-roll="mP-${tab}" data-v="${V - P}" data-fmt="sign">${signKrw(V - P)}</span>${P ? ` (${pctTxt((V - P) / P)})` : ''}</b></div><div><small>주문 가능</small><b class="num">${krw(me.cash)}</b></div></div>` : ''}
+    ${me ? `<div class="msum"><div><small>평가금액</small><b class="num" data-roll="mV-${tab}" data-v="${V}">${krw(V)}</b></div><div><small>손익</small><b class="num ${cls(V - P)}"><span data-roll="mP-${tab}" data-v="${V - P}" data-fmt="sign">${signKrw(V - P)}</span>${P ? ` (${pctTxt((V - P) / P)})` : ''}</b></div><div><small>주문 가능</small><b class="num">${krw(me.cash)}</b></div></div>${tab === 'us' || tab === 'cm' ? (() => { const u = pos.filter(x => x.kind === 'us').reduce((a, x) => a + uUsdOf(x.sym, x.q), 0); return u ? `<div class="musd">💵 달러 자산 <b class="num">${usd(u)}</b> · 환율 ${FX.p.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}원</div>` : ''; })() : ''}` : ''}
     <div class="slist">${pos.map(mineRow).join('') || `<div class="empty">이 탭엔 아직 가진 게 없어요.</div>`}</div>
     <button type="button" class="cta soft mgo" data-mgo="${tab}">${X_TABS.find(([k]) => k === tab)[1]} 더 사러 가기</button>`;
 }
@@ -258,3 +282,21 @@ function renderExchange(ctl) {
   $('#kList').innerHTML = fxRow() + list.map(uRow).join('');
 }
 uFetch();
+
+// 주식·달러 개수 입력: −/+ 버튼, 1·10·절반·최대(전부)
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('button'); if (!t || !S.sheet || S.sheet.type !== 'us') return;
+  const sh = S.sheet;
+  if (t.dataset.uqs) { const c = uCalc(sh); sh.all = false; sh.qty = String(Math.max(0, Math.min(c.maxQ ?? 1e12, Math.floor(+sh.qty || 0) + +t.dataset.uqs))); const i = $('#uQtyIn'); if (i) i.value = sh.qty; uUpdateEst(); }
+  if (t.dataset.uqset) { const v = t.dataset.uqset; sh.all = v === 'all'; const mx = Math.floor(uCalc({ ...sh, all: false }).maxQ || 0);
+    sh.qty = v === 'all' ? '' : String(v === 'max' ? mx : v === '.5' ? Math.floor(mx / 2) : Math.min(mx, +v)); const i = $('#uQtyIn'); if (i) { i.value = sh.qty; i.placeholder = sh.all ? '전부' : i.placeholder; } uUpdateEst(); }
+});
+document.addEventListener('input', e => { if (e.target.id === 'uQtyIn' && S.sheet) { S.sheet.all = false; uUpdateEst(); } });
+// 종목을 가진 친구들 (현물·롱숏 모두): 이름을 누르면 그 사람 프로필
+function holdersHTML(sym) {
+  const isK = !!KC[sym], hf = isK ? 'kHold' : 'uHold', ff = isK ? 'kFut' : 'uFut', px = isK ? kPx(sym) : uWon(sym);
+  const list = activePlayers().map(p => { const q = (p[hf] || {})[sym] || 0, o = (p[ff] || {})[sym], v = q * px + (o ? fVal(o, px || o.e) : 0); return { p, q, o, v }; })
+    .filter(x => x.v >= 10000).sort((a, b) => b.v - a.v);
+  if (!list.length) return `<div class="holders"><span class="hl-t">보유한 친구</span><span class="dim">아직 없어요</span></div>`;
+  return `<div class="holders"><span class="hl-t">보유한 친구 ${list.length}</span><div class="hl-list">${list.slice(0, 8).map(x => `<button type="button" class="hl-c${x.p.id === S.uid ? ' me' : ''}" data-player="${esc(x.p.id)}">${ava(x.p)}<span><b>${esc(x.p.id === S.uid ? '나' : x.p.name)}</b><small class="num">${x.o ? `${x.o.x}배 ${x.o.d > 0 ? '롱' : '숏'}` : !isK ? uQty(x.q, sym) : kQty(x.q) + ' ' + KC[sym].a}${x.o && x.q ? ' +현물' : ''} · ${man(x.v)}원</small></span></button>`).join('')}</div></div>`;
+}

@@ -15,10 +15,10 @@ const fPx = sym => (fIsCoin(sym) ? kPx(sym) : uWon(sym));
 const fOk = sym => (fIsCoin(sym) ? kFresh(sym) : uFresh(sym));
 const fFee = sym => (fIsCoin(sym) ? 0.0005 : U_FEE);
 function fLevs(sym) {
-  if (!fIsCoin(sym)) return UC[sym].m === 'cm' ? [2, 5, 10] : [2, 3];
+  if (!fIsCoin(sym)) return UC[sym].m === 'us' ? [2, 3] : [2, 5, 10];   // 주식 2·3배, 원자재·달러 2·5·10배
   const c = KC[sym], mx = (c.a === 'BTC' || c.a === 'ETH') ? 100 : c.c === 'meme' ? 25 : 50; return F_LEVS.filter(x => x <= mx);
 }
-const fShowPx = (sym, v) => (fIsCoin(sym) ? kWon(v) + '원' : FX.p ? usd(v / FX.p) : krw(v));
+const fShowPx = (sym, v) => (fIsCoin(sym) ? kWon(v) + '원' : UC[sym].m === 'fx' ? v.toFixed(1) + '원' : FX.p ? usd(v / FX.p) : krw(v));
 const fLiqP = o => o.e * (1 - o.d * (1 / o.x - F_MM));
 const fFund = o => o.q * o.e * F_FUND * Math.max(0, now() - o.at) / F_FUND_MS;
 const fDead = (o, p) => (o.d > 0 ? p <= fLiqP(o) : p >= fLiqP(o));
