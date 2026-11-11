@@ -116,10 +116,10 @@ function gHomeHTML() {
   const st = gShown().filter(c => top[c.id]).map(c => { const [x, y] = GPOS[c.id]; return `<g transform="translate(${x},${y}) scale(${k})">${stampInner(top[c.id].id, 'gh' + c.id)}</g>`; }).join('');
   const kings = {}; Object.entries(top).forEach(([id, t]) => { (kings[t.id] ||= { a: 0, c: [] }); kings[t.id].a += t.a; kings[t.id].c.push(GC[id]); });
   const ks = Object.entries(kings).sort((a, b) => b[1].c.length - a[1].c.length || b[1].a - a[1].a);
-  return `<div class="card gmapbox homemap" data-gocar="1"><svg viewBox="${vb.join(' ')}" class="wmap" preserveAspectRatio="xMidYMid meet" role="img" aria-label="세계 국채 지도"><path d="${WMAP_LAND}" class="wl"/>${cs}${st}</svg>
+  return `<div class="card gmapbox homemap" data-gocar="1"><svg viewBox="${vb.join(' ')}" class="wmap" preserveAspectRatio="xMidYMid meet" role="img" aria-label="세계 국채 지도"><path d="${WMAP_LAND}" class="wl"/>${cs}${st}</svg></div>
     ${ks.length ? `<div class="gkings">${ks.slice(0, 4).map(([uid, o]) => { const p = S.players[uid] || {};
       return `<button type="button" class="gking${uid === S.uid ? ' me' : ''}" data-gpin="${o.c[0].id}" style="--kc:${chiefColor(uid)}"><span class="gk-a">${ava(p)}</span><span class="gk-t"><b>👑 ${esc(uid === S.uid ? '나' : p.name || '?')}</b><small>${o.c.map(c => c.f + ' ' + esc(c.cn)).join(' · ')}</small></span><span class="gk-v num">${krw(o.a)}</span></button>`; }).join('')}</div>`
-      : `<p class="gk-none">아직 국채 왕이 없어요. 거래소 › 채권에서 첫 번째 왕이 되어 보세요.</p>`}</div>`;
+      : `<p class="gk-none">아직 국채 왕이 없어요. 거래소 › 채권에서 첫 번째 왕이 되어 보세요.</p>`}`;
 }
 function worldHTML() {
   const z = gReg(), top = gTop(), me = S.me || {}, list = gShown().filter(c => c.rg === z);
