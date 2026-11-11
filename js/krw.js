@@ -71,7 +71,7 @@ function kAssets(p) {
   if (!p) return 0;
   let v = 0;
   for (const [c, q] of Object.entries(p.kHold || {})) if (KC[c]) v += q * (kPx(c) || (p.kCost || {})[c] || 0);
-  return Math.round(v + bondWorth(p) + futWorth(p) + usWorth(p));
+  return Math.round(v + bondWorth(p) + futWorth(p) + usWorth(p) + gHoldWorth(p));
 }
 const kWorth = p => worth(p, S.tick);
 const kRoi = p => roiOf(p, kWorth(p));
@@ -151,7 +151,7 @@ async function kStipend() {
 }
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
-  uTick();
+  uTick(); gTick();
   if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); kCashTax(); fScan(); }
 }
 
@@ -291,7 +291,7 @@ function kUpdateEst() {
   sb.textContent = S.saving ? '처리 중…' : sh.all ? '전부 매도하기' : '매도하기'; sb.disabled = S.saving || !fresh || !held || !cs.ok;
 }
 function kLiveSheet() {
-  uLiveSheet(); if (S.sheet && S.sheet.type === 'mine') renderSheet();
+  uLiveSheet(); gLiveSheet(); if (S.sheet && S.sheet.type === 'mine') renderSheet();
   const sh = S.sheet; if (!sh || sh.type !== 'kcoin') return; const o = KP[sh.sym] || {};
   const lp = $('#kLivePrice'), pc = $('#kLivePct');
   if (lp && o.p) flashText(lp, kWon(o.p) + '원');
@@ -362,9 +362,9 @@ function kFeedText(f) {
   switch (f.kind) {
     case 'k_buy': return c ? ['up', '🛒', `<b>${nm}</b>님이 ${esc(c.n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
     case 'k_sell': return c ? (f.pnl >= 1e8 ? ['up', '💰', `<b>${nm}</b>님이 ${esc(c.n)}로 <b class="up">${signKrw(f.pnl)}</b> 벌었어요`] : ['down', '💸', `<b>${nm}</b>님이 ${esc(c.n)}을(를) <b>${krw(f.amt)}</b>어치 팔았어요`]) : null;
-    case 'k_fopen': { const c2 = KC[f.sym] || UC[f.sym]; return c2 ? [f.d > 0 ? 'up' : 'down', f.d > 0 ? '🚀' : '📉', `<b>${nm}</b>님이 ${esc(c2.n)} <b>${f.x}배 ${f.d > 0 ? '롱' : '숏'}</b> 진입 (${krw(f.amt)})`] : null; }
-    case 'k_fclose': { const c2 = KC[f.sym] || UC[f.sym]; return c2 ? [f.pnl >= 0 ? 'up' : 'down', f.pnl >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(c2.n)} ${f.x}배 ${f.d > 0 ? '롱' : '숏'} 종료 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null; }
-    case 'k_fliq': { const c2 = KC[f.sym] || UC[f.sym]; return c2 ? ['down', '💀', `<b>${nm}</b>님 ${esc(c2.n)} <b>${f.x}배 ${f.d > 0 ? '롱' : '숏'} 청산</b> <b class="down">-${krw(f.amt)}</b>`] : null; }
+    case 'k_fopen': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? [f.d > 0 ? 'up' : 'down', f.d > 0 ? '🚀' : '📉', `<b>${nm}</b>님이 ${esc(c2.n)} <b>${f.x}배 ${f.d > 0 ? '롱' : '숏'}</b> 진입 (${krw(f.amt)})`] : null; }
+    case 'k_fclose': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? [f.pnl >= 0 ? 'up' : 'down', f.pnl >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(c2.n)} ${f.x}배 ${f.d > 0 ? '롱' : '숏'} 종료 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null; }
+    case 'k_fliq': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? ['down', '💀', `<b>${nm}</b>님 ${esc(c2.n)} <b>${f.x}배 ${f.d > 0 ? '롱' : '숏'} 청산</b> <b class="down">-${krw(f.amt)}</b>`] : null; }
     case 'k_ubuy': return UC[f.sym] ? ['up', '🇺🇸', `<b>${nm}</b>님이 ${esc(UC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
     case 'k_usell': return UC[f.sym] ? [f.pnl >= 0 ? 'up' : 'down', '🇺🇸', `<b>${nm}</b>님이 ${esc(UC[f.sym].n)}을(를) 팔았어요 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null;
     case 'k_atk': { const a = KC[f.sym] || UC[f.sym], tn = esc(nameOf(f.target)), an = a ? esc(a.n) : '';
@@ -373,6 +373,8 @@ function kFeedText(f) {
         : f.exec ? ['down', '☠️', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} <b>참수!</b> 현상금 <b class="up">${krw(f.gain)}</b>`]
         : ['up', '🎯', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} 증거금 <b class="up">${krw(f.gain)}</b> 사냥`]; }
     case 'k_auto': return ['gold', '🤖', `<b>${nm}</b>님 현금 <b>${krw(f.amt)}</b> 자동 투자`];
+    case 'k_gbuy': return GC[f.sym] ? ['up', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
+    case 'k_gsell': return GC[f.sym] ? [f.pnl >= 0 ? 'up' : 'down', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) 팔았어요 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null;
     case 'k_tax': return ['down', '💸', `<b>${nm}</b>님 현금세 <b class="down">-${krw(f.amt)}</b>`];
     case 'k_bond': return ['gold', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 <b>${f.n}장</b>을 샀어요`];
     case 'k_bsell': return ['down', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 구채 ${f.n}장을 팔았어요`];
@@ -401,10 +403,10 @@ function kClick(t) {
   if (d.kfrac && S.sheet.m === 'fut') { const sh = S.sheet; S.futPct = +d.kfrac; LS.set('futPct', S.futPct); sh.amtTouched = false; renderSheet(); return true; }   // 롱·숏: 비율을 기억해 두고 자동으로 채워요
   // 현물 빠른 버튼: 누를 때마다 '살 수 있는 최대'의 1·10·25·50%씩 더해요 (최대 100%)
   if (d.kadd || d.kclr) { const sh = S.sheet, isQ = sh.type === 'us' && uWhole(sh.sym); sh.all = false;
-    const max = isQ ? uCalc({ ...sh, m: 'buy', all: false }).maxQ || 0 : sh.type === 'us' ? uCalc({ ...sh, m: 'buy', all: false }).max : kMax('buy', sh.sym);
+    const max = sh.type === 'gb' ? gBuyMax() : isQ ? uCalc({ ...sh, m: 'buy', all: false }).maxQ || 0 : sh.type === 'us' ? uCalc({ ...sh, m: 'buy', all: false }).max : kMax('buy', sh.sym);
     const cur = isQ ? +sh.qty || 0 : +sh.amt || 0, r = d.kclr ? 0 : Math.min(1, (max ? cur / max : 0) + +d.kadd);
     if (isQ) { sh.qty = r ? String(Math.floor(max * r + 1e-9)) : ''; const i = $('#uQtyIn'); if (i) i.value = sh.qty; } else { sh.amt = r ? String(Math.floor(max * r / 1000) * 1000) : ''; const i = $('#kAmt'); if (i) i.value = sh.amt; }
-    document.querySelectorAll('[data-kall]').forEach(b => b.setAttribute('aria-pressed', 'false')); kUpdateEst(); uUpdateEst(); return true; }
+    document.querySelectorAll('[data-kall]').forEach(b => b.setAttribute('aria-pressed', 'false')); kUpdateEst(); uUpdateEst(); gUpdateEst(); return true; }
   if (d.kall) { const sh = S.sheet; sh.all = !sh.all; sh.amt = ''; renderSheet(); return true; }
   if (d.kfrac) { const sh = S.sheet, f = +d.kfrac, mx = sh.type === 'us' ? uCalc({ ...sh, m: 'buy' }).max : sh.m === 'fut' ? fMax(sh) : kMax('buy', sh.sym); sh.all = false; sh.amt = String(Math.floor(mx * f)); const i = $('#kAmt'); if (i) i.value = sh.amt; kUpdateEst(); uUpdateEst(); return true; }
   if (d.bond) { if (!S.me && !S.readOnly) { openSheet('join'); return true; } openSheet('bond', { gu: d.bond, side: 'buy', n: 1 }); return true; }
@@ -422,7 +424,7 @@ function kClick(t) {
   return false;
 }
 document.addEventListener('input', e => {
-  if (e.target.id === 'kAmt' && S.sheet) { S.sheet.all = false; if (S.sheet.m === 'fut') { S.sheet.amtTouched = true; document.querySelectorAll('.fpct [data-kfrac]').forEach(b => b.setAttribute('aria-pressed', 'false')); } kUpdateEst(); uUpdateEst(); }
+  if (e.target.id === 'kAmt' && S.sheet) { S.sheet.all = false; gUpdateEst(); if (S.sheet.m === 'fut') { S.sheet.amtTouched = true; document.querySelectorAll('.fpct [data-kfrac]').forEach(b => b.setAttribute('aria-pressed', 'false')); } kUpdateEst(); uUpdateEst(); }
   if (e.target.id === 'bQty' && S.sheet) { S.sheet.n = Math.max(1, Math.floor(+e.target.value || 1)); clearTimeout(S.bqT); S.bqT = setTimeout(renderSheet, 500); }
 });
 document.addEventListener('change', e => { if (e.target.id === 'xCat') { S[{ us: 'uCat', coin: 'kCat', cm: 'cCat' }[S.xMkt]] = e.target.value; renderExchange(); } if (e.target.id === 'xSort') { S[{ us: 'uSortKey', coin: 'kSortKey', cm: 'cSortKey' }[S.xMkt]] = e.target.value; renderExchange(); } });

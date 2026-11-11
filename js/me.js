@@ -6,6 +6,7 @@ function allHoldings(p) {
   const out = [];
   kPositions(p).forEach(x => { const c = KC[x.sym]; out.push({ ...x, badge: kBadge(c), name: c.n, tag: x.kind === 'fut' ? x.label : '코인', tagc: x.kind === 'fut' ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: `${kQty(x.q)} ${c.a}`, open: `data-kcoin="${x.sym}"` }); });
   uPositions(p).forEach(x => { const c = UC[x.sym], fut = x.kind === 'fut'; out.push({ ...x, badge: uBadge(c), name: c.n, tag: fut ? x.label : { us: '주식', cm: '현물', fx: '외화' }[c.m], tagc: fut ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: fut ? `증거금 ${krw(x.principal)}` : uQty(x.q, x.sym) + (c.m !== 'fx' ? ` · ${usd(uUsdOf(x.sym, x.q))}` : ''), open: `data-us="${x.sym}"` }); });
+  gPositions(p).forEach(x => { const c = GC[x.sym], fut = x.kind === 'fut', o = (p.gHold || {})[x.sym]; out.push({ ...x, badge: `<span class="logo-b gflag">${c.f}</span>`, name: c.n, tag: fut ? x.label : '국채', tagc: fut ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: fut ? `증거금 ${krw(x.principal)}` : `산 금리 ${o ? o.y.toFixed(2) : '-'}%`, open: `data-gb="${x.sym}"` }); });
   const top = guChief();
   Object.entries(p.bonds || {}).forEach(([g, n]) => { if (!BOND[g] || !n) return; const value = bondSellGet(g, n), principal = n * ((p.bCost || {})[g] || 0);
     out.push({ sym: g, kind: 'bond', badge: `<span class="logo-b bb" style="background:${chiefColor(p.id)}">${BOND[g].i + 1}</span>`, name: g + (top[g] && top[g].id === p.id ? ' 👑' : ''), tag: '구채', tagc: 'spot', sub: `${n}장`, value, principal, pnl: value - principal, pct: principal ? value / principal - 1 : 0, open: `data-bond="${g}"` }); });
@@ -16,7 +17,7 @@ function profileBody(p, isMe) {
   const H0 = allHoldings(p);
   const sum = f => H0.filter(f).reduce((a, x) => a + x.value, 0);
   const parts = [['현금', p.cash || 0, '#16b27e'], ['코인', sum(x => x.kind === 'spot' && KC[x.sym]), '#f08c00'], ['선물', sum(x => x.kind === 'fut'), '#f2414f'],
-    ['주식', sum(x => x.kind === 'us'), '#2b2745'], ['구채', sum(x => x.kind === 'bond'), '#1450d2']].filter(x => x[1] > 0);
+    ['주식', sum(x => x.kind === 'us'), '#2b2745'], ['채권', sum(x => x.kind === 'bond' || x.kind === 'gb'), '#1450d2']].filter(x => x[1] > 0);
   const tot = parts.reduce((a, x) => a + x[1], 0) || 1;
   const bn = okPhoto(p.banner) ? ` style="--bn:url(${p.banner})"` : '';
   let h = `<div class="phero${bn ? ' bn' : ''}"${bn}>

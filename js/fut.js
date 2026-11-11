@@ -9,22 +9,24 @@
 const F_MM = 0.005, F_FUND = 0.0001, F_FUND_MS = 8 * H;
 const F_LEVS = [2, 5, 10, 25, 50, 100];
 const fIsCoin = sym => !!KC[sym];
-const fField = sym => (fIsCoin(sym) ? 'kFut' : 'uFut');
-const fAsset = sym => KC[sym] || UC[sym];
-const fPx = sym => (fIsCoin(sym) ? kPx(sym) : uWon(sym));
-const fOk = sym => (fIsCoin(sym) ? kFresh(sym) : uFresh(sym));
-const fFee = sym => (fIsCoin(sym) ? 0.0005 : U_FEE);
+// 나라별 국채(GC, gbond.js)도 같은 엔진: 가격 = 금리로 계산한 가격 지수
+const fField = sym => (fIsCoin(sym) ? 'kFut' : GC[sym] ? 'gFut' : 'uFut');
+const fAsset = sym => KC[sym] || UC[sym] || GC[sym];
+const fPx = sym => (fIsCoin(sym) ? kPx(sym) : GC[sym] ? gPx(sym) : uWon(sym));
+const fOk = sym => (fIsCoin(sym) ? kFresh(sym) : GC[sym] ? gFresh(sym) : uFresh(sym));
+const fFee = sym => (fIsCoin(sym) || GC[sym] ? 0.0005 : U_FEE);
 function fLevs(sym) {
+  if (GC[sym]) return [2, 5, 10];
   if (!fIsCoin(sym)) return UC[sym].m === 'us' ? [2, 3] : [2, 5, 10];   // 주식 2·3배, 원자재·달러 2·5·10배
   const c = KC[sym], mx = (c.a === 'BTC' || c.a === 'ETH') ? 100 : c.c === 'meme' ? 25 : 50; return F_LEVS.filter(x => x <= mx);
 }
-const fShowPx = (sym, v) => (fIsCoin(sym) ? kWon(v) + '원' : UC[sym].m === 'fx' ? v.toFixed(1) + '원' : FX.p ? usd(v / FX.p) : krw(v));
+const fShowPx = (sym, v) => (fIsCoin(sym) ? kWon(v) + '원' : GC[sym] ? `금리 ${gYieldAt(sym, v).toFixed(2)}%` : UC[sym].m === 'fx' ? v.toFixed(1) + '원' : FX.p ? usd(v / FX.p) : krw(v));
 const fLiqP = o => o.e * (1 - o.d * (1 / o.x - F_MM));
 const fFund = o => o.q * o.e * F_FUND * Math.max(0, now() - o.at) / F_FUND_MS;
 const fDead = (o, p) => (o.d > 0 ? p <= fLiqP(o) : p >= fLiqP(o));
 function fVal(o, p) { if (!p) return o.m; if (fDead(o, p)) return 0; return Math.max(0, o.m + o.d * o.q * (p - o.e) - fFund(o)); }
 const fSide = o => (o.d > 0 ? '롱' : '숏');
-function futWorth(p) { let v = 0; ['kFut', 'uFut'].forEach(f => { for (const [s, o] of Object.entries((p && p[f]) || {})) if (fAsset(s) && o) v += fVal(o, fPx(s) || o.e); }); return v; }
+function futWorth(p) { let v = 0; ['kFut', 'uFut', 'gFut'].forEach(f => { for (const [s, o] of Object.entries((p && p[f]) || {})) if (fAsset(s) && o) v += fVal(o, fPx(s) || o.e); }); return v; }
 function fPositions(p, field) {
   const out = [];
   Object.entries((p && p[field]) || {}).forEach(([s, o]) => {

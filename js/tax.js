@@ -1,6 +1,7 @@
 'use strict';
 /* ═════════ 🤖 현금 자동 투자 + 📜 전체 로그 ═════════
-   자동 투자: 총자산 중 현금이 50% 이상이면, 매시 정각에 '50%를 넘는 현금'을 코인·미국 주식 3~5개에 무작위로 나눠 현물로 사 줘요.
+   자동 투자: 총자산 중 현금이 50% 이상이면, 매시 정각에 '50%를 넘는 현금'을 코인·미국 주식 3~5개에 무작위로 나눠 레버리지 롱(코인 2·3·5배, 주식 2·3배)을 잡아요.
+     한 접속에서 자동 투자 뒤 아무것도 안 누르면 휴면 → 더 안 사요. 다시 접속하거나 화면을 누르면 다시 켜져요.
      (세금처럼 돈이 사라지지 않고 자산으로 바뀌어요. 현금 100%인 사람이면 남은 현금의 딱 절반)
      예) 총자산 50억에 현금 50억 → 25억어치를 BTC·테슬라·솔라나 … 에 랜덤으로 나눠 매수
      처음엔 지금부터 세요(소급 없음). 새로 참가하면 1~2시간 유예. 40% 이상이면 아래에 경고 막대가 떠요.
@@ -10,30 +11,38 @@ const cashRatio = p => { const w = worth(p); return w > 0 ? (p.cash || 0) / w : 
 const taxExcess = p => Math.max(0, (p.cash || 0) - TAX.LINE * worth(p));
 // 살 후보: 업비트 코인 전부 + 미국 주식(장 상태 상관없이 지금 가격). 시세가 살아 있는 것만
 const autoPool = () => [...Object.values(KC).filter(c => kFresh(c.id)).map(c => ({ id: c.id, k: 1 })), ...Object.values(UC).filter(c => c.m === 'us' && uFresh(c.id)).map(c => ({ id: c.id, k: 0 }))];
+// 휴면: 이번 접속에서 이미 자동 투자가 한 번 됐는데 그 뒤로 아무것도 안 눌렀으면 더는 강제로 사지 않아요.
+// 앱을 다시 열거나(새 접속) 화면을 아무거나 누르면 다시 켜져요.
+const AUTO = { bootAt: Date.now(), clickAt: 0 };
+document.addEventListener('click', () => { AUTO.clickAt = Date.now(); }, true);
+const autoDormant = me => !!(me && me.autoAt && me.autoAt >= AUTO.bootAt && AUTO.clickAt < me.autoAt);
+const AUTO_LEV = c => (c.k ? [2, 3, 5] : [2, 3]);   // 코인 2·3·5배, 주식 2·3배 (롱만)
 async function kCashTax() {   // 이름은 그대로 두고 내용만 자동 투자로 (kTick에서 불러요)
   const m0 = S.me; if (!m0 || S.saving || S.readOnly) return;
   const h = Math.floor(now() / H);
   if (m0.taxH == null) { const me = clone(m0); me.taxH = h; await kSave(me, m0); return; }
   if (h <= m0.taxH) return;
   const ex = taxExcess(m0), r0 = cashRatio(m0);
-  if (ex < 1e6) { const me = clone(m0); me.taxH = h; await kSave(me, m0); return; }   // 50% 아래면 그냥 넘어가요
+  if (ex < 1e6 || autoDormant(m0)) { const me = clone(m0); me.taxH = h; await kSave(me, m0); return; }   // 50% 아래거나 휴면이면 넘어가요
   const pool = autoPool(); if (pool.length < 5) return;   // 시세가 아직 없으면 다음 초에 다시
-  // 3~5개를 고르고, 무작위 비율로 나눠요
   const n = 3 + Math.floor(Math.random() * 3), pick = [];
   while (pick.length < n) { const c = pool[Math.floor(Math.random() * pool.length)]; if (!pick.includes(c)) pick.push(c); }
   const wts = pick.map(() => .5 + Math.random()), tw = wts.reduce((a, x) => a + x, 0);
-  const me = clone(m0); me.kHold ||= {}; me.kCost ||= {}; me.uHold ||= {}; me.uCost ||= {};
+  const me = clone(m0); me.kFut ||= {}; me.uFut ||= {};
   let spent = 0; const bought = [];
-  pick.forEach((c, i) => {
-    const amt = ex * wts[i] / tw;
-    if (c.k) { const p = kPx(c.id), q = amt / (p * (1 + KFEE)); if (!(q > 0)) return; const h0 = me.kHold[c.id] || 0; me.kCost[c.id] = ((me.kCost[c.id] || 0) * h0 + q * p) / (h0 + q); me.kHold[c.id] = h0 + q; spent += amt; bought.push([c.id, Math.round(amt)]); }
-    else { const w = uWon(c.id), q = Math.floor(amt / (w * (1 + U_FEE))); if (q < 1) return; const cost = q * w * (1 + U_FEE), h0 = me.uHold[c.id] || 0; me.uCost[c.id] = ((me.uCost[c.id] || 0) * h0 + q * w) / (h0 + q); me.uHold[c.id] = h0 + q; spent += cost; bought.push([c.id, Math.round(cost)]); }
+  pick.forEach((c, i) => {   // 나눈 금액을 증거금으로 레버리지 롱
+    const f = c.k ? 'kFut' : 'uFut', o = me[f][c.id]; if (o && o.d < 0) return;   // 숏 잡고 있는 종목은 건너뛰어요
+    const levs = AUTO_LEV(c), x = levs[Math.floor(Math.random() * levs.length)], p = fPx(c.id); if (!p) return;
+    const m = ex * wts[i] / tw / (1 + x * fFee(c.id)), N = m * x, q = N / p, fee = N * fFee(c.id);
+    if (o) { const q2 = o.q + q, e = (o.q * o.e + q * p) / q2, m2 = o.m - fFund(o) + m; me[f][c.id] = { d: 1, q: q2, e, m: m2, x: Math.max(1, Math.round(q2 * e / m2)), at: now() }; }
+    else me[f][c.id] = { d: 1, q, e: p, m, x, at: now() };
+    spent += m + fee; bought.push([c.id, Math.round(m), x]);
   });
-  me.taxH = h; me.cash = Math.round(me.cash - spent); me.autoTotal = (me.autoTotal || 0) + Math.round(spent);
+  me.taxH = h; me.autoAt = now(); me.cash = Math.round(me.cash - spent); me.autoTotal = (me.autoTotal || 0) + Math.round(spent);
   if (!(await kSave(me, m0)) || !bought.length) return;
-  addFeed({ kind: 'k_auto', amt: Math.round(spent), r: +r0.toFixed(3), list: bought.map(([id, a]) => id + ':' + a).join(',') });
-  const names = bought.map(([id]) => (KC[id] || UC[id]).n);
-  toast(`🤖 현금이 ${Math.round(r0 * 100)}%라 ${krw(spent)}을(를) 자동 투자했어요: ${names.slice(0, 3).join('·')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`); buzz(60); renderAll();
+  addFeed({ kind: 'k_auto', amt: Math.round(spent), r: +r0.toFixed(3), list: bought.map(([id, a, x]) => id + ':' + a + ':' + x).join(',') });
+  const names = bought.map(([id, , x]) => `${(KC[id] || UC[id]).n} ${x}배`);
+  toast(`🤖 현금이 ${Math.round(r0 * 100)}%라 ${krw(spent)}을(를) 레버리지 롱으로 자동 투자: ${names.slice(0, 3).join('·')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`); buzz(60); renderAll();
 }
 // 아래 경고 막대: 40% 이상이면 계속 떠요. 누르면 거래소로
 function renderTaxBar() {
@@ -42,8 +51,9 @@ function renderTaxBar() {
   el.hidden = !show; document.body.classList.toggle('has-taxbar', show); if (!show) return;
   const next = (Math.floor(now() / H) + 1) * H, ex = taxExcess(me), hot = r >= TAX.LINE;
   el.classList.toggle('hot', hot);
+  if (hot && autoDormant(me)) { el.innerHTML = `<span class="tb-ic">😴</span><span class="tb-t"><b>휴면 · 자동 투자 멈춤 (현금 ${Math.round(r * 100)}%)</b><small>화면을 누르거나 다시 접속하면 다시 켜져요</small></span>`; el.classList.remove('hot'); return; }
   el.innerHTML = hot
-    ? `<span class="tb-ic">🤖</span><span class="tb-t"><b>현금 ${Math.round(r * 100)}% · ${mmss(next - now())} 뒤 ${krw(ex)} 자동 투자</b><small>코인·주식에 무작위로 사져요 · 직접 고르려면 눌러서 투자하기</small></span>`
+    ? `<span class="tb-ic">🤖</span><span class="tb-t"><b>현금 ${Math.round(r * 100)}% · ${mmss(next - now())} 뒤 ${krw(ex)} 자동 투자</b><small>코인·주식에 2~5배 롱으로 무작위로 사져요 · 직접 고르려면 눌러서 투자</small></span>`
     : `<span class="tb-ic">⚠️</span><span class="tb-t"><b>현금 ${Math.round(r * 100)}% · 50% 넘으면 자동 투자</b><small>매시 정각, 50% 넘는 현금이 코인·주식에 무작위로 사져요</small></span>`;
 }
 
@@ -53,7 +63,7 @@ const LOG_F = { all: ['전체', () => true], trade: ['거래', f => /^k_(buy|sel
 function logDetail(f) {
   if (f.kind === 'k_atk') return `🎲 뽑은 번호 ${(+f.roll).toFixed(3)} ${f.ok ? '<' : '≥'} 성공 확률 ${Math.round(f.p * 100)}% → ${f.ok ? '성공' : '실패'} · 비용 ${krw(f.cost)}${f.rev ? ' · 복수 반값' : ''}`;
   if (f.kind === 'k_tax') return `현금 비율 ${Math.round((f.r || 0) * 100)}%${f.hrs > 1 ? ` · ${f.hrs}시간치` : ''}`;
-  if (f.kind === 'k_auto') return `현금 비율 ${Math.round((f.r || 0) * 100)}% · ` + String(f.list || '').split(',').filter(Boolean).map(x => { const [id, a] = x.split(':'), c = KC[id] || UC[id]; return c ? `${c.n} ${man(+a)}` : ''; }).join(' · ');
+  if (f.kind === 'k_auto') return `현금 비율 ${Math.round((f.r || 0) * 100)}% · ` + String(f.list || '').split(',').filter(Boolean).map(x => { const [id, a] = x.split(':'), c = KC[id] || UC[id]; return c ? `${c.n} ${x.split(':')[2] ? x.split(':')[2] + '배 롱 ' : ''}${man(+a)}` : ''; }).join(' · ');
   if (f.kind === 'k_fliq') return `${f.x}배 ${f.d > 0 ? '롱' : '숏'} 증거금 ${krw(f.amt)} 전부 청산`;
   return '';
 }

@@ -2,12 +2,12 @@
 /* ═════════ 공격 (PvP) ═════════
    💰 현물 수익분 약탈: 수익 중인 현물만. 비용 = 그 종목 평가이익의 25%, 성공 20%.
       성공 → 평가이익 전부(그만큼의 수량)를 뺏어 옴 + 비용 환급. 상대 원금은 그대로.
-   🎯 선물 마진 사냥: 모든 롱·숏. 비용 = 남은 증거금의 10%, 성공 20% + 배수×0.6 (최대 60%).
-      성공 → 남은 증거금 30%를 뺏어 옴 + 비용 환급. 그 바람에 청산가에 닿으면 ☠️ 참수: 나머지 증거금까지 전부.
+   🎯 선물 마진 사냥(하이리스크 하이리턴): 모든 롱·숏. 비용 = 남은 증거금의 15%, 성공 20% + 배수×0.2 (최대 40%).
+      성공 → 남은 증거금 50%를 뺏어 옴 + 비용 환급. 그 바람에 청산가에 닿으면 ☠️ 참수: 나머지 증거금까지 전부.
    실패 → 비용 잃음, 절반은 상대에게 위자료.
    공격자 쿨타임 10분 · 같은 종목 30분에 1번 · 털린 종목은 3시간 보호막 · 공격당하면 10분 동안 그 사람에게 반값 복수.
    결과는 공격할 때 뽑은 무작위 번호(roll)로 정하고 기록에 남겨요. 남의 지갑은 못 고치니까, 당한 사람 앱이 기록을 보고 스스로 반영해요. */
-const ATK = { LOOT_COST: .25, LOOT_P: .20, HUNT_COST: .10, HUNT_TAKE: .30, MY_CD: 10 * 60e3, POS_CD: 30 * 60e3, SHIELD: 3 * H, REVENGE: 10 * 60e3, MIN: 100_000 };
+const ATK = { LOOT_COST: .25, LOOT_P: .20, HUNT_COST: .15, HUNT_TAKE: .50, MY_CD: 10 * 60e3, POS_CD: 30 * 60e3, SHIELD: 3 * H, REVENGE: 10 * 60e3, MIN: 100_000 };
 const atkEvents = () => [...(S.feed || []), ...(S.atkFeed || [])].filter(f => f && f.kind === 'k_atk');
 // 지금 이 사람에게 반값 복수 가능? (그 사람이 10분 안에 나를 공격했으면)
 const revengeOn = tid => atkEvents().some(f => f.uid === tid && f.target === S.uid && now() - f.ts < ATK.REVENGE);
@@ -35,7 +35,7 @@ function atkInfo(p, field, sym) {
     const o = (p[field] || {})[sym]; if (!o) return { ok: false, why: '포지션 없음' };
     const E = fVal(o, price), take = E * ATK.HUNT_TAKE, m2 = o.m - take, x2 = o.q * o.e / Math.max(1, m2);
     const exec = fDead({ ...o, m: m2, x: x2 }, price) || E - take <= 0;
-    info = { type: 'hunt', o, E, price, prob: Math.min(.6, .2 + o.x * .006), cost: Math.round(E * ATK.HUNT_COST), win: Math.round(exec ? E : take), exec, m2, x2, a };
+    info = { type: 'hunt', o, E, price, prob: Math.min(.4, .2 + o.x * .002), cost: Math.round(E * ATK.HUNT_COST), win: Math.round(exec ? E : take), exec, m2, x2, a };
     if (E < ATK.MIN) return { ...info, ok: false, why: '증거금이 너무 작아요' };
   }
   info.rev = revengeOn(p.id); if (info.rev) info.cost = Math.round(info.cost / 2);
@@ -113,12 +113,12 @@ function renderAtkSheet(b, sh) {
     <div class="atk-vs">${ava(p, true)}<div><b>${esc(p.name)}</b><small>${esc(a ? a.n : '')}${isFut && I.o ? ` · ${I.o.x}배 ${fSide(I.o)}` : ''}</small></div></div>
     <div class="atk-p"><div class="atk-pt"><span>성공 확률</span><b class="num">${pct}%</b></div><div class="atk-bar"><i style="width:${pct}%"></i></div></div>
     <div class="atk-io">
-      <div class="win"><small>성공하면</small><b class="num">+${krw(I.win || 0)}</b><span>${isFut ? (I.exec ? '☠️ 참수! 증거금 전부' : '증거금 30% 뺏기 + 비용 환급') : '수익 전부 뺏기 + 비용 환급'}</span></div>
+      <div class="win"><small>성공하면</small><b class="num">+${krw(I.win || 0)}</b><span>${isFut ? (I.exec ? '☠️ 참수! 증거금 전부' : '증거금 50% 뺏기 + 비용 환급') : '수익 전부 뺏기 + 비용 환급'}</span></div>
       <div class="lose"><small>실패하면</small><b class="num">-${krw(I.cost || 0)}</b><span>절반은 상대 위자료</span></div>
     </div>
     ${!I.ok ? `<p class="atk-why">${esc(I.why)}</p>` : wait ? `<p class="atk-why">⏳ ${Math.ceil(wait / 6e4)}분 뒤에 다시 공격할 수 있어요</p>` : S.me && S.me.cash < I.cost ? '<p class="atk-why">현금이 부족해요</p>' : ''}
     <details class="atk-help"${sh.help ? ' open' : ''}><summary>❓ ${isFut ? '마진 사냥' : '수익 약탈'}이 뭐예요?</summary>${isFut
-      ? `<p>상대가 <b>롱·숏</b>으로 걸어 둔 돈(증거금)을 노려요.</p><ul><li>성공하면 상대 증거금의 <b>30%</b>를 가져와요. 낸 돈도 돌려받아요.</li><li>그걸로 상대가 청산 직전까지 몰리면 <b>☠️ 참수</b> — 증거금을 <b>전부</b> 가져와요.</li><li>배수가 높은 사람일수록 <b>성공 확률이 높아요</b> (최대 60%).</li><li>실패하면 낸 돈을 잃고, 절반은 상대가 가져가요.</li></ul>`
+      ? `<p>상대가 <b>롱·숏</b>으로 걸어 둔 돈(증거금)을 노려요.</p><ul><li>성공하면 상대 증거금의 <b>절반(50%)</b>을 가져와요. 낸 돈도 돌려받아요.</li><li>그걸로 상대가 청산 직전까지 몰리면 <b>☠️ 참수</b> — 증거금을 <b>전부</b> 가져와요.</li><li>배수가 높은 사람일수록 <b>성공 확률이 조금 높아요</b> (10배 22% · 50배 30% · 최대 40%).</li><li>실패하면 낸 돈(증거금의 15%)을 잃고, 절반은 상대가 가져가요.</li></ul>`
       : `<p>상대가 <b>수익 보고 있는</b> 코인·주식을 노려요. 손해 중인 건 못 털어요.</p><ul><li>성공(20%)하면 그 종목의 <b>번 돈만큼</b>을 내 것으로 가져와요. 낸 돈도 돌려받아요.</li><li>상대가 처음 넣은 원금은 안 건드려요.</li><li>실패하면 낸 돈(수익의 25%)을 잃고, 절반은 상대가 가져가요.</li></ul>`}
       <p class="atk-rule">공격은 10분에 1번 · 털린 종목은 3시간 보호막 · 당하면 10분 동안 반값 복수</p></details>
     <button class="cta atk-go" id="atkGo" type="button" ${can ? '' : 'disabled'}>💥 공격하기 · ${krw(I.cost || 0)}</button>`;

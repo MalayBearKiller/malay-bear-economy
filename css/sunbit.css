@@ -1015,3 +1015,20 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .pctnow{min-height:16px;margin-top:-4px;font-size:12px;font-weight:700;color:var(--dim);display:flex;align-items:center;gap:6px}
 .pctnow b{color:var(--ink)}
 .pctnow button{font-size:11.5px;font-weight:800;color:var(--krw);padding:2px 6px;border-radius:6px;background:var(--krw-bg)}
+/* 🌍 세계 국채 */
+.gbsub{margin-bottom:8px}
+.greg{display:flex;gap:6px;margin-bottom:8px}
+.greg button{flex:1;height:34px;border-radius:10px;background:var(--paper);font-size:13px;font-weight:800;color:var(--dim)}
+.greg button[aria-pressed="true"]{background:var(--krw);color:#fff}
+.gmapbox{position:relative;padding:6px;background:linear-gradient(180deg,#eaf2ff,#f6f9ff);margin-bottom:6px}
+.gmap{width:100%;display:block}
+.gmap .gl{fill:#d9e4f5;stroke:#fff;stroke-width:2}
+.gpin{cursor:pointer}
+.gpin .gp-c{fill:#fff;stroke:#9fb3d6;stroke-width:2}.gpin .gp-c.up{stroke:var(--up)}.gpin .gp-c.down{stroke:var(--down)}
+.gpin.mine .gp-c{fill:#fff6dc;stroke-width:3}
+.gpin .gp-f{font-size:18px;text-anchor:middle}
+.gpin .gp-l{fill:var(--ink)}.gpin .gp-t{fill:#fff;font-size:11px;font-weight:800;text-anchor:middle}
+.gm-note{position:absolute;right:10px;bottom:6px;font-size:10.5px;font-weight:700;color:var(--dim)}
+.logo-b.gflag{background:var(--paper);font-size:22px}
+.gnote,.gfut-note{font-size:12px;font-weight:700;color:var(--dim);margin:4px 2px 0}
+.gfut-note b{color:var(--ink)}
