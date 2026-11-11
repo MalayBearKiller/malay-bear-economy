@@ -2,6 +2,8 @@
 /* ═════════ 프로필: 내 프로필 탭(하단 맨 오른쪽)과 친구 프로필이 같은 모양 ═════════
    위: 사진·이름·레벨·순위·구청장 + 총자산 · 수익률 · 현금 + 자산 구성 막대
    아래: 가진 것 전부 한 목록 (코인·선물·주식·구채). 내 프로필이면 맨 아래 설정 한 줄. */
+// 내 자산 탭: 내 배경 사진을 화면 배경에 옅게 깔아요
+function bnBody() { const me = S.me, on = S.tab === 'assets' && me && okPhoto(me.banner); document.body.classList.toggle('bnbody', !!on); if (on) document.body.style.setProperty('--bnb', `url(${me.banner})`); }
 function allHoldings(p) {
   const out = [];
   kPositions(p).forEach(x => { const c = KC[x.sym]; out.push({ ...x, badge: kBadge(c), name: c.n, tag: x.kind === 'fut' ? x.label : '코인', tagc: x.kind === 'fut' ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: `${kQty(x.q)} ${c.a}`, open: `data-kcoin="${x.sym}"` }); });
@@ -26,16 +28,63 @@ function profileBody(p, isMe) {
       <div class="ws-bar">${parts.map(x => `<i style="width:${(x[1] / tot * 100).toFixed(2)}%;background:${x[2]}"></i>`).join('')}</div>
       <div class="ph-leg">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} <b class="num">${(x[1] / tot * 100).toFixed(0)}%</b></span>`).join('')}</div>
     </div>
-    <div class="sec"><div class="sec-h"><h2>가진 것</h2><small>${H0.length}개 · 평가금액 순</small></div><div class="slist">`;
-  h += H0.map(x => `<button type="button" class="pos" ${x.open}>${x.badge}<span class="sname"><b>${esc(x.name)} <span class="postag ${x.tagc}">${esc(x.tag)}</span></b><small class="dim num">${x.sub}${x.dist != null ? ` · 청산까지 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
-      <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span></button>`).join('') || `<div class="empty">${isMe ? '아직 아무것도 없어요. 거래소에서 시작해 보세요.' : '가진 게 없어요.'}</div>`;
-  h += `</div></div>`;
+    ${pTabsHTML(H0)}<div class="slist">`;
+  const HT = H0.filter(x => pTabOf(x) === pTab() || pTab() === 'all');
+  h += HT.map(x => `<button type="button" class="pos" ${x.open}>${x.badge}<span class="sname"><b>${esc(x.name)} <span class="postag ${x.tagc}">${esc(x.tag)}</span></b><small class="dim num">${x.sub}${x.dist != null ? ` · 청산까지 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
+      <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span></button>`).join('') || `<div class="empty">${pTab() !== 'all' ? '이 탭에는 가진 게 없어요.' : isMe ? '아직 아무것도 없어요. 거래소에서 시작해 보세요.' : '가진 게 없어요.'}</div>`;
+  h += `</div></div>` + pAnalysisHTML(p, w, roi, rk, H0);
   if (isMe) h += `<div class="ph-set">${[['photoBtn2', '📸 사진 바꾸기', 1], ['photoDel', '사진 지우기', !!p.photo], ['bannerDel', '배경 지우기', !!p.banner], ['bannerPick', `🖼️ 배경 바꾸기 · ${won(BANNER_COST)}`, 1], ['renameOpen', `✏️ 닉네임 · ${won(RENAME_COST)}`, 1], ['logoutBtn', '로그아웃', !!S.fb && S.mode === 'live']]
       .filter(x => x[2]).map(([id, l]) => `<button type="button" id="${id}">${l}</button>`).join('')}</div>`;
   return h;
 }
+/* ───────── 가진 것: 거래소처럼 주식 · 코인 · 현물 · 채권 탭 ───────── */
+const P_TABS = [['all', '전체'], ['us', '주식'], ['coin', '코인'], ['cm', '현물'], ['bond', '채권']];
+const pTab = () => (P_TABS.some(([k]) => k === S.pTab) ? S.pTab : 'all');
+const pTabOf = x => (KC[x.sym] ? 'coin' : UC[x.sym] ? (UC[x.sym].m === 'cm' ? 'cm' : 'us') : 'bond');   // 달러는 주식 탭(거래소와 같아요)
+function pTabsHTML(H0) {
+  const cur = pTab(), list = cur === 'all' ? H0 : H0.filter(x => pTabOf(x) === cur);
+  const V = list.reduce((a, x) => a + x.value, 0), P0 = list.reduce((a, x) => a + x.principal, 0), pnl = V - P0;
+  return `<div class="sec ptabs-sec"><div class="xtabs ptabs" role="tablist">${P_TABS.map(([k, l]) => { const n = k === 'all' ? H0.length : H0.filter(x => pTabOf(x) === k).length;
+      return `<button type="button" role="tab" data-ptab="${k}" aria-selected="${k === cur}">${l}${n ? `<small>${n}</small>` : ''}</button>`; }).join('')}</div>
+    <div class="ptab-sum"><span>평가 <b class="num">${won(V)}</b></span><span class="num ${cls(pnl)}">${signWon(pnl)} (${pctTxt(P0 ? pnl / P0 : 0)})</span></div></div>`;
+}
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-ptab]'); if (!t) return; S.pTab = t.dataset.ptab; if (S.profile) renderFriendProfile(); else renderMe(); });
+
+/* ───────── 📊 투자 분석 ───────── */
+function pAnalysisHTML(p, w, roi, rk, H0) {
+  const base = p.inflow || CASH0, gain = w - base, R = ranking(S.tick), above = rk > 1 ? R[rk - 2] : null, top = R[0];
+  const futs = H0.filter(x => x.kind === 'fut'), fm = futs.reduce((a, x) => a + x.value, 0), lev = w ? fm / w : 0;
+  const avgX = fm ? futs.reduce((a, x) => a + x.value * (parseFloat(x.label) || 1), 0) / fm : 0;
+  const risky = futs.filter(x => x.distMax && x.dist / x.distMax < .25), near = futs.length ? Math.min(...futs.map(x => x.dist)) : null;
+  const big = H0[0], conc = big && w ? big.value / w : 0, cashR = w ? (p.cash || 0) / w : 0;
+  const win = H0.filter(x => x.pnl > 0).sort((a, b) => b.pnl - a.pnl)[0], lose = H0.filter(x => x.pnl < 0).sort((a, b) => a.pnl - b.pnl)[0];
+  const evs = atkEvents(), atkW = evs.filter(f => f.uid === p.id && f.ok).length, atkL = evs.filter(f => f.uid === p.id && !f.ok).length;
+  const style = lev >= .6 ? ['🔥', '불나방', '자산 대부분이 레버리지예요. 한 번에 크게 벌거나 크게 잃어요.'] : lev >= .3 ? ['⚔️', '공격형', '레버리지를 적극적으로 써요. 의무 30%를 채우고 있어요.']
+    : cashR >= .5 ? ['🐢', '현금 부자', '현금이 절반 넘게 놀고 있어요. 매시간 자동 투자가 걸려요.'] : conc >= .5 ? ['🎯', '몰빵형', `${big.name}에 자산 ${Math.round(conc * 100)}%가 몰려 있어요.`] : ['⚖️', '균형형', '여러 곳에 고르게 나눠 담았어요.'];
+  const tile = (k, v, s, c = '') => `<div class="pa-t"><small>${k}</small><b class="num ${c}">${v}</b>${s ? `<span>${s}</span>` : ''}</div>`;
+  const tips = [];
+  if (lev < TAX.LEV) tips.push(`🎯 레버리지가 ${Math.round(lev * 100)}%예요. 30%를 못 채우면 매시간 강제 롱이 잡혀요.`);
+  if (risky.length) tips.push(`☠️ 청산 직전 포지션이 ${risky.length}개 있어요. 가장 가까운 건 ${(near * 100).toFixed(1)}%만 움직이면 청산이에요.`);
+  if (above) tips.push(`🏃 ${rk - 1}위 ${esc(above.name)}님까지 <b>${won(Math.max(0, above.w - w))}</b> 남았어요.`);
+  else if (R.length > 1) tips.push(`👑 1위예요! 2위 ${esc(R[1].name)}님과 <b>${won(w - R[1].w)}</b> 차이.`);
+  if (cashR >= TAX.WARN && lev >= TAX.LEV) tips.push(`💤 현금이 ${Math.round(cashR * 100)}%라 50%를 넘으면 자동 투자가 걸려요.`);
+  return `<div class="sec"><div class="sec-h"><h2>📊 투자 분석</h2></div>
+    <div class="card pana"><div class="pa-style"><span class="pa-ic">${style[0]}</span><div><b>${style[1]}</b><small>${style[2]}</small></div></div>
+      <div class="pa-grid">
+        ${tile('총 손익', signWon(gain), `시작 ${krwUnits(base)}원 대비 ${pctTxt(roi)}`, cls(gain))}
+        ${tile('순위', rk ? `${rk}위 / ${R.length}명` : '-', top && rk > 1 ? `1위와 ${krwUnits(Math.max(0, top.w - w))}원 차이` : rk === 1 ? '지금 1등!' : '')}
+        ${tile('레버리지 비중', Math.round(lev * 100) + '%', futs.length ? `${futs.length}개 · 평균 ${avgX.toFixed(1)}배` : '롱·숏 없음', lev >= TAX.LEV ? 'up' : 'down')}
+        ${tile('현금 비중', Math.round(cashR * 100) + '%', cashR >= TAX.LINE ? '자동 투자 대상' : '괜찮아요')}
+        ${tile('제일 많이 번 것', win ? esc(win.name) : '-', win ? `<i class="up">${signWon(win.pnl)}</i>` : '수익 난 게 없어요')}
+        ${tile('제일 많이 잃은 것', lose ? esc(lose.name) : '-', lose ? `<i class="down">${signWon(lose.pnl)}</i>` : '손해 본 게 없어요')}
+        ${tile('게임 손익', signWon(p.casino || 0), '도박장 누적', cls(p.casino || 0))}
+        ${tile('공격 전적', `${atkW}승 ${atkL}패`, p.autoTotal ? `자동 투자 누적 ${krwUnits(p.autoTotal)}원` : '')}
+      </div>
+      ${tips.length ? `<div class="pa-tips">${tips.map(t => `<p>${t}</p>`).join('')}</div>` : ''}</div></div>`;
+}
 function renderMe() {
   const el = $('#tab-wallet'); if (!el) return;
+  bnBody();
   if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 프로필이 없어요.' : '참가하면 50억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
   el.innerHTML = profileBody({ id: S.uid, ...S.me }, true);
 }
@@ -44,7 +93,7 @@ function renderFriendProfile() {
   const p0 = S.players[id]; if (!p0) { closeProfile(); return; }
   const st0 = d.scrollTop;
   d.innerHTML = `<div class="in"><div class="dtop"><button class="back" type="button" id="profBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>프로필</b></div>${id === S.uid ? profileBody({ id, ...p0 }, true) : rivalHTML({ id, ...p0 })}</div>`;
-  d.classList.remove('bnpage'); d.scrollTop = st0;
+  const bn = okPhoto(p0.banner); d.classList.toggle('bnpage', bn); if (bn) d.style.setProperty('--bn', `url(${p0.banner})`); else d.style.removeProperty('--bn'); d.scrollTop = st0;
 }
 
 /* ═════════ 친구 프로필: 화려하지만 깔끔하게 · 가진 것마다 공격 버튼 ═════════ */
