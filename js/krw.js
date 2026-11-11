@@ -127,10 +127,24 @@ async function kCoupon() {
   const me = clone(m0); me.cpH = h; me.cash += amt; me.cpTotal = (me.cpTotal || 0) + amt;
   if (await kSave(me, m0) && amt > 0) { toast(`🏛️ 구채 이자 ${hrs > 1 ? `${hrs}시간치 ` : ''}+${krw(amt)}`); renderAll(); }
 }
+// 💵 지원금: 2시간마다(한국 시간 짝수 시 정각) 420만원 = 하루 약 5,000만원. 앱을 꺼 둬도 쌓여요(최대 7일치).
+// 처음 받는 사람은 지금부터 세요(지난 시간은 소급 안 해요). 받은 돈은 수익률 기준(inflow)에도 더해요.
+const STIP = 4_200_000, STIP_MS = 2 * H, STIP_MAX = 84;
+const stipSlot = (t = now()) => Math.floor((t + KST) / STIP_MS);
+const stipNext = () => (stipSlot() + 1) * STIP_MS - KST;
+async function kStipend() {
+  const m0 = S.me; if (!m0 || S.saving || S.readOnly) return;
+  const s = stipSlot();
+  if (m0.stipS == null) { const me = clone(m0); me.stipS = s; await kSave(me, m0); return; }
+  if (s <= m0.stipS) return;
+  const n = Math.min(STIP_MAX, s - m0.stipS), amt = STIP * n;
+  const me = clone(m0); me.stipS = s; me.cash = Math.round(me.cash + amt); me.inflow = (me.inflow || CASH0) + amt; me.stipTotal = (me.stipTotal || 0) + amt;
+  if (await kSave(me, m0)) { toast(`💵 지원금 ${n > 1 ? `${n}번치 ` : ''}+${krw(amt)}`); buzz(40); renderAll(); }
+}
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
   uTick();
-  if (S.me && !S.readOnly && S.loaded) { kCoupon(); fScan(); }
+  if (S.me && !S.readOnly && S.loaded) { kStipend(); kCoupon(); fScan(); }
 }
 
 /* ───────── 거래 ───────── */

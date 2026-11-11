@@ -10,7 +10,8 @@ function renderHome() {
     const me = kInit(S.me), w = worth(me), r = roiOf(me, w), rk = ranking().findIndex(p => p.id === S.uid) + 1;
     const chief = GU_RANK.filter(g => (guChief()[g] || {}).id === S.uid);
     h += `<button type="button" class="wal krwwal one" data-tab-go="assets"><span class="wl-h"><span class="wl-ic">₩</span>내 총자산<small>${rk ? rk + '위' : ''}</small></span>
-      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.length > 1 ? chief.length + '곳' : chief[0]}` : ''}</span></button>`;
+      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.length > 1 ? chief.length + '곳' : chief[0]}` : ''}</span></button>
+    <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>`;
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">10억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
@@ -357,7 +358,7 @@ async function doJoin() {
   const inputEl = $('#nick');
   const nick = ((inputEl && inputEl.value) || '').trim().slice(0, 10) || '존버의신';
   LS.set('nick', nick);
-  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H) });
+  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H), stipS: stipSlot() });
   S.saving = true; const ok = await saveMe(me, S.me); S.saving = false;
   if (ok) { addFeed({ kind: 'join' }); closeSheet(); toast('참가 완료!'); renderAll(); }
 }
@@ -366,6 +367,7 @@ const HELP = {
   home: ['홈', '총자산 순위', [
     '돈은 <b>원화</b> 하나예요. 처음 <b>10억원</b>. 진짜 시세 코인·주식·구채와 게임·상점에 다 같이 써요.',
     '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 구채. 순위는 총자산 순서예요.',
+    '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
     '<b>파산</b>: 총자산이 100만원 밑으로 떨어지면 거래소 탭에서 <b>1,000만원</b>을 받을 수 있어요.',
     '이름을 누르면 그 사람 지갑이 다 보여요.']],
   coin: ['거래소', '주식 · 코인 · 현물 · 채권', [
