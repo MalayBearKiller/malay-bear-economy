@@ -7,9 +7,8 @@ function allHoldings(p) {
   kPositions(p).forEach(x => { const c = KC[x.sym]; out.push({ ...x, badge: kBadge(c), name: c.n, tag: x.kind === 'fut' ? x.label : '코인', tagc: x.kind === 'fut' ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: `${kQty(x.q)} ${c.a}`, open: `data-kcoin="${x.sym}"` }); });
   uPositions(p).forEach(x => { const c = UC[x.sym], fut = x.kind === 'fut'; out.push({ ...x, badge: uBadge(c), name: c.n, tag: fut ? x.label : { us: '주식', cm: '현물', fx: '외화' }[c.m], tagc: fut ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: fut ? `증거금 ${krw(x.principal)}` : uQty(x.q, x.sym) + (c.m !== 'fx' ? ` · ${usd(uUsdOf(x.sym, x.q))}` : ''), open: `data-us="${x.sym}"` }); });
   gPositions(p).forEach(x => { const c = GC[x.sym], fut = x.kind === 'fut', o = (p.gHold || {})[x.sym]; out.push({ ...x, badge: `<span class="logo-b gflag">${c.f}</span>`, name: c.n, tag: fut ? x.label : '국채', tagc: fut ? (x.d > 0 ? 'long' : 'short') : 'spot', sub: fut ? `증거금 ${krw(x.principal)}` : `산 금리 ${o ? o.y.toFixed(2) : '-'}%`, open: `data-gb="${x.sym}"` }); });
-  const top = guChief();
-  Object.entries(p.bonds || {}).forEach(([g, n]) => { if (!BOND[g] || !n) return; const value = bondSellGet(g, n), principal = n * ((p.bCost || {})[g] || 0);
-    out.push({ sym: g, kind: 'bond', badge: `<span class="logo-b bb" style="background:${chiefColor(p.id)}">${BOND[g].i + 1}</span>`, name: g + (top[g] && top[g].id === p.id ? ' 👑' : ''), tag: '구채', tagc: 'spot', sub: `${n}장`, value, principal, pnl: value - principal, pct: principal ? value / principal - 1 : 0, open: `data-bond="${g}"` }); });
+  const bn = bondPending(p);   // 서울 구채(없어짐): 아직 접속 안 해서 환불 대기 중인 사람만 한 줄로
+  if (bn) { const value = bondWorth(p); out.push({ sym: 'oldbond', kind: 'bond', badge: `<span class="logo-b gflag">🏛️</span>`, name: '서울 구채 (환불 대기)', tag: '구채', tagc: 'spot', sub: `${bn}장 · 다음 접속 때 원화로`, value, principal: value, pnl: 0, pct: 0, open: '' }); }
   return out.sort((a, b) => b.value - a.value);
 }
 function profileBody(p, isMe) {
@@ -68,8 +67,7 @@ function rivalHTML(p) {
   kPositions(p).forEach(x => add(x.kind === 'fut' ? 'kFut' : 'kHold', x.sym, x));
   uPositions(p).forEach(x => add(x.kind === 'fut' ? 'uFut' : 'uHold', x.sym, x));
   rows.sort((a, b) => b.v - a.v);
-  const bonds = Object.entries(p.bonds || {}).filter(([g, n]) => BOND[g] && n > 0);
-  const top = guChief();
+  const obn = bondPending(p);
   return `<div class="rv-hero${bn ? ' bn' : ''}"${bn} style="--c:${col}${bn ? `;--bn:url(${p.banner})` : ''}">
       <div class="rv-ava${on ? ' on' : ''}">${ava(p, true)}</div>
       <h2>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></h2>
@@ -79,5 +77,5 @@ function rivalHTML(p) {
     ${S.me && revengeOn(p.id) ? `<div class="rv-rev">🔥 이 사람이 방금 나를 공격했어요 · 10분 동안 <b>반값 복수</b></div>` : ''}
     <div class="sec"><div class="sec-h"><h2>가진 것</h2><button type="button" class="atk-how" id="atkHelp">❓ 약탈·사냥이 뭐예요?</button><small>${myAtkWait() ? `· ⏳ ${Math.ceil(myAtkWait() / 6e4)}분 뒤 공격 가능` : ''}</small></div>
       <div class="slist">${rows.map(r => r.html).join('') || '<div class="empty">가진 게 없어요.</div>'}
-      ${bonds.map(([g, n]) => `<div class="rvrow"><span class="logo-b bb" style="background:var(--krw)">${BOND[g].i + 1}</span><span class="sname"><b>${g}${(top[g] || {}).id === p.id ? ' 👑' : ''} <span class="postag spot">구채</span></b><small class="num">${n}장</small></span><span class="sprice"><div class="p num">${krw(bondSellGet(g, n))}</div></span><span class="atkb off"><small>공격 불가</small></span></div>`).join('')}</div></div>`;
+      ${obn ? `<div class="rvrow"><span class="logo-b gflag">🏛️</span><span class="sname"><b>서울 구채 <span class="postag spot">환불 대기</span></b><small class="num">${obn}장</small></span><span class="sprice"><div class="p num">${krw(bondWorth(p))}</div></span><span class="atkb off"><small>공격 불가</small></span></div>` : ''}</div></div>`;
 }

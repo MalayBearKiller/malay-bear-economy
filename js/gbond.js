@@ -11,6 +11,7 @@ const GBX = [
   ['KR10Y', '한국', '🇰🇷', 'as', 3.952, 8], ['JP10Y', '일본', '🇯🇵', 'as', 2.795, 8], ['CN10Y', '중국', '🇨🇳', 'as', 1.614, 8], ['IN10Y', '인도', '🇮🇳', 'as', 7.214, 8],
   ['GB10Y', '영국', '🇬🇧', 'eu', 5.2, 8], ['FR10Y', '프랑스', '🇫🇷', 'eu', 4.767, 8], ['DE10Y', '독일', '🇩🇪', 'eu', 3.307, 8], ['IT10Y', '이탈리아', '🇮🇹', 'eu', 4.348, 8],
 ];
+function chiefColor(uid) { return uid === S.uid ? '#1f6feb' : avaColor(uid); }
 const GC = {}; GBX.forEach(([id, n, f, rg, ref, dur]) => { GC[id] = { id, a: id.slice(0, 2), n: n + ' 국채', cn: n, f, rg, ref, dur }; });
 const GREG = { us: '🇺🇸 미국', eu: '🇪🇺 유럽', as: '🌏 동아시아' };
 const gShown = () => Object.values(GC).filter(c => GREG[c.rg]);
@@ -140,7 +141,7 @@ async function gRefund() {
   if (!bs.length && !br && !bf) { await kSave(me, m0); return; }
   if ((br || bf) && !gFresh('BR10Y')) return;   // 브라질 시세 받을 때까지 기다려요
   let seoul = 0, brz = 0;
-  bs.forEach(([g, n]) => { seoul += n * bondUnit(g, bondSold(g)); });
+  bs.forEach(([g, n]) => { seoul += bondRefundOf(g, n); });   // 지금 다 팔면 받는 돈(수수료 없음)
   if (br) brz += gLotVal('BR10Y', br);
   if (bf) brz += fVal(bf, fPx('BR10Y') || bf.e);
   me.bondsRef = { ...(m0.bonds || {}) }; me.bonds = {}; me.bCost = {}; me.bAt = {};

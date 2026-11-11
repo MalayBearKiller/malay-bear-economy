@@ -208,22 +208,19 @@ function xCtlHTML() {
 }
 // ───────── 내 보유 (화면 가득) ─────────
 // 탭 4개(주식·코인·현물·채권) · 위에 그 탭의 평가금액·손익·주문 가능 · 줄마다 [전량 매도]/[종료] (한 번 더 누르면 바로 실행)
-const mktOf = sym => (KC[sym] ? 'coin' : UC[sym] ? UC[sym].m : BOND[sym] ? 'bond' : 'us');
+const mktOf = sym => (KC[sym] ? 'coin' : UC[sym] ? UC[sym].m : GC[sym] ? 'bond' : 'us');
 function showMine(tab) { if (S.sheet) closeSheetRaw(); openSheet('mine', { tab: X_TABS.some(([k]) => k === tab) ? tab : 'us' }); }
 function minePositions(me, tab) {
   if (!me) return [];
   if (tab === 'coin') return kPositions(me);
-  if (tab === 'bond') return [...gPositions(me), ...Object.entries(me.bonds || {}).filter(([g, n]) => BOND[g] && n > 0).map(([g, n]) => { const value = bondSellGet(g, n), principal = n * ((me.bCost || {})[g] || 0);
-    return { sym: g, kind: 'bond', q: n, value, principal, pnl: value - principal, pct: principal ? value / principal - 1 : 0 }; })];
+  if (tab === 'bond') return gPositions(me);
   return uPositions(me).filter(x => UC[x.sym].m === tab || (tab === 'us' && UC[x.sym].m === 'fx'));   // 달러는 주식 탭에
 }
 const myAll = me => (me ? X_TABS.flatMap(([k]) => minePositions(me, k)).sort((a, b) => b.value - a.value) : []);
 function mineRow(x) {
-  const chief = x.kind === 'bond' && (guChief()[x.sym] || {}).id === S.uid;
   let badge, name, sub, open;
   if (GC[x.sym]) { const c = GC[x.sym], o = (S.me.gHold || {})[x.sym]; badge = `<span class="logo-b gflag">${c.f}</span>`; name = c.n; open = `data-gb="${x.sym}"`;
     sub = x.kind === 'fut' ? `금리 ${gY(x.sym).toFixed(2)}%${x.dist != null ? ` · 청산까지 ${(x.dist * 100).toFixed(1)}%` : ''}` : `산 금리 ${o ? o.y.toFixed(2) : '-'}% · 지금 ${gY(x.sym).toFixed(2)}%`; }
-  else if (x.kind === 'bond') { badge = `<span class="logo-b bb" style="background:var(--krw)">${BOND[x.sym].i + 1}</span>`; name = x.sym + (chief ? ' 👑' : ''); sub = `${x.q}장 · 평단 ${krw((S.me.bCost || {})[x.sym] || 0)}`; open = `data-bond="${x.sym}"`; }
   else { const isU = !!UC[x.sym], c = isU ? UC[x.sym] : KC[x.sym]; badge = isU ? uBadge(c) : kBadge(c); name = c.n; open = isU ? `data-us="${x.sym}"` : `data-kcoin="${x.sym}"`;
     sub = `${isU ? uQty(x.q, x.sym) + (x.kind !== 'fut' && c.m !== 'fx' ? ` · ${usd(uUsdOf(x.sym, x.q))}` : '') : kQty(x.q) + ' ' + c.a}${x.dist != null ? ` · <span class="${x.dist / x.distMax < .3 ? 'up' : ''}">청산까지 ${(x.dist * 100).toFixed(1)}%</span>` : ''}`; }
   const tag = x.kind === 'fut' ? ` <span class="postag ${x.d > 0 ? 'long' : 'short'}">${x.label}</span>` : '';
@@ -260,7 +257,7 @@ function quickSell(key) {
   if (!S.qsArm || S.qsArm.key !== key || Date.now() - S.qsArm.t > 4000) { S.qsArm = { key, t: Date.now() }; renderSheet(); return; }
   S.qsArm = null; const [k, sym] = [key[0], key.slice(2)];
   if (k === 'g') { const sh0 = S.sheet; S.sheet = { type: 'gb', sym, all: true }; gTrade('sell').finally(() => { if (S.sheet && S.sheet.type === 'gb' && S.sheet.all) S.sheet = sh0; renderSheet(); }); return; }
-  if (k === 'k') kSellAll(sym); else if (k === 'u') uSellAll(sym); else if (k === 'f') fClose(sym); else if (k === 'b') bondTrade(sym, 'sell', (S.me.bonds || {})[sym] || 0);
+  if (k === 'k') kSellAll(sym); else if (k === 'u') uSellAll(sym); else if (k === 'f') fClose(sym);
 }
 // 오른쪽 아래 떠 있는 버튼: 거래소 탭에서만. 개수와 손익을 같이 보여줘요
 function renderMineFab() {
