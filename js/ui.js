@@ -28,7 +28,7 @@ function renderHome() {
     <button type="button" class="fixchk${pin ? ' on' : ''}" id="homePin" role="checkbox" aria-checked="${pin}"><i></i>고정하기</button>
     ${isMap ? `<small class="mapinfo2">👑 ${taken}/${nC}${myGu ? ` · 내 ${myGu}` : ''}</small>` : `<small class="livecnt"><i></i>${liveCount()}명 접속</small>`}</div>
     <div class="flipbar${pin ? ' off' : ''}"><i style="animation-duration:10s;animation-delay:-${Math.min(10000, Date.now() - (S.homeFlipAt || 0))}ms"></i></div><div class="hview">`;
-  if (isMap) h += `<div class="card gmapbox homemap">${gWorldSVG(true)}${gTopsHTML(top)}</div>`;
+  if (isMap) h += gHomeHTML();
   else if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
   else if (!cur.length) h += `<div class="empty">아직 아무도 없어요. 첫 번째로 참가해보세요.</div>`;
   else {

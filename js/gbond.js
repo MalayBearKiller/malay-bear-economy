@@ -79,49 +79,56 @@ function gTop() {
   return top;
 }
 // 지도 좌표: 경도·위도를 1도=2칸으로 (x=(경도+180)×2, y=(90−위도)×2)
-const GPOS = { US10Y: [164, 102], KR10Y: [612, 104], JP10Y: [652, 120], CN10Y: [564, 110], IN10Y: [516, 138], AU10Y: [628, 232], GB10Y: [356, 74], FR10Y: [365, 88], DE10Y: [382, 77], IT10Y: [388, 92] };
-const GVB = { w: [0, 2, 720, 327], us: [94, 66, 140, 64], eu: [312, 52, 120, 55], as: [405, 74, 386, 175] };   // 가로:세로 2.2
-const GPF = { w: .55, us: 1.3, eu: 1, as: .85 };   // 핀 크기 배율
-const GCHIP = { us: [160, 76], eu: [372, 50], as: [604, 86] };   // 전체 지도에서 지역 이름표 자리
-const GZ = { vb: GVB.w.slice(), f: GPF.w, raf: 0 };
-const gZoomKey = () => (GREG[S.gZoom] ? S.gZoom : 'w');
-function gPinK() { return GZ.vb[2] / 400 * GZ.f; }
-function gWorldSVG(home) {
-  const top = gTop(), z = home ? 'w' : gZoomKey(), vb = home ? GVB.w : GZ.vb, k = home ? GVB.w[2] / 400 * GPF.w : gPinK(), me = S.me || {};
+const GPOS = { US10Y: [164, 102], KR10Y: [612, 104], JP10Y: [652, 120], CN10Y: [564, 110], IN10Y: [516, 138], AU10Y: [624, 192], GB10Y: [356, 74], FR10Y: [365, 88], DE10Y: [382, 77], IT10Y: [388, 92] };
+const GLBL_UP = { AU10Y: 1 };   // 이름표를 핀 위에 (아래가 잘려서)
+// 거래소: 지역마다 확대한 지도를 좌우로 넘겨요 (가로:세로 3, 확대 비율은 그대로)
+const GRG = ['us', 'eu', 'as'];
+const GVB = { w: [0, 2, 720, 327], us: [94, 76, 140, 47], eu: [312, 67, 120, 40], as: [405, 85, 386, 129] };
+const GPF = { us: 1.3, eu: 1, as: .85 };   // 핀 크기 배율
+const gReg = () => (GREG[S.gZoom] ? S.gZoom : 'us');
+function gRegionSVG(rg, top) {
+  const vb = GVB[rg], k = vb[2] / 400 * GPF[rg], me = S.me || {};
   const cs = gShown().map(c => { const t = top[c.id], u = t && t.id;
     return `<path d="${WMAP_C[c.id] || ''}" class="wc${(me.gHold || {})[c.id] || (me.gFut || {})[c.id] ? ' mine' : ''}" data-gpin="${c.id}"${u ? ` style="fill:${chiefColor(u)};fill-opacity:${u === S.uid ? .6 : .45}"` : ''}/>`; }).join('');
-  const pins = home || z === 'w' ? '' : gShown().filter(c => c.rg === z).map(c => { const [x, y] = GPOS[c.id], t = top[c.id], bp = gBp(c.id);
-    return `<g class="gpin" data-gpin="${c.id}" data-x="${x}" data-y="${y}" transform="translate(${x},${y}) scale(${k})">${t ? `<g transform="scale(1.3)">${stampInner(t.id, 'gst' + c.id)}</g>` : `<circle r="19" class="gp-c ${bp > 0 ? 'up' : bp < 0 ? 'down' : ''}"/><text y="6" class="gp-f">${c.f}</text>`}
-      <g transform="translate(0,32)"><rect x="-26" y="-10" width="52" height="20" rx="10" class="gp-l"/><text y="4" class="gp-t">${gY(c.id) ? gY(c.id).toFixed(2) + '%' : '…'}</text></g></g>`; }).join('');
-  const chips = z === 'w' ? Object.entries(GREG).map(([rg, l]) => { const [x, y] = GCHIP[rg], n = gShown().filter(c => c.rg === rg && top[c.id]).length;
-    return `<g class="gchip" data-gzoom="${rg}" transform="translate(${x},${y}) scale(${GVB.w[2] / 400})"><rect x="-44" y="-13" width="88" height="26" rx="13"/><text y="5">${l} ›</text>${n ? `<circle cx="42" cy="-11" r="8" class="gc-n"/><text x="42" y="-7.5" class="gc-nt">${n}</text>` : ''}</g>`; }).join('') : '';
-  return `<svg viewBox="${vb.join(' ')}" class="wmap${z === 'w' ? '' : ' zoomed'}" id="${home ? 'gmapH' : 'gmapW'}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="세계 국채 지도"><path d="${WMAP_LAND}" class="wl"/>${cs}${pins}${chips}</svg>`;
+  const pins = gShown().filter(c => c.rg === rg).map(c => { const [x, y] = GPOS[c.id], t = top[c.id], bp = gBp(c.id), ly = GLBL_UP[c.id] ? -32 : 32;
+    return `<g class="gpin" data-gpin="${c.id}" transform="translate(${x},${y}) scale(${k})">${t ? `<g transform="scale(1.3)">${stampInner(t.id, 'gs' + rg + c.id)}</g>` : `<circle r="19" class="gp-c ${bp > 0 ? 'up' : bp < 0 ? 'down' : ''}"/><text y="6" class="gp-f">${c.f}</text>`}
+      <g transform="translate(0,${ly})"><rect x="-26" y="-10" width="52" height="20" rx="10" class="gp-l"/><text y="4" class="gp-t">${gY(c.id) ? gY(c.id).toFixed(2) + '%' : '…'}</text></g></g>`; }).join('');
+  return `<svg viewBox="${vb.join(' ')}" class="wmap rg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${GREG[rg]} 국채 지도"><path d="${WMAP_LAND}" class="wl"/>${cs}${pins}</svg>`;
 }
-// 홈 지도 아래: 나라별 1등 목록 (누르면 그 지역으로 확대)
-function gTopsHTML(top) {
-  return `<div class="gtops">${gShown().map(c => { const t = top[c.id];
-    return `<button type="button" data-gpin="${c.id}"><span>${c.f}</span><b>${esc(c.cn)}</b><small>${t ? `👑 ${esc(t.id === S.uid ? '나' : nameOf(t.id))}` : '비어 있음'}</small></button>`; }).join('')}</div>`;
+function gCarHTML() {
+  const top = gTop();
+  return `<div class="card gmapbox gcarbox"><div class="gcar" id="gCar">${GRG.map(rg => `<div class="gslide">${gRegionSVG(rg, top)}<span class="gs-t">${GREG[rg]}</span></div>`).join('')}</div>
+    <div class="gdots">${GRG.map(rg => `<i class="${rg === gReg() ? 'on' : ''}"></i>`).join('')}</div></div>`;
 }
-// 확대·축소: viewBox를 0.55초 동안 부드럽게 옮겨요 (그사이 화면이 다시 그려져도 이어서 움직여요)
-function gZoomTo(rg) {
-  S.gZoom = GREG[rg] ? rg : null; const to = GVB[gZoomKey()], tf = GPF[gZoomKey()], from = GZ.vb.slice(), f0 = GZ.f, t0 = performance.now();
-  cancelAnimationFrame(GZ.raf); renderExchange();
-  const step = t => { const u = Math.min(1, (t - t0) / 550), e = 1 - Math.pow(1 - u, 3);
-    GZ.vb = from.map((v, i) => v + (to[i] - v) * e); GZ.f = f0 + (tf - f0) * e;
-    const sv = $('#gmapW'); if (sv) { sv.setAttribute('viewBox', GZ.vb.join(' ')); const k = gPinK(); sv.querySelectorAll('.gpin').forEach(p => p.setAttribute('transform', `translate(${p.dataset.x},${p.dataset.y}) scale(${k})`)); }
-    if (u < 1) GZ.raf = requestAnimationFrame(step); };
-  GZ.raf = requestAnimationFrame(step);
+// 다시 그려도 보던 지역에 그대로 (그리기 직후, 화면에 보이기 전에 위치를 맞춰요)
+function gCarFix() { const el = $('#gCar'); if (el && el.clientWidth) { el.style.scrollBehavior = 'auto'; el.scrollLeft = GRG.indexOf(gReg()) * el.clientWidth; el.style.scrollBehavior = ''; } }
+let G_SCR = 0;
+document.addEventListener('scroll', e => {
+  const el = e.target; if (!el || el.id !== 'gCar') return;
+  clearTimeout(G_SCR); G_SCR = setTimeout(() => { const rg = GRG[Math.round(el.scrollLeft / el.clientWidth)]; if (rg && rg !== S.gZoom) { S.gZoom = rg; renderExchange(); } }, 140);
+}, true);
+// 홈: 깔끔한 세계 지도(1등 있는 나라만 색칠 + 작은 프로필) + 아래에 왕 배너
+function gHomeHTML() {
+  const top = gTop(), vb = GVB.w, k = vb[2] / 400 * .85;
+  const cs = gShown().map(c => { const t = top[c.id]; return t ? `<path d="${WMAP_C[c.id] || ''}" class="wc on" style="fill:${chiefColor(t.id)}"/>` : `<path d="${WMAP_C[c.id] || ''}" class="wl"/>`; }).join('');
+  const st = gShown().filter(c => top[c.id]).map(c => { const [x, y] = GPOS[c.id]; return `<g transform="translate(${x},${y}) scale(${k})">${stampInner(top[c.id].id, 'gh' + c.id)}</g>`; }).join('');
+  const kings = {}; Object.entries(top).forEach(([id, t]) => { (kings[t.id] ||= { a: 0, c: [] }); kings[t.id].a += t.a; kings[t.id].c.push(GC[id]); });
+  const ks = Object.entries(kings).sort((a, b) => b[1].c.length - a[1].c.length || b[1].a - a[1].a);
+  return `<div class="card gmapbox homemap" data-gocar="1"><svg viewBox="${vb.join(' ')}" class="wmap" preserveAspectRatio="xMidYMid meet" role="img" aria-label="세계 국채 지도"><path d="${WMAP_LAND}" class="wl"/>${cs}${st}</svg>
+    ${ks.length ? `<div class="gkings">${ks.slice(0, 4).map(([uid, o]) => { const p = S.players[uid] || {};
+      return `<button type="button" class="gking${uid === S.uid ? ' me' : ''}" data-gpin="${o.c[0].id}" style="--kc:${chiefColor(uid)}"><span class="gk-a">${ava(p)}</span><span class="gk-t"><b>👑 ${esc(uid === S.uid ? '나' : p.name || '?')}</b><small>${o.c.map(c => c.f + ' ' + esc(c.cn)).join(' · ')}</small></span><span class="gk-v num">${krw(o.a)}</span></button>`; }).join('')}</div>`
+      : `<p class="gk-none">아직 국채 왕이 없어요. 거래소 › 채권에서 첫 번째 왕이 되어 보세요.</p>`}</div>`;
 }
 function worldHTML() {
-  const z = gZoomKey(), top = gTop(), me = S.me || {}, list = gShown().filter(c => z === 'w' || c.rg === z);
-  const mineTop = Object.entries(top).filter(([, t]) => t.id === S.uid).map(([id]) => GC[id].f);
-  return `<div class="greg"><button type="button" data-gzoom="w" aria-pressed="${z === 'w'}">🌍 전체</button>${Object.entries(GREG).map(([k, l]) => `<button type="button" data-gzoom="${k}" aria-pressed="${z === k}">${l}</button>`).join('')}</div>
-    <div class="card gmapbox">${gWorldSVG()}${z !== 'w' ? `<button type="button" class="gm-back" data-gzoom="w">‹ 전체</button>` : `<small class="gm-note">지역을 누르면 확대돼요${mineTop.length ? ` · 👑 ${mineTop.join('')}` : ''}</small>`}</div>
+  const z = gReg(), top = gTop(), me = S.me || {}, list = gShown().filter(c => c.rg === z);
+  requestAnimationFrame(gCarFix);
+  return `<div class="greg">${GRG.map(k => `<button type="button" data-gzoom="${k}" aria-pressed="${z === k}">${GREG[k]}</button>`).join('')}</div>
+    ${gCarHTML()}
     ${list.map(c => { const bp = gBp(c.id), o = (me.gHold || {})[c.id], v = o ? gLotVal(c.id, o) : 0, t = top[c.id];
       return `<div class="srow"><button class="srow-main" type="button" data-gb="${c.id}"><span class="logo-b gflag">${c.f}</span><span class="sname"><b>${esc(c.n)}</b><small>${o ? `<span class="mine">${krw(v)}</span> <b class="rowpnl ${cls(v - o.a)}">${signKrw(v - o.a)}</b>` : t ? `👑 ${esc(t.id === S.uid ? '나' : nameOf(t.id))} ${krw(t.a)}` : `10년물 · 가격 ${gPx(c.id) ? gPx(c.id).toFixed(2) : '…'}`}</small></span>
         <span class="sprice"><div class="p num">${gY(c.id) ? gY(c.id).toFixed(3) + '%' : '…'}</div><div class="c num ${bp > 0 ? 'down' : bp < 0 ? 'up' : 'flat'}">${bp > 0 ? '+' : ''}${bp.toFixed(1)}bp</div></span></button>
         <span class="tbtns"><button class="tb trade${o || (me.gFut || {})[c.id] ? ' lit' : ''}" type="button" data-gb="${c.id}">거래</button></span></div>`; }).join('')}
-    <p class="gnote">나라마다 국채를 가장 많이 넣은 사람의 프로필이 지도에 찍혀요. 금리가 오르면(빨간 bp) 국채 가격은 내려요. 산 금리만큼 이자가 쌓여요.</p>`;
+    <p class="gnote">지도를 좌우로 넘기면 다른 지역이에요. 나라마다 국채를 가장 많이 넣은 사람의 프로필이 찍혀요. 금리가 오르면(빨간 bp) 국채 가격은 내려요.</p>`;
 }
 /* ───────── 서울 구채·브라질 국채 정리: 지금 값으로 한 번 환불 ─────────
    구채는 장당 지금 시세(다음 1장 가격, 수수료 없음), 브라질은 지금 평가액(이자 포함, 롱·숏은 지금 남은 증거금)으로 원화를 돌려줘요.
@@ -192,11 +199,13 @@ function gLiveSheet() {
 }
 KSHEETS.gb = renderGBSheet;
 document.addEventListener('click', e => {
+  const goBond = rg => { S.gZoom = rg; if (S.tab !== 'coin' || S.xMkt !== 'bond') { S.xMkt = 'bond'; goTab('coin'); renderExchange(true); } };
   const z = e.target.closest && e.target.closest('[data-gzoom]');
-  if (z) { if (S.tab !== 'coin' || S.xMkt !== 'bond') { S.xMkt = 'bond'; goTab('coin'); renderExchange(true); } gZoomTo(z.dataset.gzoom); return; }
+  if (z) { const el = $('#gCar'), i = GRG.indexOf(z.dataset.gzoom); if (el && i >= 0) { const rg = z.dataset.gzoom; el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }); setTimeout(() => { if (S.gZoom !== rg && gReg() !== rg) { S.gZoom = rg; renderExchange(); } }, 700); } else goBond(z.dataset.gzoom); return; }
   const pn = e.target.closest && e.target.closest('[data-gpin]');
-  if (pn) { const c = GC[pn.dataset.gpin]; if (!c) return; if ($('#gmapH') && pn.closest('#gmapH') || gZoomKey() !== c.rg) { if (S.tab !== 'coin' || S.xMkt !== 'bond') { S.xMkt = 'bond'; goTab('coin'); renderExchange(true); } gZoomTo(c.rg); return; }
+  if (pn) { const c = GC[pn.dataset.gpin]; if (!c) return; if (!pn.closest('#gCar')) { goBond(c.rg); return; }
     if (!S.me) { if (!S.readOnly) openSheet('join'); return; } openSheet('gb', { sym: c.id, m: 'buy' }); return; }
+  const hm = e.target.closest && e.target.closest('[data-gocar]'); if (hm) { goBond(gReg()); return; }
   const t = e.target.closest && e.target.closest('button, [data-gb]'); if (!t) return;
   if (t.dataset.gb) { if (!S.me) { if (!S.readOnly) openSheet('join'); return; } if (S.sheet) closeSheetRaw(); openSheet('gb', { sym: t.dataset.gb, m: 'buy' }); return; }
   if (t.id === 'gBuyGo') gTrade('buy');
