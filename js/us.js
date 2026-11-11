@@ -3,16 +3,30 @@
    시세: CNBC 공개 시세(키 없음, 브라우저에서 바로 됨). 5초마다 한 번에 전 종목 + 원/달러 환율.
    프리·애프터마켓 가격도 받아서, 장 밖 시간엔 그 가격으로 거래해요. 정규장이 닫혀 있고 시간외도 없으면 마지막 가격이에요.
    살 때 원화를 실시간 환율로 자동 환전해요(토스·키움처럼). 소수점 거래 · 수수료 0.1% · 현물만. */
+// 종목 · 이름 · 분류. ⚠️ 기호(티커)는 지갑 키(US_티커)라 지우거나 바꾸면 가진 사람 주식이 사라져요. 분류·이름·순서는 바꿔도 돼요
 const USX = [
   ['AAPL', '애플', 'tech'], ['MSFT', '마이크로소프트', 'tech'], ['GOOGL', '알파벳', 'tech'], ['AMZN', '아마존', 'tech'], ['META', '메타', 'tech'], ['NFLX', '넷플릭스', 'tech'], ['ORCL', '오라클', 'tech'],
+  ['CRM', '세일즈포스', 'tech'], ['ADBE', '어도비', 'tech'], ['IBM', 'IBM', 'tech'], ['CSCO', '시스코', 'tech'], ['DELL', '델', 'tech'], ['ANET', '아리스타', 'tech'],
   ['NVDA', '엔비디아', 'semi'], ['AVGO', '브로드컴', 'semi'], ['TSM', 'TSMC', 'semi'], ['AMD', 'AMD', 'semi'], ['MU', '마이크론', 'semi'], ['INTC', '인텔', 'semi'], ['ARM', 'ARM', 'semi'],
-  ['TSLA', '테슬라', 'hot'], ['PLTR', '팔란티어', 'hot'], ['COIN', '코인베이스', 'hot'], ['MSTR', '스트래티지', 'hot'], ['IONQ', '아이온큐', 'hot'], ['HOOD', '로빈후드', 'hot'],
-  ['SPY', 'S&P500 ETF', 'etf'], ['QQQ', '나스닥100 ETF', 'etf'], ['TQQQ', '나스닥 3배 ETF', 'etf'], ['SOXL', '반도체 3배 ETF', 'etf'],
+  ['QCOM', '퀄컴', 'semi'], ['ASML', 'ASML', 'semi'], ['TXN', '텍사스인스트루먼트', 'semi'], ['AMAT', '어플라이드머티리얼즈', 'semi'], ['LRCX', '램리서치', 'semi'], ['SMCI', '슈퍼마이크로', 'semi'], ['MRVL', '마벨', 'semi'],
+  ['PLTR', '팔란티어', 'ai'], ['SNOW', '스노우플레이크', 'ai'], ['CRWD', '크라우드스트라이크', 'ai'], ['NOW', '서비스나우', 'ai'], ['PANW', '팔로알토', 'ai'], ['SHOP', '쇼피파이', 'ai'], ['UBER', '우버', 'ai'],
+  ['DDOG', '데이터독', 'ai'], ['NET', '클라우드플레어', 'ai'], ['APP', '앱러빈', 'ai'],
+  ['TSLA', '테슬라', 'ev'], ['RIVN', '리비안', 'ev'], ['LCID', '루시드', 'ev'], ['NIO', '니오', 'ev'], ['RKLB', '로켓랩', 'ev'], ['ASTS', 'AST스페이스모바일', 'ev'], ['JOBY', '조비에비에이션', 'ev'], ['AVAV', '에어로바이런먼트', 'ev'],
+  ['COIN', '코인베이스', 'crypto'], ['MSTR', '스트래티지', 'crypto'], ['HOOD', '로빈후드', 'crypto'], ['MARA', '마라홀딩스', 'crypto'], ['RIOT', '라이엇플랫폼', 'crypto'], ['CLSK', '클린스파크', 'crypto'], ['CRCL', '서클', 'crypto'], ['SOFI', '소파이', 'crypto'], ['PYPL', '페이팔', 'crypto'],
+  ['IONQ', '아이온큐', 'qnt'], ['RGTI', '리게티', 'qnt'], ['QBTS', '디웨이브', 'qnt'], ['QUBT', '퀀텀컴퓨팅', 'qnt'], ['OKLO', '오클로', 'qnt'], ['CEG', '컨스텔레이션', 'qnt'], ['VST', '비스트라', 'qnt'],
+  ['JPM', 'JP모건', 'fin'], ['BAC', '뱅크오브아메리카', 'fin'], ['GS', '골드만삭스', 'fin'], ['V', '비자', 'fin'], ['MA', '마스터카드', 'fin'],
+  ['KO', '코카콜라', 'cons'], ['PEP', '펩시코', 'cons'], ['MCD', '맥도날드', 'cons'], ['SBUX', '스타벅스', 'cons'], ['NKE', '나이키', 'cons'], ['COST', '코스트코', 'cons'], ['WMT', '월마트', 'cons'], ['DIS', '디즈니', 'cons'], ['GME', '게임스탑', 'cons'],
+  ['LLY', '일라이릴리', 'bio'], ['NVO', '노보노디스크', 'bio'], ['UNH', '유나이티드헬스', 'bio'], ['JNJ', '존슨앤드존슨', 'bio'], ['PFE', '화이자', 'bio'], ['MRNA', '모더나', 'bio'], ['HIMS', '힘스앤허스', 'bio'],
+  ['XOM', '엑슨모빌', 'ind'], ['CVX', '셰브론', 'ind'], ['BA', '보잉', 'ind'], ['CAT', '캐터필러', 'ind'], ['GE', 'GE에어로', 'ind'], ['LMT', '록히드마틴', 'ind'],
+  ['SPY', 'S&P500 ETF', 'etf'], ['QQQ', '나스닥100 ETF', 'etf'], ['TQQQ', '나스닥 3배 ETF', 'etf'], ['SQQQ', '나스닥 -3배 ETF', 'etf'], ['SOXL', '반도체 3배 ETF', 'etf'], ['SOXS', '반도체 -3배 ETF', 'etf'],
+  ['DIA', '다우존스 ETF', 'etf'], ['IWM', '러셀2000 ETF', 'etf'], ['ARKK', '아크 이노베이션', 'etf'], ['SCHD', '배당 ETF', 'etf'], ['TLT', '미국 장기채 ETF', 'etf'],
 ];
 // 현물(원자재): CNBC 기호 · 표시 이름 · 분류 · 단위. 금·은·백금은 현물 가격, 나머지는 최근월 선물 가격
 const CMX = [['XAU=', 'GOLD', '금', 'metal', '온스'], ['XAG=', 'SILV', '은', 'metal', '온스'], ['XPT=', 'PLAT', '백금', 'metal', '온스'], ['@HG.1', 'COPR', '구리', 'metal', '파운드'],
   ['@CL.1', 'WTI', 'WTI 원유', 'energy', '배럴'], ['@LCO.1', 'BRNT', '브렌트유', 'energy', '배럴'], ['@NG.1', 'GAS', '천연가스', 'energy', 'MMBtu']];
-const UCAT = { tech: { n: '빅테크', c: '#2b2745' }, semi: { n: '반도체', c: '#0e7c86' }, hot: { n: '인기', c: '#e8384f' }, etf: { n: 'ETF', c: '#5b4bd6' } };
+const UCAT = { tech: { n: '빅테크', c: '#2b2745' }, semi: { n: '반도체', c: '#0e7c86' }, ai: { n: 'AI·소프트웨어', c: '#6a4cf5' }, ev: { n: '전기차·우주', c: '#e8384f' },
+  crypto: { n: '코인·핀테크', c: '#f08c00' }, qnt: { n: '양자·원전', c: '#0b7a75' }, fin: { n: '금융', c: '#1f4fa8' }, cons: { n: '소비재', c: '#c2185b' },
+  bio: { n: '헬스케어', c: '#16a34a' }, ind: { n: '에너지·산업', c: '#57534e' }, etf: { n: 'ETF', c: '#5b4bd6' } };
 const CCAT = { metal: { n: '금속', c: '#b8860b' }, energy: { n: '에너지', c: '#3d3d46' } };
 const UC = {}, U_BY = {};   // UC: id → 종목 (m: 'us' 주식 / 'cm' 현물), U_BY: CNBC 기호 → id
 USX.forEach(([a, n, c]) => { UC['US_' + a] = { id: 'US_' + a, a, n, c, s: a, m: 'us' }; });
@@ -36,8 +50,11 @@ const IXQ = { p: 0, base: 0, st: '', t: 0 }, IXC = { t: 0, pts: null, t0: 0, t1:
 async function uFetch() {
   if (UQ.busy) return; UQ.busy = true; UQ.poll = Date.now();
   try {
-    const r = await fetch(CNBC + encodeURIComponent([...Object.values(UC).filter(c => c.m !== 'fx').map(c => c.s), 'KRW=', '.IXIC'].join('|')));
-    const list = (((await r.json()) || {}).FormattedQuoteResult || {}).FormattedQuote || [];
+    // 종목이 많아서 40개씩 나눠 동시에 받아요 (한 번에 너무 많이 보내면 막힐 수 있어요)
+    const syms = [...Object.values(UC).filter(c => c.m !== 'fx').map(c => c.s), 'KRW=', '.IXIC'], parts = [];
+    for (let i = 0; i < syms.length; i += 40) parts.push(syms.slice(i, i + 40));
+    const res = await Promise.all(parts.map(pt => fetch(CNBC + encodeURIComponent(pt.join('|'))).then(r => r.json()).catch(() => null)));
+    const list = res.flatMap(j => ((j || {}).FormattedQuoteResult || {}).FormattedQuote || []);
     list.forEach(q => {
       if (!q || q.code !== 0) return;
       if (q.symbol === 'KRW=') { const p = numOf(q.last); if (p) { FX.p = p; FX.c = numOf(q.change_pct) / 100; FX.t = Date.now(); UP.FX_USD = { p: 1, base: 1, st: 'REG_MKT', t: Date.now() }; } return; }
@@ -272,6 +289,15 @@ function renderMineFab() {
   fabState(f, pos, r);
   f.innerHTML = `<span class="mf-ic">💼</span><span class="mf-t"><b>내 보유 ${pos.length}</b>${P ? `<small class="${cls(r)}">${pctTxt(r)}</small>` : ''}</span>`;
 }
+// 목록 다시 그리기: 줄 순서가 같으면 바뀐 줄만 갈아끼워요 (로고 이미지는 그대로 둬서 깜빡이지 않아요)
+function patchList(el, parts) {
+  parts = parts.filter(([, h]) => h); const keys = parts.map(([k]) => k).join('|');
+  if (el._keys !== keys || el.children.length !== parts.length) { el.innerHTML = parts.map(([, h]) => h).join(''); el._keys = keys; el._html = parts.map(([, h]) => h); return; }
+  parts.forEach(([, h], i) => { if (el._html[i] === h) return; el._html[i] = h;
+    const t = document.createElement('template'); t.innerHTML = h.trim(); const nu = t.content.firstElementChild, old = el.children[i]; if (!nu || !old) return;
+    const ob = old.querySelector('.logo-b'), nb = nu.querySelector('.logo-b'); if (ob && nb && ob.innerHTML.replace(/\s/g, '') === nb.innerHTML.replace(/\s/g, '')) nb.replaceWith(ob);
+    old.replaceWith(nu); });
+}
 function renderExchange(ctl) {
   const el = $('#tab-coin'); if (!el) return;
   if (!X_TABS.some(([k]) => k === S.xMkt)) S.xMkt = 'us';
@@ -280,19 +306,24 @@ function renderExchange(ctl) {
   const m = S.xMkt;
   $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 1,000만원</b><small>총자산이 100만원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
   const live = m === 'coin' ? kLive() : m === 'bond' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
-  if (m === 'bond') { $('#kList').innerHTML = worldHTML(); return; }   // 서울 구채는 없앴어요 (환불은 gbond.js gRefund)
+  if (m === 'bond') { const kl = $('#kList'); kl._keys = null; kl.innerHTML = worldHTML(); return; }   // 서울 구채는 없앴어요 (환불은 gbond.js gRefund)
   if (m === 'coin') {
     if (!KCAT[S.kCat]) S.kCat = 'all'; if (!K_SORTS[S.kSortKey]) S.kSortKey = 'v';
     const sk = S.kSortKey, list = Object.values(KC).filter(c => S.kCat === 'all' || c.c === S.kCat);
     const key = c => { const o = KP[c.id] || {}; return sk[0] === 'p' ? (o.p || 0) : sk[0] === 'c' ? (o.c || 0) : (o.v || 0); };
     list.sort((a, b) => (sk.endsWith('a') ? 1 : -1) * (key(a) - key(b)));
-    $('#kList').innerHTML = list.map(kRow).join(''); return;
+    patchList($('#kList'), list.map(c => [c.id, kRow(c)])); return;
   }
   const cats = m === 'us' ? UCAT : CCAT, ck = m === 'us' ? 'uCat' : 'cCat', skk = m === 'us' ? 'uSortKey' : 'cSortKey';
   if (!cats[S[ck]]) S[ck] = 'all'; if (!U_SORTS[S[skk]]) S[skk] = 'v';
   const sk = S[skk], list = Object.values(UC).filter(c => c.m === m && (S[ck] === 'all' || c.c === S[ck]));
   if (sk !== 'v') { const key = c => sk[0] === 'p' ? uPx(c.id) : uChg(c.id); list.sort((a, b) => (sk.endsWith('a') ? 1 : -1) * (key(a) - key(b))); }
-  $('#kList').innerHTML = ixCard() + fxRow() + list.map(uRow).join('');
+  // 전체 + 기본순이면 분류마다 제목을 달아서 나눠 보여줘요
+  const grouped = S[ck] === 'all' && sk === 'v' && m === 'us';
+  const parts = [['ix', ixCard()], ['fx', fxRow()]];
+  if (grouped) Object.entries(UCAT).forEach(([k, ct]) => { const l = list.filter(c => c.c === k); if (!l.length) return; parts.push(['h:' + k, `<div class="ucat-h" style="--c:${ct.c}"><b>${ct.n}</b><small>${l.length}</small></div>`]); l.forEach(c => parts.push([c.id, uRow(c)])); });
+  else list.forEach(c => parts.push([c.id, uRow(c)]));
+  patchList($('#kList'), parts);
   ixLoad(); requestAnimationFrame(ixDraw);
 }
 uFetch();

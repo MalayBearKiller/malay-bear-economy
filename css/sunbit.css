@@ -1184,3 +1184,4 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .homemap.gmapbox{height:auto;display:block;margin-bottom:8px}
 .gkings{padding:0;gap:8px}
 .gk-none{padding:14px 24px}
+.ucat-h{display:flex;align-items:center;gap:6px;padding:16px 4px 4px;font-size:14px}.ucat-h b{font-weight:900}.ucat-h::before{content:'';width:4px;height:14px;border-radius:2px;background:var(--c)}.ucat-h small{font-size:12px;font-weight:700;color:var(--dim)}
