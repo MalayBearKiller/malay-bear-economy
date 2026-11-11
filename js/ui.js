@@ -9,7 +9,8 @@ function renderHome() {
   if (S.me) {
     const me = kInit(S.me), w = worth(me), r = roiOf(me, w), rk = ranking().findIndex(p => p.id === S.uid) + 1;
     const chief = Object.entries(gTop()).filter(([, t]) => t.id === S.uid).map(([id]) => GC[id].f);
-    h += `<button type="button" class="wal krwwal one" data-tab-go="assets"><span class="wl-h"><span class="wl-ic">₩</span>내 총자산<small>${rk ? rk + '위' : ''}</small></span>
+    const bnr = okPhoto(me.banner);
+    h += `<button type="button" class="wal krwwal one${bnr ? ' bn' : ''}" data-tab-go="assets"${bnr ? ` style="--bn:url(${me.banner})"` : ''}><span class="wl-h"><span class="wl-ic">₩</span>내 총자산<small>${rk ? rk + '위' : ''}</small></span>
       <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.join('')}` : ''}</span></button>
     <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>`;
   }

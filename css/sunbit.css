@@ -1115,3 +1115,5 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .promo.mini .pr-go{width:38px;height:30px;font-size:14px}
 .pr-top{letter-spacing:.02em}.pr-msg{font-size:14px}.pr-msg em{font-size:15.5px}
 .pr-msg.sm{font-size:12px}.pr-msg.sm em{font-size:13px}
+.krwwal.bn{background:linear-gradient(150deg,rgba(28,95,230,.5),rgba(11,47,122,.78)),var(--bn) center/cover no-repeat}
+.krwwal.bn b,.krwwal.bn .wl-s{text-shadow:0 1px 6px rgba(0,0,0,.35)}
