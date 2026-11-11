@@ -59,7 +59,7 @@ function renderTaxBar() {
 
 /* ───────── 📜 전체 로그 ───────── */
 function openLog() { S.board = 'log'; S.logF = S.logF || 'all'; $('#board').hidden = false; document.body.classList.add('noscroll'); renderBoard(); guardOn(); }
-const LOG_F = { all: ['전체', () => true], trade: ['거래', f => /^k_(buy|sell|ubuy|usell|fopen|fclose|bond|bsell)$/.test(f.kind)], atk: ['공격·청산', f => f.kind === 'k_atk' || f.kind === 'k_fliq'], money: ['자동투자·게임', f => f.kind === 'k_tax' || f.kind === 'k_auto' || f.kind === 'casino' || f.kind === 'k_rescue'] };
+const LOG_F = { all: ['전체', () => true], trade: ['거래', f => /^k_(buy|sell|ubuy|usell|fopen|fclose|bond|bsell)$/.test(f.kind)], atk: ['공격·청산', f => f.kind === 'k_atk' || f.kind === 'k_fliq'], money: ['자동투자·게임', f => f.kind === 'k_tax' || f.kind === 'k_auto' || f.kind === 'casino' || f.kind === 'k_rescue' || f.kind === 'k_refund'] };
 function logDetail(f) {
   if (f.kind === 'k_atk') return `🎲 뽑은 번호 ${(+f.roll).toFixed(3)} ${f.ok ? '<' : '≥'} 성공 확률 ${Math.round(f.p * 100)}% → ${f.ok ? '성공' : '실패'} · 비용 ${krw(f.cost)}${f.rev ? ' · 복수 반값' : ''}`;
   if (f.kind === 'k_tax') return `현금 비율 ${Math.round((f.r || 0) * 100)}%${f.hrs > 1 ? ` · ${f.hrs}시간치` : ''}`;

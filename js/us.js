@@ -279,8 +279,7 @@ function renderExchange(ctl) {
   const m = S.xMkt;
   $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 1,000만원</b><small>총자산이 100만원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
   const live = m === 'coin' ? kLive() : m === 'bond' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
-  if (m === 'bond') { const sub = S.bondSub === 'world' ? 'world' : 'seoul';
-    $('#kList').innerHTML = `<div class="seg seg2 gbsub"><button type="button" data-gbsub="seoul" aria-pressed="${sub === 'seoul'}">🏛️ 서울 구채</button><button type="button" data-gbsub="world" aria-pressed="${sub === 'world'}">🌍 세계 국채</button></div>` + (sub === 'world' ? worldHTML() : bondsHTML()); return; }
+  if (m === 'bond') { $('#kList').innerHTML = worldHTML(); return; }   // 서울 구채는 없앴어요 (환불은 gbond.js gRefund)
   if (m === 'coin') {
     if (!KCAT[S.kCat]) S.kCat = 'all'; if (!K_SORTS[S.kSortKey]) S.kSortKey = 'v';
     const sk = S.kSortKey, list = Object.values(KC).filter(c => S.kCat === 'all' || c.c === S.kCat);

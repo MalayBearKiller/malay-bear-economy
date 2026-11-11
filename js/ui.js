@@ -8,9 +8,9 @@ function renderHome() {
   let h = '';
   if (S.me) {
     const me = kInit(S.me), w = worth(me), r = roiOf(me, w), rk = ranking().findIndex(p => p.id === S.uid) + 1;
-    const chief = GU_RANK.filter(g => (guChief()[g] || {}).id === S.uid);
+    const chief = Object.entries(gTop()).filter(([, t]) => t.id === S.uid).map(([id]) => GC[id].f);
     h += `<button type="button" class="wal krwwal one" data-tab-go="assets"><span class="wl-h"><span class="wl-ic">₩</span>내 총자산<small>${rk ? rk + '위' : ''}</small></span>
-      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.length > 1 ? chief.length + '곳' : chief[0]}` : ''}</span></button>
+      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.join('')}` : ''}</span></button>
     <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>`;
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
@@ -23,12 +23,12 @@ function renderHome() {
   S.rankPage = Math.max(0, Math.min(S.rankPage || 0, rPages - 1));
   if (S.homeView !== 'map') S.homeView = 'rank';
   const isMap = S.homeView === 'map', pin = !!S.homePin;
-  const top = guChief(), myGu = GU_RANK.filter(g => (top[g] || {}).id === S.uid).length, taken = Object.keys(top).length;
+  const top = gTop(), myGu = Object.values(top).filter(t => t.id === S.uid).length, taken = Object.keys(top).length, nC = gShown().length;
   h += `<div class="sec homesw"><div class="sec-h hsw"><span class="hswitch" role="tablist"><button type="button" role="tab" data-homeview="rank" aria-selected="${!isMap}">순위</button><button type="button" role="tab" data-homeview="map" aria-selected="${isMap}">지도</button></span>
     <button type="button" class="fixchk${pin ? ' on' : ''}" id="homePin" role="checkbox" aria-checked="${pin}"><i></i>고정하기</button>
-    ${isMap ? `<small class="mapinfo2">구청장 ${taken}/25${myGu ? ` · 내 구 ${myGu}` : ''}</small>` : `<small class="livecnt"><i></i>${liveCount()}명 접속</small>`}</div>
+    ${isMap ? `<small class="mapinfo2">👑 ${taken}/${nC}${myGu ? ` · 내 ${myGu}` : ''}</small>` : `<small class="livecnt"><i></i>${liveCount()}명 접속</small>`}</div>
     <div class="flipbar${pin ? ' off' : ''}"><i style="animation-duration:10s;animation-delay:-${Math.min(10000, Date.now() - (S.homeFlipAt || 0))}ms"></i></div><div class="hview">`;
-  if (isMap) h += `<div class="card bmapbox homemap">${bondMapSVG()}</div>`;
+  if (isMap) h += `<div class="card gmapbox homemap">${gWorldSVG(true)}${gTopsHTML(top)}</div>`;
   else if (S.mode === 'loading') h += `<div class="empty">순위를 불러오는 중…</div>`;
   else if (!cur.length) h += `<div class="empty">아직 아무도 없어요. 첫 번째로 참가해보세요.</div>`;
   else {
@@ -48,8 +48,8 @@ function renderHome() {
 }
 function ownerColor(uid) { return uid === S.uid ? 'var(--violet)' : avaColor(uid); }
 // 구 영주: 그 구에서 건물을 가장 많이 가진 사람
-function lordOf(uid, top) { const g = Object.entries(top || topOwners()).filter(([, u]) => u === uid).map(([gu]) => gu); return g.length ? (g.length > 2 ? `${g[0]} 외 ${g.length - 1}곳 구청장` : g.join('·') + '청장') : ''; }
-function topOwners() { return Object.fromEntries(Object.entries(guChief()).map(([g, c]) => [g, c.id])); }
+function lordOf(uid, top) { const g = Object.entries(top || topOwners()).filter(([, u]) => u === uid).map(([id]) => GC[id]); return g.length ? g.map(c => c.f).join('') + (g.length === 1 ? ` ${g[0].cn} 국채 1등` : ` 국채 1등`) : ''; }
+function topOwners() { return Object.fromEntries(Object.entries(gTop()).map(([id, t]) => [id, t.id])); }   // 나라별 국채 1등
 // 도장: 그 구 1등 땅주인 프로필을 구 한가운데에 찍어요. 건물 점보다 위에 그려서 안 가려져요 (확대하면 사라짐)
 function stampInner(uid, cid) {
   const p = S.players[uid] || {}, ph = !p.bot && okPhoto(p.photo), col = ownerColor(uid);
@@ -349,7 +349,7 @@ function renderProfile() { renderFriendProfile(); } // 새 프로필 화면 (me.
 function renderJoinSheet(b) {
   const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '') || '존버의신';
   b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>50억원으로 시작</h3></div>
-    <p class="hint keep" style="text-align:center">진짜 시세 코인(선물 롱·숏)과 미국 주식, 서울 구채를 한 지갑으로 굴려요. 총자산 1등을 노려 보세요.</p>
+    <p class="hint keep" style="text-align:center">진짜 시세 코인(선물 롱·숏)과 미국 주식, 세계 국채를 한 지갑으로 굴려요. 총자산 1등을 노려 보세요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
     <p class="hint nickwarn">⚠️ 실명은 쓰지 마세요. 닉네임은 순위·채팅에서 모두에게 보여요.</p>
     <button class="cta" type="button" id="joinBtn">참가하기</button>`;
@@ -365,8 +365,8 @@ async function doJoin() {
 // ? 도움말: 지금 보고 있는 탭에 맞는 설명을 보여줘요
 const HELP = {
   home: ['홈', '총자산 순위', [
-    '돈은 <b>원화</b> 하나예요. 처음 <b>50억원</b>. 진짜 시세 코인·주식·구채와 게임·상점에 다 같이 써요.',
-    '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 구채. 순위는 총자산 순서예요.',
+    '돈은 <b>원화</b> 하나예요. 처음 <b>50억원</b>. 진짜 시세 코인·주식·국채와 게임·상점에 다 같이 써요.',
+    '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 국채. 순위는 총자산 순서예요.',
     '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
     '<b>🤖 현금 자동 투자</b>: 총자산 중 <b>현금이 50% 이상</b>이면 매시 정각에 <b>50%를 넘는 현금</b>이 코인·미국 주식 3~5개에 <b>무작위 레버리지 롱</b>(코인 2·3·5배, 주식 2·3배)으로 들어가요. 자동 투자 뒤 아무것도 안 하면 <b>휴면</b>이 돼서 더는 안 사고, 다시 접속하면 다시 켜져요. 40%부터 화면 아래에 경고가 떠요. 직접 골라 사 두면 자동으로 안 사져요.',
     '<b>📜 로그</b>: 홈 위쪽 로그 버튼. 모든 거래·공격(뽑은 번호까지)·청산·세금이 다 같이 보는 기록으로 남아요.',
@@ -376,14 +376,14 @@ const HELP = {
     '<b>주식</b>: 미국 24종목, 실시간(프리·애프터 포함). 원화를 실시간 환율로 자동 환전해서 사요. 소수점 거래, 수수료 0.1%. <b>롱·숏 2·3배</b>(해외주식 CFD 방식).',
     '<b>코인</b>: 업비트 실시간. 현물 수수료 0.05%. <b>롱·숏</b> BTC·ETH 100배, 알트 50배, 밈 25배.',
     '<b>현물</b>: 금·은·백금·구리·원유·천연가스. 실시간 달러 가격. <b>롱·숏 2·5·10배</b>.',
-    '<b>채권</b>: 서울 25개 구 구채. 가장 많이 가진 사람이 구청장, 매시간 이자.',
+    '<b>채권</b>: 미국·유럽·동아시아 10년물 국채. 지도에서 지역을 누르면 확대돼요. 나라마다 가장 많이 넣은 사람의 프로필이 지도에 찍혀요.',
     '롱·숏은 약 1÷배수만큼 반대로 가면 <b>청산</b>(증거금 전부 잃음). 펀딩비 8시간마다 0.01%. 앱을 꺼 둬도 분봉 최저·최고가로 확인해요.',
     '오른쪽 아래 <b>💼 내 보유</b>를 누르면 가진 걸 모아 보고 바로 팔기·종료할 수 있어요.']],
-  bond: ['구채', '구청장 자리 경쟁 · 원화', [
-    '서울 25개 구마다 구채가 <b>100장</b>뿐이에요. 그 구 구채를 <b>가장 많이 가진 사람이 구청장</b>이에요. 같으면 먼저 산 사람.',
-    '1장 기본값은 땅값 순서로 <b>강남 1억 ~ 도봉 500만원</b>이에요. 팔린 장수가 늘수록 비싸져서 다 팔리면 2.5배가 되고, 시간에 따라 시세도 출렁여요.',
-    '매시간 정각에 <b>이자</b>가 원화로 들어와요. 비싼 구일수록 이자율은 낮아요(강남 0.03% ~ 도봉 0.08%/시간).',
-    '팔 때(환매)는 1% 수수료. 남이 사면 내 구채 값도 올라요. 구청장 혜택은 전투 업데이트 때 스탯 보너스로 붙어요.']],
+  bond: ['국채', '미국·유럽·동아시아 10년물', [
+    '나라별 <b>10년물 국채</b>를 실시간 금리로 사고팔아요. 금리가 오르면 가격이 내리고, 산 금리만큼 이자가 시간에 따라 쌓여요.',
+    '세계 지도에서 <b>지역을 누르면 확대</b>돼요. 나라마다 국채를 <b>가장 많이 넣은 사람</b>(현물 원금 + 롱·숏 증거금)의 프로필이 지도에 찍혀요.',
+    '현물 수수료 0.05%, 롱·숏 2·5·10배. 국채 롱은 금리가 내리면, 숏은 오르면 이득이에요.',
+    '서울 구채와 브라질 국채는 없어졌어요. 가지고 있던 사람은 접속하면 지금 값으로 원화 환불돼요.']],
   atk: ['공격', '친구 프로필의 💰·🎯 버튼', [
     '<b>💰 수익 약탈</b>: 친구가 <b>수익 보고 있는</b> 코인·주식을 털어요. 성공(20%)하면 그 종목에서 <b>번 돈만큼</b> 가져와요. 친구 원금은 안 건드려요.',
     '<b>🎯 마진 사냥</b>: 친구의 <b>롱·숏</b>을 노려요. 성공하면 증거금 <b>50%</b>를 가져와요(비용은 증거금의 15%). 그걸로 청산 직전까지 몰리면 <b>☠️ 참수</b>, 증거금을 <b>전부</b> 가져와요. 배수가 높은 친구일수록 조금 더 잘 털려요(10배 22% · 50배 30% · 최대 40%).',

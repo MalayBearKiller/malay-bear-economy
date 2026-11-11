@@ -94,7 +94,7 @@ const GU_RANK = ['강남구', '서초구', '송파구', '용산구', '성동구'
 const BOND_N = 100, BOND_SELL = 0.01, BOND_CURVE = 1.5;   // 다 팔리면 2.5배, 중도환매 수수료 1%
 const BOND = {};
 GU_RANK.forEach((g, i) => { BOND[g] = { gu: g, i, base: Math.round(1e8 * Math.pow(0.05, i / 24) / 1e5) * 1e5, cp: (3 + 5 * i / 24) / 1e4 }; }); // 시간당 이자 0.03%(강남) ~ 0.08%(도봉)
-function bondSold(gu) { let n = 0; for (const p of Object.values(S.players)) if (p && p.name && p.bonds) n += p.bonds[gu] || 0; return n; }
+function bondSold(gu) { let n = 0; for (const p of Object.values(S.players)) if (p && p.name) n += ((p.bonds || {})[gu] || 0) + ((p.bondsRef || {})[gu] || 0); return n; }   // 환불받은 장수(bondsRef)도 세서 시세가 그대로예요
 const bondDrift = (gu, t) => { const k = 'bond1:' + gu + ':'; return 0.09 * vnoise(k + 'a', t / (6 * H)) + 0.035 * vnoise(k + 'b', t / 18e5) + 0.012 * vnoise(k + 'c', t / 12e4); };
 // i번째 장(0부터)의 가격. 다음에 살 1장 = bondUnit(gu, 팔린 수)
 const bondUnit = (gu, i, t = now()) => Math.round(BOND[gu].base * (1 + BOND_CURVE * Math.pow(Math.max(0, i) / BOND_N, 1.3)) * Math.exp(bondDrift(gu, t)) / 1000) * 1000;
@@ -373,6 +373,7 @@ function kFeedText(f) {
         : f.exec ? ['down', '☠️', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} <b>참수!</b> 현상금 <b class="up">${krw(f.gain)}</b>`]
         : ['up', '🎯', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} 증거금 <b class="up">${krw(f.gain)}</b> 사냥`]; }
     case 'k_auto': return ['gold', '🤖', `<b>${nm}</b>님 현금 <b>${krw(f.amt)}</b> 자동 투자`];
+    case 'k_refund': return ['gold', '🏛️', `<b>${nm}</b>님이 ${f.n ? `서울 구채 ${f.n}장` : ''}${f.n && f.br ? '·' : ''}${f.br ? '브라질 국채' : ''}를 지금 값 <b>${krw(f.amt)}</b>으로 환불받았어요`];
     case 'k_gbuy': return GC[f.sym] ? ['up', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
     case 'k_gsell': return GC[f.sym] ? [f.pnl >= 0 ? 'up' : 'down', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) 팔았어요 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null;
     case 'k_tax': return ['down', '💸', `<b>${nm}</b>님 현금세 <b class="down">-${krw(f.amt)}</b>`];

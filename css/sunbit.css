@@ -1058,3 +1058,21 @@ body.has-taxbar{padding-bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 .pr-go small{font-size:10px;font-weight:900;margin-top:-2px}
 @keyframes prgo{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 @media (prefers-reduced-motion:reduce){.promo,.pr-shine,.pr-spark,.pr-roll,.pr-go,.pr-tag{animation:none!important}}
+
+/* 🌍 세계 국채 지도 (지역 누르면 확대) */
+.gmapbox{position:relative;padding:0;overflow:hidden;background:linear-gradient(180deg,#e4efff,#f3f8ff)}
+.wmap{width:100%;aspect-ratio:2.2;display:block}
+.wmap .wl{fill:#d5dceb;stroke:#fff;stroke-width:.6;vector-effect:non-scaling-stroke}
+.wmap .wc{fill:#9cc2ff;stroke:#fff;stroke-width:.8;vector-effect:non-scaling-stroke;cursor:pointer}
+.wmap .wc.mine{stroke:#f2b300;stroke-width:2}
+.gchip{cursor:pointer}.gchip rect{fill:var(--ink);opacity:.88}.gchip text{fill:#fff;font-size:12px;font-weight:900;text-anchor:middle}
+.gchip .gc-n{fill:var(--gold);opacity:1}.gchip .gc-nt{fill:#3a2400;font-size:10px}
+.gchip:hover rect{opacity:1}
+.gm-back{position:absolute;left:8px;top:8px;height:28px;padding:0 10px;border-radius:99px;background:rgba(23,22,31,.85);color:#fff;font-size:12px;font-weight:800}
+.gm-note{background:rgba(255,255,255,.7);padding:1px 6px;border-radius:6px}
+.greg{overflow-x:auto;scrollbar-width:none}.greg button{flex:1 0 auto;padding:0 10px;white-space:nowrap}
+.homemap.gmapbox{padding:0;height:340px;display:flex;flex-direction:column}.homemap .wmap{width:100%;flex:none}
+.gmapbox .gm-note{top:8px;bottom:auto;right:8px}
+.gtops{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:8px;align-content:center}
+.gtops button{display:flex;align-items:center;gap:6px;min-width:0;height:30px;padding:0 8px;border-radius:9px;background:rgba(255,255,255,.75);font-size:12px;text-align:left}
+.gtops b{font-weight:800;flex:none}.gtops small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim);font-weight:700;font-size:11px}
