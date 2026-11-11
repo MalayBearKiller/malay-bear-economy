@@ -3,11 +3,11 @@
 const K_RESCUE = 200_000_000, K_RESCUE_AT = 20_000_000; // 총자산 2,000만원 밑이면 파산 지원금 2억원
 const KFEE = 0.0005, K_MIN = 5000;        // 업비트 수수료 0.05%, 최소 주문 5,000원
 const KCOINS = [
-  ['BTC', '비트코인', 'major'], ['ETH', '이더리움', 'major'], ['XRP', '리플', 'major'], ['SOL', '솔라나', 'major'], ['TRX', '트론', 'major'],
-  ['ADA', '에이다', 'major'], ['BCH', '비트코인캐시', 'major'], ['ETC', '이더리움클래식', 'major'], ['LINK', '체인링크', 'major'], ['XLM', '스텔라루멘', 'major'], ['HBAR', '헤데라', 'major'],
-  ['AVAX', '아발란체', 'l1'], ['DOT', '폴카닷', 'l1'], ['SUI', '수이', 'l1'], ['APT', '앱토스', 'l1'], ['NEAR', '니어', 'l1'], ['SEI', '세이', 'l1'], ['ICP', '인터넷컴퓨터', 'l1'],
-  ['UNI', '유니스왑', 'defi'], ['AAVE', '에이브', 'defi'], ['ARB', '아비트럼', 'defi'], ['OP', '옵티미즘', 'defi'], ['POL', '폴리곤', 'defi'], ['ENA', '에테나', 'defi'], ['ONDO', '온도파이낸스', 'defi'],
-  ['DOGE', '도지코인', 'meme'], ['SHIB', '시바이누', 'meme'], ['PEPE', '페페', 'meme'], ['WIF', '도그위프햇', 'meme'], ['TRUMP', '오피셜트럼프', 'meme'], ['PENGU', '펏지펭귄', 'meme'],
+  ['BTC', '비트꼬인', 'major'], ['ETH', '이더리음', 'major'], ['XRP', '리뿔', 'major'], ['SOL', '쏠라나', 'major'], ['TRX', '트롱', 'major'],
+  ['ADA', '에이따', 'major'], ['BCH', '비트꼬인캐쉬', 'major'], ['ETC', '이더리음클래식', 'major'], ['LINK', '체인링꾸', 'major'], ['XLM', '스텔라루맨', 'major'], ['HBAR', '헤대라', 'major'],
+  ['AVAX', '아발랑쉬', 'l1'], ['DOT', '폴카땃', 'l1'], ['SUI', '쑤이', 'l1'], ['APT', '앱토쓰', 'l1'], ['NEAR', '니어리', 'l1'], ['SEI', '쎄이', 'l1'], ['ICP', '인터넷컴퓨타', 'l1'],
+  ['UNI', '유니스웝', 'defi'], ['AAVE', '에이부', 'defi'], ['ARB', '아비트롬', 'defi'], ['OP', '옵티미증', 'defi'], ['POL', '폴리공', 'defi'], ['ENA', '에테냐', 'defi'], ['ONDO', '온도파이낸쓰', 'defi'],
+  ['DOGE', '도지꼬인', 'meme'], ['SHIB', '시바견', 'meme'], ['PEPE', '뻬뻬', 'meme'], ['WIF', '도그위드햇', 'meme'], ['TRUMP', '오피셜트럼뿌', 'meme'], ['PENGU', '뚱지펭귄', 'meme'],
 ];
 const KCAT = { major: { n: '메이저', c: '#f08c00' }, l1: { n: '레이어1', c: '#5b4bd6' }, defi: { n: '디파이', c: '#0e9f6e' }, meme: { n: '밈', c: '#e8384f' } };
 const KC = {}; KCOINS.forEach(([a, n, c]) => { KC['KRW-' + a] = { id: 'KRW-' + a, a, n, c }; });

@@ -3,23 +3,23 @@
    시세: CNBC 공개 시세(키 없음, 브라우저에서 바로 됨). 5초마다 한 번에 전 종목 + 원/달러 환율.
    프리·애프터마켓 가격도 받아서, 장 밖 시간엔 그 가격으로 거래해요. 정규장이 닫혀 있고 시간외도 없으면 마지막 가격이에요.
    살 때 원화를 실시간 환율로 자동 환전해요(토스·키움처럼). 소수점 거래 · 수수료 0.1% · 현물만. */
-// 종목 · 이름 · 분류. ⚠️ 기호(티커)는 지갑 키(US_티커)라 지우거나 바꾸면 가진 사람 주식이 사라져요. 분류·이름·순서는 바꿔도 돼요
+// 종목 · 이름 · 분류. 이름은 진짜 회사가 아니라 살짝 바꾼 패러디예요(게임 가격이라서). ⚠️ 기호(티커)는 지갑 키(US_티커)라 지우거나 바꾸면 가진 사람 주식이 사라져요. 분류·이름·순서는 바꿔도 돼요
 const USX = [
-  ['AAPL', '애플', 'tech'], ['MSFT', '마이크로소프트', 'tech'], ['GOOGL', '알파벳', 'tech'], ['AMZN', '아마존', 'tech'], ['META', '메타', 'tech'], ['NFLX', '넷플릭스', 'tech'], ['ORCL', '오라클', 'tech'],
-  ['CRM', '세일즈포스', 'tech'], ['ADBE', '어도비', 'tech'], ['IBM', 'IBM', 'tech'], ['CSCO', '시스코', 'tech'], ['DELL', '델', 'tech'], ['ANET', '아리스타', 'tech'],
-  ['NVDA', '엔비디아', 'semi'], ['AVGO', '브로드컴', 'semi'], ['TSM', 'TSMC', 'semi'], ['AMD', 'AMD', 'semi'], ['MU', '마이크론', 'semi'], ['INTC', '인텔', 'semi'], ['ARM', 'ARM', 'semi'],
-  ['QCOM', '퀄컴', 'semi'], ['ASML', 'ASML', 'semi'], ['TXN', '텍사스인스트루먼트', 'semi'], ['AMAT', '어플라이드머티리얼즈', 'semi'], ['LRCX', '램리서치', 'semi'], ['SMCI', '슈퍼마이크로', 'semi'], ['MRVL', '마벨', 'semi'],
-  ['PLTR', '팔란티어', 'ai'], ['SNOW', '스노우플레이크', 'ai'], ['CRWD', '크라우드스트라이크', 'ai'], ['NOW', '서비스나우', 'ai'], ['PANW', '팔로알토', 'ai'], ['SHOP', '쇼피파이', 'ai'], ['UBER', '우버', 'ai'],
-  ['DDOG', '데이터독', 'ai'], ['NET', '클라우드플레어', 'ai'], ['APP', '앱러빈', 'ai'],
-  ['TSLA', '테슬라', 'ev'], ['RIVN', '리비안', 'ev'], ['LCID', '루시드', 'ev'], ['NIO', '니오', 'ev'], ['RKLB', '로켓랩', 'ev'], ['ASTS', 'AST스페이스모바일', 'ev'], ['JOBY', '조비에비에이션', 'ev'], ['AVAV', '에어로바이런먼트', 'ev'],
-  ['COIN', '코인베이스', 'crypto'], ['MSTR', '스트래티지', 'crypto'], ['HOOD', '로빈후드', 'crypto'], ['MARA', '마라홀딩스', 'crypto'], ['RIOT', '라이엇플랫폼', 'crypto'], ['CLSK', '클린스파크', 'crypto'], ['CRCL', '서클', 'crypto'], ['SOFI', '소파이', 'crypto'], ['PYPL', '페이팔', 'crypto'],
-  ['IONQ', '아이온큐', 'qnt'], ['RGTI', '리게티', 'qnt'], ['QBTS', '디웨이브', 'qnt'], ['QUBT', '퀀텀컴퓨팅', 'qnt'], ['OKLO', '오클로', 'qnt'], ['CEG', '컨스텔레이션', 'qnt'], ['VST', '비스트라', 'qnt'],
-  ['JPM', 'JP모건', 'fin'], ['BAC', '뱅크오브아메리카', 'fin'], ['GS', '골드만삭스', 'fin'], ['V', '비자', 'fin'], ['MA', '마스터카드', 'fin'],
-  ['KO', '코카콜라', 'cons'], ['PEP', '펩시코', 'cons'], ['MCD', '맥도날드', 'cons'], ['SBUX', '스타벅스', 'cons'], ['NKE', '나이키', 'cons'], ['COST', '코스트코', 'cons'], ['WMT', '월마트', 'cons'], ['DIS', '디즈니', 'cons'], ['GME', '게임스탑', 'cons'],
-  ['LLY', '일라이릴리', 'bio'], ['NVO', '노보노디스크', 'bio'], ['UNH', '유나이티드헬스', 'bio'], ['JNJ', '존슨앤드존슨', 'bio'], ['PFE', '화이자', 'bio'], ['MRNA', '모더나', 'bio'], ['HIMS', '힘스앤허스', 'bio'],
-  ['XOM', '엑슨모빌', 'ind'], ['CVX', '셰브론', 'ind'], ['BA', '보잉', 'ind'], ['CAT', '캐터필러', 'ind'], ['GE', 'GE에어로', 'ind'], ['LMT', '록히드마틴', 'ind'],
-  ['SPY', 'S&P500 ETF', 'etf'], ['QQQ', '나스닥100 ETF', 'etf'], ['TQQQ', '나스닥 3배 ETF', 'etf'], ['SQQQ', '나스닥 -3배 ETF', 'etf'], ['SOXL', '반도체 3배 ETF', 'etf'], ['SOXS', '반도체 -3배 ETF', 'etf'],
-  ['DIA', '다우존스 ETF', 'etf'], ['IWM', '러셀2000 ETF', 'etf'], ['ARKK', '아크 이노베이션', 'etf'], ['SCHD', '배당 ETF', 'etf'], ['TLT', '미국 장기채 ETF', 'etf'],
+  ['AAPL', '애뿔', 'tech'], ['MSFT', '마이크로쏘프트', 'tech'], ['GOOGL', '알파뱃', 'tech'], ['AMZN', '아마쫀', 'tech'], ['META', '메따', 'tech'], ['NFLX', '넷플릭쓰', 'tech'], ['ORCL', '오라끌', 'tech'],
+  ['CRM', '세일즈포쓰', 'tech'], ['ADBE', '어도삐', 'tech'], ['IBM', 'IBN', 'tech'], ['CSCO', '씨스코', 'tech'], ['DELL', '댈', 'tech'], ['ANET', '아리스따', 'tech'],
+  ['NVDA', '엔비디야', 'semi'], ['AVGO', '브로드껌', 'semi'], ['TSM', 'TSNC', 'semi'], ['AMD', 'AND', 'semi'], ['MU', '마이크롱', 'semi'], ['INTC', '인뗄', 'semi'], ['ARM', 'ARN', 'semi'],
+  ['QCOM', '퀄껌', 'semi'], ['ASML', 'ASNL', 'semi'], ['TXN', '텍사쓰인스트루먼트', 'semi'], ['AMAT', '어플라이드머티리얼쓰', 'semi'], ['LRCX', '램리써치', 'semi'], ['SMCI', '수퍼마이크로', 'semi'], ['MRVL', '마벨르', 'semi'],
+  ['PLTR', '빨란티어', 'ai'], ['SNOW', '스노플레이크', 'ai'], ['CRWD', '크라우드스트라익', 'ai'], ['NOW', '써비스나우', 'ai'], ['PANW', '빨로알토', 'ai'], ['SHOP', '쑈피파이', 'ai'], ['UBER', '우뻐', 'ai'],
+  ['DDOG', '데이터도그', 'ai'], ['NET', '클라우드플래어', 'ai'], ['APP', '앱러뷰', 'ai'],
+  ['TSLA', '테쓸라', 'ev'], ['RIVN', '리비양', 'ev'], ['LCID', '루씨드', 'ev'], ['NIO', '니요', 'ev'], ['RKLB', '로켓랩쓰', 'ev'], ['ASTS', 'AST스페이스모빌', 'ev'], ['JOBY', '조비에어', 'ev'], ['AVAV', '에어로바이런트', 'ev'],
+  ['COIN', '코인베이쓰', 'crypto'], ['MSTR', '스트래티쥐', 'crypto'], ['HOOD', '로빈훗', 'crypto'], ['MARA', '마라홀딩쓰', 'crypto'], ['RIOT', '라이엇플랫폼쓰', 'crypto'], ['CLSK', '클린스빠크', 'crypto'], ['CRCL', '써클', 'crypto'], ['SOFI', '쏘파이', 'crypto'], ['PYPL', '페이빨', 'crypto'],
+  ['IONQ', '아이언큐', 'qnt'], ['RGTI', '리게띠', 'qnt'], ['QBTS', '디웨이부', 'qnt'], ['QUBT', '콴텀컴퓨팅', 'qnt'], ['OKLO', '오끌로', 'qnt'], ['CEG', '컨스텔레이숀', 'qnt'], ['VST', '비쓰트라', 'qnt'],
+  ['JPM', 'JP모군', 'fin'], ['BAC', '뱅크오브어메리카', 'fin'], ['GS', '골드만싹스', 'fin'], ['V', '비짜', 'fin'], ['MA', '마스타카드', 'fin'],
+  ['KO', '코까콜라', 'cons'], ['PEP', '펲시코', 'cons'], ['MCD', '맥도널두', 'cons'], ['SBUX', '스타벅쓰', 'cons'], ['NKE', '나이끼', 'cons'], ['COST', '코스뜨코', 'cons'], ['WMT', '월마뜨', 'cons'], ['DIS', '디쥬니', 'cons'], ['GME', '게임스땁', 'cons'],
+  ['LLY', '일라이릴리리', 'bio'], ['NVO', '노보노디스끄', 'bio'], ['UNH', '유나이티드헬쓰', 'bio'], ['JNJ', '존슨앤존쓴', 'bio'], ['PFE', '화이짜', 'bio'], ['MRNA', '모더냐', 'bio'], ['HIMS', '힘쓰앤허쓰', 'bio'],
+  ['XOM', '엑쓴모빌', 'ind'], ['CVX', '셰브롱', 'ind'], ['BA', '뽀잉', 'ind'], ['CAT', '캐터삘러', 'ind'], ['GE', 'GI에어로', 'ind'], ['LMT', '록히드마띤', 'ind'],
+  ['SPY', 'S&B500 ETF', 'etf'], ['QQQ', '나스닭100 ETF', 'etf'], ['TQQQ', '나스닭 3배 ETF', 'etf'], ['SQQQ', '나스닭 -3배 ETF', 'etf'], ['SOXL', '반도체 3배 ETF', 'etf'], ['SOXS', '반도체 -3배 ETF', 'etf'],
+  ['DIA', '다우죤스 ETF', 'etf'], ['IWM', '러쎌2000 ETF', 'etf'], ['ARKK', '아끄 이노베이션', 'etf'], ['SCHD', '배당 ETF', 'etf'], ['TLT', '미국 장기채 ETF', 'etf'],
 ];
 // 현물(원자재): CNBC 기호 · 표시 이름 · 분류 · 단위. 금·은·백금은 현물 가격, 나머지는 최근월 선물 가격
 const CMX = [['XAU=', 'GOLD', '금', 'metal', '온스'], ['XAG=', 'SILV', '은', 'metal', '온스'], ['XPT=', 'PLAT', '백금', 'metal', '온스'], ['@HG.1', 'COPR', '구리', 'metal', '파운드'],
@@ -355,7 +355,7 @@ function holdersHTML(sym) {
 function ixCard() {
   if (!IXQ.p) return '';
   const ch = IXQ.base ? IXQ.p / IXQ.base - 1 : 0;
-  return `<div class="ixcard ${cls(ch)}"><div class="ix-l"><small>나스닥 종합 <i>${ST_TXT[IXQ.st] || '장 마감'}</i></small><b class="num">${IXQ.p.toLocaleString('en-US', { maximumFractionDigits: 2 })}</b>
+  return `<div class="ixcard ${cls(ch)}"><div class="ix-l"><small>나스닭 종합 <i>${ST_TXT[IXQ.st] || '장 마감'}</i></small><b class="num">${IXQ.p.toLocaleString('en-US', { maximumFractionDigits: 2 })}</b>
     <span class="num ${cls(ch)}">${ch > 0 ? '+' : ''}${(IXQ.p - IXQ.base).toLocaleString('en-US', { maximumFractionDigits: 2 })} (${(ch * 100).toFixed(2)}%)</span></div><canvas id="ixChart" class="ix-c" aria-label="나스닥 하루 그래프"></canvas></div>`;
 }
 async function ixLoad() {
