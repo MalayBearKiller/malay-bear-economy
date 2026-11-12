@@ -15,7 +15,7 @@ function renderHome() {
     <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>`;
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
-    h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">20억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
+    h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">50억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
   }
   if (S.readOnly) h += `<p class="hint keep" style="margin:-8px 0 0">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
 
@@ -320,7 +320,7 @@ function closeProfile() { closeProfileRaw(); guardOff(); }
 function renderProfile() { renderFriendProfile(); } // 새 프로필 화면 (me.js)
 function renderJoinSheet(b) {
   const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '') || '존버의신';
-  b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>20억원으로 시작</h3></div>
+  b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>50억원으로 시작</h3></div>
     <p class="hint keep" style="text-align:center">코인·미국 주식·현물·채권(서울시 투자지분·국제채권)을 한 지갑으로 굴려요. 가격은 진짜 시세를 따라가되 훨씬 크게 출렁여요. 총자산 1등을 노려 보세요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
     <p class="hint nickwarn">⚠️ 실명은 쓰지 마세요. 닉네임은 순위·채팅에서 모두에게 보여요.</p>
@@ -330,14 +330,14 @@ async function doJoin() {
   const inputEl = $('#nick');
   const nick = ((inputEl && inputEl.value) || '').trim().slice(0, 10) || '존버의신';
   LS.set('nick', nick);
-  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H), stipS: stipSlot(), g40: 1, taxH: Math.floor(Date.now() / H) + 1 });
+  const me = kInit({ name: nick, season: S.season.sid, cash: CASH0, inflow: CASH0, joined: Date.now(), casino: 0, ts: Date.now(), cpH: Math.floor(Date.now() / H), stipS: stipSlot(), g40: 1, g30: 1, taxH: Math.floor(Date.now() / H) + 1 });
   S.saving = true; const ok = await saveMe(me, S.me); S.saving = false;
   if (ok) { addFeed({ kind: 'join' }); closeSheet(); toast('참가 완료!'); renderAll(); }
 }
 // ? 도움말: 지금 보고 있는 탭에 맞는 설명을 보여줘요
 const HELP = {
   home: ['홈', '총자산 순위', [
-    '돈은 <b>원화</b> 하나예요. 처음 <b>20억원</b>. 코인·주식·현물·국채·지분과 게임·상점에 다 같이 써요.',
+    '돈은 <b>원화</b> 하나예요. 처음 <b>50억원</b>. 코인·주식·현물·국채·지분과 게임·상점에 다 같이 써요.',
     '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 국채. 순위는 총자산 순서예요.',
     '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
     '<b>📜 로그</b>: 홈 위쪽 로그 버튼. 모든 거래·공격(뽑은 번호까지)·청산·세금이 다 같이 보는 기록으로 남아요.',

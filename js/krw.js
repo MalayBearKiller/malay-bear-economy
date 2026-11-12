@@ -106,6 +106,13 @@ async function kGrant40() {
   const me = clone(m0); me.g40 = 1; me.cash = Math.round((me.cash || 0) + G40); me.inflow = (me.inflow || 1_000_000_000) + G40;
   if (await kSave(me, m0)) { bigWin(G40, '🎁 시작 자금 상향! 40억 지급'); renderAll(); }
 }
+// 🎁 리셋 뒤 시작 자금 20억 → 50억(2026-11-12): 그 전에 참가한 사람은 앱을 열 때 한 번만 +30억 (g30 표시로 두 번 안 받아요). 수익률 기준(inflow)에도 더해요
+const G30 = 3_000_000_000;
+async function kGrant30() {
+  const m0 = S.me; if (!m0 || m0.g30 || S.saving || S.readOnly) return;
+  const me = clone(m0); me.g30 = 1; me.cash = Math.round((me.cash || 0) + G30); me.inflow = (me.inflow || 2_000_000_000) + G30;
+  if (await kSave(me, m0)) { bigWin(G30, '🎁 시작 자금 50억으로! 30억 지급'); renderAll(); }
+}
 async function kStipend() {
   const m0 = S.me; if (!m0 || S.saving || S.readOnly) return;
   const s = stipSlot();
@@ -118,7 +125,7 @@ async function kStipend() {
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
   uTick(); gTick();
-  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kStipend(); kCoupon(); fScan(); }   // 현금 자동 투자(kCashTax)는 없앴어요(2026-11-12)
+  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kGrant30(); kStipend(); kCoupon(); fScan(); }   // 현금 자동 투자(kCashTax)는 없앴어요(2026-11-12)
 }
 
 /* ───────── 거래 ───────── */
@@ -167,7 +174,7 @@ async function kRescue() {
 /* ───────── 연습봇: 원화 지갑도 채워요 ───────── */
 function kBotSeed(bots) {
   Object.values(bots).forEach((p, i) => {
-    p.g40 = 1;
+    p.g40 = 1; p.g30 = 1;
     p.cash = CASH0; p.inflow = CASH0;
     kInit(p); p.kWant = [['KRW-BTC', 'KRW-SOL'], ['KRW-ETH', 'KRW-DOGE'], ['KRW-XRP', 'KRW-PEPE']][i];
   });

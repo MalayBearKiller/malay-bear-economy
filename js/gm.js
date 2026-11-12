@@ -80,23 +80,64 @@ const GM_ET = {};
 function gmEtMin(t) { const k = Math.floor(t / MIN); if (GM_ET[k] != null) return GM_ET[k] + 0; const d = new Date(k * MIN), p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit' }).formatToParts(d);
   const g = n => +(p.find(x => x.type === n) || {}).value || 0; return (GM_ET[k] = (g('hour') % 24) * 60 + g('minute')); }
 // 배율 (t 시각, chg = 그 시각 진짜 하루 등락률)
+// 물결 + 이벤트 (로그 배율, 현실 증폭·서킷 제외)
+function gmL0(sym, t, P) {
+  const m = Math.floor(t / MIN), f = (t - m * MIN) / MIN;
+  const fast = gmR(sym, 'f', m) * 2 - 1, fast2 = gmR(sym, 'f', m + 1) * 2 - 1, F = fast + (fast2 - fast) * gmSm(f);
+  const y0 = gmAR(sym, m), y1 = gmAR(sym, m + 1), Y = [0, 1].map(j => y0[j] + (y1[j] - y0[j]) * f);
+  let ev = 0; const tm = m + f; gmEvents(sym, m, P).forEach(j => { ev += gmEvShape(sym, j, tm - j, P); });
+  return P.a * (GM_A[0] * F + GM_A[1] * Y[0] + GM_A[2] * Y[1]) + ev;
+}
+const gmA = (sym, t, chg, P) => Math.max(-.25, Math.min(.25, (P.k - 1) * Math.log(1 + (chg || 0)))) * gmFade(sym, t);
+
+/* ───────── ⚡ 서킷: 하루 +11% 넘게 오른 종목은 매분 확률로 -15% 급락, -11% 넘게 내린 종목은 +15% 급등 ─────────
+   확률: 11%일 때 1% → 30% 이상이면 20% (사이는 직선). 급락·급등은 1분 만에 오고, 5분 버틴 뒤 1시간에 걸쳐 원래대로 풀려요.
+   결정은 그 분이 시작할 때의 게임 등락률로 한 번만(종목·분 시드 난수). 거래 정지는 없어요. */
+const CB = { HOLD: 5, FADE: 60, DN: Math.log(.85), UP: Math.log(1.15), boot: Date.now() };
+const cbProb = g => { const a = Math.abs(g); return a < .11 ? 0 : .01 + .19 * Math.min(1, (a - .11) / .19); };
+function cbShape(v, tau) { if (tau < 0) return 0; if (tau < 1) return v * gmSm(tau); if (tau < 1 + CB.HOLD) return v; const u = tau - 1 - CB.HOLD; return u < CB.FADE ? v * (1 - u / CB.FADE) : 0; }
+const CB_BACK = 1 + CB.HOLD + CB.FADE;
+// 서킷이 터진 분들 (j → +1 급등 / -1 급락)
+function cbList(sym, m, chg, P) {
+  const c = GM.cache[sym] || (GM.cache[sym] = { m0: 0, y: [] }); c.cb ||= {};
+  const out = [];
+  for (let j = m - CB_BACK; j <= m; j++) {
+    let d = c.cb[j];
+    if (d === undefined) {
+      let L = gmA(sym, j * MIN, chg, P) + gmL0(sym, j * MIN, P);
+      out.forEach(([i, di]) => { L += cbShape(di > 0 ? CB.UP : CB.DN, j - i); });
+      const g = (1 + (chg || 0)) * Math.exp(L) - 1, pr = cbProb(g);
+      d = pr && gmR(sym, 'cb', j) < pr ? (g > 0 ? -1 : 1) : 0;
+      if (j <= GM.lastE + 5) c.cb[j] = d;
+      if (d && j * MIN >= CB.boot && Math.abs(j - Math.floor(now() / MIN)) <= 1) cbAlert(sym, d);   // 지금 막 터진 것만 알림
+    }
+    if (d) out.push([j, d]);
+  }
+  return out;
+}
+const CB_SEEN = {};
+function cbAlert(sym, d) {
+  const k = sym + d + Math.floor(now() / MIN); if (CB_SEEN[k]) return; CB_SEEN[k] = 1;
+  const a = KC[sym] || UC[sym]; if (!a || typeof EVQ === 'undefined') return;
+  EVQ.q.push({ f: { kind: 'k_cb' }, t: d < 0 ? ['down', '💥', `<b>${esc(a.n)}</b> 과열! 갑자기 <b class="down">-15% 폭락</b>`] : ['up', '🚀', `<b>${esc(a.n)}</b> 바닥 찍고 <b class="up">+15% 폭등</b>`] });
+  if (EVQ.q.length > 6) EVQ.q.splice(0, EVQ.q.length - 6); evNext(); buzz(60);
+}
+// 배율 (t 시각, chg = 그 시각 진짜 하루 등락률)
 function gmMult(sym, t, chg) {
   const P = gmCls(sym); if (!P || !GM.ready) return 1;
-  const m = Math.floor(t / MIN), f = (t - m * MIN) / MIN;
-  const A = Math.max(-.25, Math.min(.25, (P.k - 1) * Math.log(1 + (chg || 0)))) * gmFade(sym, t);
+  const m = Math.floor(t / MIN), A = gmA(sym, t, chg, P);
   // 물결·이벤트 부분은 0.2초 단위로 기억해 둬요 (같은 순간에 여러 번 불려도 한 번만 계산)
   const bk = Math.floor(t / 200), mc = GM.mc[sym];
   let L0;
   if (mc && mc.bk === bk && GM.lastE === mc.le) L0 = mc.v;
-  else {
-    const fast = gmR(sym, 'f', m) * 2 - 1, fast2 = gmR(sym, 'f', m + 1) * 2 - 1, F = fast + (fast2 - fast) * gmSm(f);
-    const y0 = gmAR(sym, m), y1 = gmAR(sym, m + 1), Y = [0, 1].map(j => y0[j] + (y1[j] - y0[j]) * f);
-    let ev = 0; const tm = m + f; gmEvents(sym, m, P).forEach(j => { ev += gmEvShape(sym, j, tm - j, P); });
-    L0 = P.a * (GM_A[0] * F + GM_A[1] * Y[0] + GM_A[2] * Y[1]) + ev;
-    if (Math.abs(t - now()) < 2000) GM.mc[sym] = { bk, v: L0, le: GM.lastE };
-  }
-  const L = A + L0;
-  return Math.max(.6, Math.min(1.6, Math.exp(L)));
+  else { L0 = gmL0(sym, t, P); if (Math.abs(t - now()) < 2000) GM.mc[sym] = { bk, v: L0, le: GM.lastE }; }
+  let C = 0; const tm = t / MIN; cbList(sym, m, chg, P).forEach(([j, d]) => { C += cbShape(d > 0 ? CB.UP : CB.DN, tm - j); });
+  return Math.max(.6, Math.min(1.6, Math.exp(A + L0 + C)));
+}
+// 서킷 배지: 터지고 3분 동안
+function cbBadge(sym, t = now()) {
+  const P = gmCls(sym), c = GM.cache[sym]; if (!P || !GM.ready || !c || !c.cb) return 0; const m = Math.floor(t / MIN);
+  for (let j = m; j >= m - 3; j--) if (c.cb[j]) return c.cb[j]; return 0;
 }
 // 지금 치솟는 중/꽂히는 중인 이벤트 (배지): 시작 뒤 상승 구간에서만
 function gmBadge(sym, t = now()) {
@@ -106,7 +147,7 @@ function gmBadge(sym, t = now()) {
     if (tau >= 0 && tau < rise) return r(1) < .5 ? 'up' : 'down'; }
   return '';
 }
-const gmBadgeHTML = sym => { const b = gmBadge(sym); return b === 'up' ? '<span class="gmb up">🔥 폭주</span>' : b === 'down' ? '<span class="gmb down">💧 폭락</span>' : ''; };
+const gmBadgeHTML = sym => { const cb = cbBadge(sym); if (cb) return cb < 0 ? '<span class="gmb down">💥 서킷 폭락</span>' : '<span class="gmb up">🚀 서킷 폭등</span>'; const b = gmBadge(sym); return b === 'up' ? '<span class="gmb up">🔥 폭주</span>' : b === 'down' ? '<span class="gmb down">💧 폭락</span>' : ''; };
 
 /* ───────── 비트코인 1분봉 받기: CNBC(BTC.CM=) 1분봉 이틀치를 45초마다 (업비트는 브라우저 요청 제한이 빡빡해서 안 써요) ───────── */
 async function gmFetch() {
@@ -120,7 +161,10 @@ async function gmInit() {
   try { if (!(await gmFetch())) throw new Error('empty'); GM.ready = true; GM.poll = Date.now(); renderAll(); }
   catch { GM.loading = false; setTimeout(gmInit, 5000); }
 }
-function gmTick() { if (GM.ready && Date.now() - GM.poll > 45000 && !document.hidden) { GM.poll = Date.now(); gmFetch().catch(() => {}); } }
+let GM_SWEEP = 0;
+function gmTick() {
+  if (GM.ready && Date.now() - GM_SWEEP > 5000) { GM_SWEEP = Date.now(); Object.keys(KC).forEach(kPx); Object.values(UC).forEach(c => { if (c.m !== 'fx') uPx(c.id); }); }   // 안 보고 있는 종목도 서킷 확인
+ if (GM.ready && Date.now() - GM.poll > 45000 && !document.hidden) { GM.poll = Date.now(); gmFetch().catch(() => {}); } }
 
 // 차트: 진짜 가격 점들을 게임 가격으로 (점 사이를 every분 간격으로 채워서 이벤트가 보이게)
 function gmChartPts(sym, pts, base, every) {
