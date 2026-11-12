@@ -190,6 +190,7 @@ async function buyBannerTicket() {
 // 🛍️ 상점
 function renderShop() {
   const el = $('#tab-shop');
+  if (S.shopView === 'game' && CASINO_OFF) S.shopView = '';
   if (S.shopView === 'game') {
     if (!el.querySelector('#tab-casino')) el.innerHTML = `<button type="button" class="back-link" id="shopBack">← 상점으로</button><section class="sec" id="tab-casino" style="gap:18px"></section>`;
     if (!C.busy && !C.live) renderCasino(); return;
@@ -197,7 +198,7 @@ function renderShop() {
   const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv), plan = S.me ? lvMaxPlan(S.me.cash, lv) : { to: lv, spent: 0 }, armed = S.lvArm && Date.now() - S.lvArm < 4000;
   el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 1.14배</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
     ${plan.to > lv + 1 ? `<button type="button" class="cta ${armed ? 'buy' : 'soft'} lvmax" id="lvMax" ${S.saving || S.readOnly ? 'disabled' : ''}>${armed ? `한 번 더 누르면 LV.${plan.to}까지 · ${won(plan.spent)} 결제` : `⏫ 최대한 올리기 · LV.${plan.to}까지 ${won(plan.spent)}`}</button>` : ''}
-<div class="sec"><div class="sec-h"><h2>게임</h2></div><button type="button" class="card shopitem" id="shopGame"><span class="si-ic">🎰</span><span class="si-t"><b>도박장 · 게임 5개</b><small>⚡업다운 🚀로켓 💣보물상자 🎰슬롯 🏇경마</small></span><span class="si-go">›</span></button></div>`;
+<div class="sec"><div class="sec-h"><h2>게임</h2></div><button type="button" class="card shopitem${CASINO_OFF ? ' off' : ''}" id="shopGame"><span class="si-ic">${CASINO_OFF ? '🔒' : '🎰'}</span><span class="si-t"><b>도박장 · 게임 5개${CASINO_OFF ? ' (잠시 닫힘)' : ''}</b><small>${CASINO_OFF ? '지금은 들어갈 수 없어요' : '⚡업다운 🚀로켓 💣보물상자 🎰슬롯 🏇경마'}</small></span><span class="si-go">›</span></button></div>`;
 }
 // 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
 // 소식 알림 점: 큰 청산·큰 수익·구채·게임 대박만
@@ -230,7 +231,7 @@ function goTab(name) {
   ['home', 'coin', 'shop', 'assets'].forEach(n => $('#tab-' + (n === 'assets' ? 'wallet' : n)).hidden = n !== name);
   const bb = $('#boardBtn'); if (bb) bb.hidden = name !== 'home';
   const lb = $('#logBtn'); if (lb) lb.hidden = name !== 'home';
-  const gb = $('#promoGo'); if (gb) gb.hidden = name !== 'coin';
+  const gb = $('#promoGo'); if (gb) gb.hidden = CASINO_OFF || name !== 'coin';
   bnBody();   // 게임 배너(헤더, 썬빗과 ? 사이)는 거래소에서만
   renderAll(); window.scrollTo({ top: 0 });
 }
@@ -340,7 +341,7 @@ const HELP = {
     '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 국채. 순위는 총자산 순서예요.',
     '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
     '<b>📜 로그</b>: 홈 위쪽 로그 버튼. 모든 거래·공격(뽑은 번호까지)·청산·세금이 다 같이 보는 기록으로 남아요.',
-    '<b>파산</b>: 총자산이 2,000만원 밑으로 떨어지면 거래소 탭에서 <b>2억원</b>을 받을 수 있어요.',
+    '<b>파산</b>: 총자산이 1억원 이하로 떨어지면 거래소 탭에서 <b>10억원</b>을 다시 받을 수 있어요.',
     '이름을 누르면 그 사람 지갑이 다 보여요.']],
   coin: ['거래소', '주식 · 코인 · 현물 · 채권', [
     '<b>주식</b>: 미국 99종목(빅테크·반도체·AI·전기차·코인주·양자·금융·소비재·헬스케어·산업·ETF), 실시간(프리·애프터 포함). 원화를 실시간 환율로 자동 환전해서 사요. 1주 단위 거래, 수수료 0.1%. <b>롱·숏 1·5·10·25배</b>.',

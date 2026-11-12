@@ -31,7 +31,7 @@ document.addEventListener('click', e => {
     case 'profBack': closeProfile(); break;
     case 'lvUp': levelUp(); break;
     case 'lvMax': levelMax(); break;
-    case 'shopGame': case 'gameBtn': case 'goGame': case 'promoGo': S.shopView = 'game'; goTab('shop'); break;
+    case 'shopGame': case 'gameBtn': case 'goGame': case 'promoGo': if (CASINO_OFF) { toast('🔒 도박장은 잠시 문을 닫았어요'); break; } S.shopView = 'game'; goTab('shop'); break;
     case 'shopBack': S.shopView = null; renderShop(); break;
     case 'photoBtn': case 'photoBtn2': pickPhoto('photo'); break;
     case 'photoDel': clearPhoto(); break;
