@@ -17,7 +17,7 @@ const fOk = sym => (fIsCoin(sym) ? kFresh(sym) : GC[sym] ? gFresh(sym) : uFresh(
 const fFee = sym => (fIsCoin(sym) || GC[sym] ? 0.0005 : U_FEE);
 function fLevs(sym) {
   if (GC[sym]) return [2, 5, 10];
-  if (!fIsCoin(sym)) return UC[sym].m === 'us' ? [1, 5, 10, 25] : [2, 5, 10];   // 주식 1·5·10·25배, 원자재·달러 2·5·10배
+  if (!fIsCoin(sym)) return UC[sym].m === 'us' ? [1, 5, 10, 25, 50] : [2, 5, 10];   // 주식 1·5·10·25·50배, 원자재·달러 2·5·10배
   const c = KC[sym], mx = (c.a === 'BTC' || c.a === 'ETH') ? 100 : c.c === 'meme' ? 25 : 50; return F_LEVS.filter(x => x <= mx);
 }
 const fShowPx = (sym, v) => (fIsCoin(sym) ? kWon(v) + '원' : GC[sym] ? `금리 ${gYieldAt(sym, v).toFixed(2)}%` : UC[sym].m === 'fx' ? v.toFixed(1) + '원' : FX.p ? usd(v / FX.p) : krw(v));
@@ -39,12 +39,22 @@ function fPositions(p, field) {
 /* ───────── 청산: 실시간 시세 + 앱이 꺼져 있던 동안은 분봉 최저·최고가 ───────── */
 const FQ = { busy: false, scanned: {} };
 function fLiveCheck(sym) { if (!GM.ready && !GC[sym]) return; const o = S.me && (S.me[fField(sym)] || {})[sym]; if (o && !S.readOnly) { const p = fPx(sym); if (p && fDead(o, p)) fLiquidate(sym); } }
-async function fLiquidate(sym) {
+async function fLiquidate(sym, trap) {
   const f = fField(sym); if (FQ.busy || S.saving || !S.me || !(S.me[f] || {})[sym]) return;
   FQ.busy = true;
   const before = S.me, me = clone(before), o = me[f][sym]; delete me[f][sym];
   const ok = await kSave(me, before); FQ.busy = false;
-  if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(`💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
+  if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(trap ? `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} — 고배율 함정에 걸려 청산! 증거금 ${krw(o.m)} 증발` : `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
+}
+/* ───────── 💀 고배율 함정: 수익(ROE)이 +2% 넘은 고배율 롱·숏은 1초마다 확률로 바로 청산돼요 ─────────
+   50배 이상 50% · 25배 이상 30% · 10배 이상 10% (2026-11-12). 앱이 켜져 있을 때 1초마다 굴려요(kTick). */
+const fTrapP = x => (x >= 50 ? .5 : x >= 25 ? .3 : x >= 10 ? .1 : 0);
+function fTrap() {
+  if (!S.me || S.readOnly || S.saving || FQ.busy || !GM.ready) return;
+  for (const f of ['kFut', 'uFut', 'gFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {
+    const pr = fTrapP(o.x), p = fPx(sym); if (!pr || !p || !o.m) continue;
+    if ((fVal(o, p) - o.m) / o.m >= .02 && Math.random() < pr) { fLiquidate(sym, true); return; }   // 한 번에 하나씩
+  }
 }
 async function fScan() {
   if (!S.me || S.readOnly || !GM.ready) return;

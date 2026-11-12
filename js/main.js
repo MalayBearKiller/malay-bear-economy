@@ -68,6 +68,16 @@ setInterval(() => {
   S.liveOnly = true; renderAll(); S.liveOnly = false;
 }, 1000);
 window.__sunbit = { S };
+// 🔄 새 버전이 올라오면 자동으로 새로고침해요 (1분마다, 그리고 앱으로 돌아올 때 확인)
+const APP_V = ((document.querySelector('script[src*="main.js"]') || {}).src || '').split('v=')[1] || '';
+let VCHK = 0;
+async function checkVersion() {
+  if (!APP_V || Date.now() - VCHK < 30e3) return; VCHK = Date.now();
+  try { const html = await (await fetch(location.pathname + '?vc=' + Date.now(), { cache: 'no-store' })).text(); const v = (html.match(/main\.js\?v=([^"']+)/) || [])[1];
+    if (v && v !== APP_V) { toast('🔄 새 버전이 나왔어요. 새로고침할게요'); setTimeout(() => location.reload(), 1500); } } catch {}
+}
+setInterval(checkVersion, 60e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
 // 연습 모드 버튼은 주소 끝에 ?test 를 붙였을 때만 보여요 (테스트용)
 if (/[?&]test\b/.test(location.search)) { const db = document.getElementById('demoBtn'); if (db) db.hidden = false; }
 boot();
