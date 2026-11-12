@@ -31,7 +31,7 @@ function fPositions(p, field) {
   const out = [];
   Object.entries((p && p[field]) || {}).forEach(([s, o]) => {
     if (!fAsset(s) || !o) return; const pr = fPx(s) || o.e, lp = fLiqP(o);
-    out.push({ sym: s, kind: 'fut', label: `${o.x}배 ${fSide(o)}`, d: o.d, principal: o.m, value: Math.max(0, fVal(o, pr) - o.q * pr * fFee(s)), q: o.q, dist: Math.max(0, o.d * (pr - lp) / pr), distMax: 1 / o.x });
+    out.push({ sym: s, kind: 'fut', label: GC[s] ? `${o.x}배 금리${o.d > 0 ? '↓' : '↑'}` : `${o.x}배 ${fSide(o)}`, d: o.d, principal: o.m, value: Math.max(0, fVal(o, pr) - o.q * pr * fFee(s)), q: o.q, dist: Math.max(0, o.d * (pr - lp) / pr), distMax: 1 / o.x });
   });
   return out;
 }
@@ -129,7 +129,7 @@ function fFormHTML(sh) {
     return `<div class="fpos ${o.d > 0 ? 'long' : 'short'}"><div><b>${o.x}배 ${fSide(o)}</b><small class="num">진입 ${fShowPx(sh.sym, o.e)} · 청산 ${fShowPx(sh.sym, fLiqP(o))}</small></div>
       <div class="r"><b class="num ${cls(pnl)}" id="fRoe">${pctTxt(pnl / o.m)}</b><small class="num ${cls(pnl)}" id="fPnl">${signKrw(pnl)}</small></div>
       <button type="button" id="fClose" data-sym="${sh.sym}">종료</button></div>`; })() : '';
-  return `${pos}<div class="seg fdir"><button type="button" data-fdir="1" aria-pressed="${sh.fd > 0}">롱 (오르면 이득)</button><button type="button" data-fdir="-1" aria-pressed="${sh.fd < 0}">숏 (내리면 이득)</button></div>
+  return `${pos}<div class="seg fdir">${GC[sh.sym] ? `<button type="button" data-fdir="1" aria-pressed="${sh.fd > 0}">📉 금리 내리면 이득</button><button type="button" data-fdir="-1" aria-pressed="${sh.fd < 0}">📈 금리 오르면 이득</button>` : `<button type="button" data-fdir="1" aria-pressed="${sh.fd > 0}">롱 (오르면 이득)</button><button type="button" data-fdir="-1" aria-pressed="${sh.fd < 0}">숏 (내리면 이득)</button>`}</div>
     <div class="levrow">${levs.map(x => `<button type="button" data-flev="${x}" aria-pressed="${sh.fx === x}">${x}배</button>`).join('')}</div>
     <div class="qtyrow kamt"><input id="kAmt" type="number" inputmode="numeric" min="0" step="1000" value="${sh.amt || ''}" placeholder="증거금(원) · 직접 입력도 돼요" aria-label="증거금"><span class="unit">원</span></div>
     <div class="quick fpct">${F_PCTS.map(([f, l]) => `<button type="button" data-kfrac="${f}" aria-pressed="${!sh.amtTouched && +f === fPct()}">${l}</button>`).join('')}</div>
@@ -140,7 +140,7 @@ function fUpdateEst(sh) {
   const est = $('#kEst'), btn = $('#kDoTrade'); if (!est || !btn) return;
   const c = fCalc(sh);
   est.innerHTML = `<span>${c.line}</span><span class="num">최대 ${krw(fMax(sh))}</span>`;
-  btn.textContent = S.saving ? '처리 중…' : `${sh.fd > 0 ? '🚀' : '📉'} ${sh.fx}배 ${sh.fd > 0 ? '롱' : '숏'} 진입`;
+  btn.textContent = S.saving ? '처리 중…' : GC[sh.sym] ? `${sh.fd > 0 ? '📉 금리 하락' : '📈 금리 상승'}에 ${sh.fx}배 진입` : `${sh.fd > 0 ? '🚀' : '📉'} ${sh.fx}배 ${sh.fd > 0 ? '롱' : '숏'} 진입`;
   btn.className = 'cta ' + (sh.fd > 0 ? 'buy' : 'sell'); btn.disabled = S.saving || !c.ok || !fOk(sh.sym);
   const o = ((S.me || {})[fField(sh.sym)] || {})[sh.sym];
   if (o) { const v = fVal(o, fPx(sh.sym)), pnl = v - o.m, r = $('#fRoe'), n = $('#fPnl'); if (r) { r.textContent = pctTxt(pnl / o.m); r.className = 'num ' + cls(pnl); } if (n) { n.textContent = signKrw(pnl); n.className = 'num ' + cls(pnl); } }

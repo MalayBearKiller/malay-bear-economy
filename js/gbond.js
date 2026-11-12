@@ -152,7 +152,7 @@ function renderGBSheet(b, sh) {
     <div class="chartbox"><canvas class="chart" id="gChart" aria-label="하루 금리 그래프"></canvas><i class="cpulse"></i></div>
     ${o ? `<div class="kline"><span>내 국채 <b class="num">${krw(v)}</b> · 산 금리 ${o.y.toFixed(2)}% · 이자 +${krw(interest)}</span><span><b class="num ${cls(v - o.a)}">${signKrw(v - o.a)}</b></span></div>` : ''}
     ${me && !S.readOnly ? `<div class="seg seg2">${[['buy', '현물 매수·매도'], ['fut', '금리 롱·숏']].map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${m === 'fut' ? sh.m === 'fut' : sh.m !== 'fut'}">${l}</button>`).join('')}</div>
-      ${sh.m === 'fut' ? `<p class="gfut-note">국채 <b>롱</b> = 금리가 <b>내리면</b> 이득 · <b>숏</b> = 금리가 <b>오르면</b> 이득</p>${fFormHTML(sh)}`
+      ${sh.m === 'fut' ? `<p class="gfut-note">위 숫자는 <b>금리</b>예요. 금리가 내리면 국채 가격이 올라요 → <b>📉 금리 내리면 이득</b>(국채 롱) · <b>📈 금리 오르면 이득</b>(국채 숏)</p>${fFormHTML(sh)}`
       : `${spotQtyHTML(sh, o)}<div class="est est2" id="kEst"></div>
         <div class="pick2 bs2"><button class="cta buy" id="gBuyGo" type="button">매수하기</button><button class="cta sell" id="gSellGo" type="button">매도하기</button></div>`}` : ''}`;
   gLoadChart(c.id); requestAnimationFrame(gDrawChart); gUpdateEst();
