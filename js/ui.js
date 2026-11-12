@@ -12,7 +12,7 @@ function renderHome() {
     const bnr = okPhoto(me.banner);
     h += `<button type="button" class="wal krwwal one${bnr ? ' bn' : ''}" data-tab-go="assets"${bnr ? ` style="--bn:url(${me.banner})"` : ''}><span class="wl-h"><span class="wl-ic">₩</span>내 총자산<small>${rk ? rk + '위' : ''}</small></span>
       <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.length > 1 ? chief.length + '곳' : chief[0]}` : ''}</span></button>
-    <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>`;
+    <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>` + throneHTML();
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">50억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
@@ -348,9 +348,10 @@ const HELP = {
     '<b>코인</b>: 업비트 실시간. 현물 수수료 0.05%. <b>롱·숏</b> BTC·ETH 100배, 알트 50배, 밈 25배.',
     '<b>현물</b>: 금·은·백금·구리·원유·천연가스. 실시간 달러 가격. <b>롱·숏 2·5·10배</b>.',
     '<b>채권</b>: 안에 두 가지. 🏛️ <b>서울시 투자지분</b>(구마다 100%, 가장 많이 가진 사람이 구청장, 매시간 배당)과 🌍 <b>국제채권</b>(미국·유럽·동아시아 10년물 국채).',
+    '<b>🎯 왕좌 저격</b>(홈 맨 위): 여럿이 돈을 모아 1·2·3등을 쏴요. 목표는 상대 총자산의 15%, 다 차는 순간 발사! 성공 확률 1등 30% · 2등 35% · 3등 40%, 성공하면 낸 돈 + 이익(2배 · 1.7배 · 1.5배)을 낸 비율대로 나눠요. 실패하면 모은 돈 전부 잃고 절반은 상대 방어 보상. 2시간 안에 안 차면 환불, 털린 사람은 30분 보호막.',
     '<b>👑 1등 현상금</b>: 1등에게 총자산의 1% + 1시간 버틸 때마다 +0.5%(최대 5%) 현상금이 붙어요. 1등을 공격해서 성공하면 현상금까지 받아요.',
     '<b>⚔️ 결투권</b>: 4등 아래는 하루 1번, 1~3등 프로필에서 결투를 걸 수 있어요. 5분 동안 총자산 수익률이 높은 쪽이 이기고, 진 쪽 총자산의 3%를 가져와요.',
-    '<b>💀 고배율 함정</b>: 롱·숏 수익이 <b>+2%</b>를 넘으면 1초마다 확률로 터져요(코인·주식 모두). <b>100배</b>는 평균 5초 버티다 <b>-60%</b>, <b>50배</b>는 평균 7초 버티다 <b>-50%(반토막)</b>, <b>25배</b>는 평균 15초에 -15%, <b>10배</b>는 평균 40초에 -5%. 포지션은 그대로 남아요.',
+    '<b>💥 고배율 털기</b>: 10배 이상 롱·숏 수익이 <b>+2%</b>를 넘으면 1초마다 확률로 <b>그 종목 가격이 반대로 꽂혀요</b>(모두에게). 50배 이상 25% · 25배 15% · 10배 5%. 100배는 평균 5초, 50배 7초, 25배 15초, 10배 40초 버텨요. 고배율은 그대로 청산, 같은 쪽 들고 있던 사람도 같이 맞아요.',
     '롱·숏은 약 1÷배수만큼 반대로 가면 <b>청산</b>(증거금 전부 잃음). 펀딩비 8시간마다 0.01%. 앱을 꺼 둬도 분봉 최저·최고가로 확인해요.',
     '오른쪽 아래 <b>💼 내 보유</b>를 누르면 가진 걸 모아 보고 바로 팔기·종료할 수 있어요.']],
   bond: ['국채', '미국·유럽·동아시아 10년물', [

@@ -69,11 +69,12 @@ function renderTaxBar() {
 
 /* ───────── 📜 전체 로그 ───────── */
 function openLog() { S.board = 'log'; S.logF = S.logF || 'all'; $('#board').hidden = false; document.body.classList.add('noscroll'); renderBoard(); guardOn(); }
-const LOG_F = { all: ['전체', () => true], trade: ['거래', f => /^k_(buy|sell|ubuy|usell|fopen|fclose|bond|bsell)$/.test(f.kind)], atk: ['공격·청산', f => f.kind === 'k_atk' || f.kind === 'k_fliq' || f.kind === 'k_trap' || f.kind === 'k_duel' || f.kind === 'k_duel0'], money: ['자동투자·게임', f => f.kind === 'k_tax' || f.kind === 'k_auto' || f.kind === 'casino' || f.kind === 'k_rescue' || f.kind === 'k_refund'] };
+const LOG_F = { all: ['전체', () => true], trade: ['거래', f => /^k_(buy|sell|ubuy|usell|fopen|fclose|bond|bsell)$/.test(f.kind)], atk: ['공격·청산', f => f.kind === 'k_atk' || f.kind === 'k_fliq' || f.kind === 'k_trap' || f.kind === 'k_shock' || f.kind === 'k_duel' || f.kind === 'k_duel0' || f.kind === 'k_sfire' || f.kind === 'k_sfund'], money: ['자동투자·게임', f => f.kind === 'k_tax' || f.kind === 'k_auto' || f.kind === 'casino' || f.kind === 'k_rescue' || f.kind === 'k_refund'] };
 function logDetail(f) {
   if (f.kind === 'k_atk') return `🎲 뽑은 번호 ${(+f.roll).toFixed(3)} ${f.ok ? '<' : '≥'} 성공 확률 ${Math.round(f.p * 100)}% → ${f.ok ? '성공' : '실패'} · 비용 ${krw(f.cost)}${f.rev ? ' · 복수 반값' : ''}`;
   if (f.kind === 'k_tax') return `현금 비율 ${Math.round((f.r || 0) * 100)}%${f.hrs > 1 ? ` · ${f.hrs}시간치` : ''}`;
   if (f.kind === 'k_auto') return (f.lx ? `🎯 레버리지 ${Math.round((f.lev || 0) * 100)}% → ${f.lx}배 의무 · ` : `현금 비율 ${Math.round((f.r || 0) * 100)}% · `) + String(f.list || '').split(',').filter(Boolean).map(x => { const [id, a] = x.split(':'), c = KC[id] || UC[id]; return c ? `${c.n} ${x.split(':')[2] ? x.split(':')[2] + '배 롱 ' : ''}${man(+a)}` : ''; }).join(' · ');
+  if (f.kind === 'k_sfire') return `🎲 뽑은 번호 ${(+f.roll).toFixed(3)} ${f.ok ? '<' : '≥'} 성공 확률 ${Math.round(f.p * 100)}% → ${f.ok ? '성공' : '실패'} · 모금 ${krw(f.pool)}`;
   if (f.kind === 'k_fliq') return `${f.x}배 ${f.d > 0 ? '롱' : '숏'} 증거금 ${krw(f.amt)} 전부 청산`;
   return '';
 }

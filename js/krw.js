@@ -270,8 +270,11 @@ function kFeedText(f) {
     case 'k_sell': return c ? (f.pnl >= 1e8 ? ['up', '💰', `<b>${nm}</b>님이 ${esc(c.n)}로 <b class="up">${signKrw(f.pnl)}</b> 벌었어요`] : ['down', '💸', `<b>${nm}</b>님이 ${esc(c.n)}을(를) <b>${krw(f.amt)}</b>어치 팔았어요`]) : null;
     case 'k_fopen': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? [f.d > 0 ? 'up' : 'down', f.d > 0 ? '🚀' : '📉', `<b>${nm}</b>님이 ${esc(c2.n)} <b>${f.x}배 ${f.d > 0 ? '롱' : '숏'}</b> 진입 (${krw(f.amt)})`] : null; }
     case 'k_fclose': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? [f.pnl >= 0 ? 'up' : 'down', f.pnl >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(c2.n)} ${f.x}배 ${f.d > 0 ? '롱' : '숏'} 종료 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null; }
+    case 'k_sfund': return ['gold', '🎯', `<b>${nm}</b>님이 ${esc(nameOf(f.target))}님 저격 모금에 <b>${krw(f.amt)}</b> 보탰어요 · ${Math.round(f.pool / f.goal * 100)}%`];
+    case 'k_sfire': return [f.ok ? 'up' : 'down', '🎯', f.ok ? `<b>${f.n || 1}명</b>이 모은 ${krw(f.pool)} 저격 → <b>${f.rank}등 ${esc(nameOf(f.target))}</b>님 명중! <b class="down">-${krw(f.X)}</b>` : `${f.rank}등 <b>${esc(nameOf(f.target))}</b>님이 ${krw(f.pool)} 저격을 막아냈어요!`];
     case 'k_duel0': return ['gold', '⚔️', `<b>${nm}</b>님이 <b>${esc(nameOf(f.target))}</b>님에게 결투를 걸었어요!`];
     case 'k_duel': return [f.win ? 'up' : 'down', '⚔️', `<b>${nm}</b>님 vs ${esc(nameOf(f.target))}님 결투 → <b>${f.win ? nm : esc(nameOf(f.target))}</b> 승리 · ${krw(f.amt)}`];
+    case 'k_shock': return [f.d < 0 ? 'down' : 'up', '💥', `<b>${nm}</b>님의 ${f.x}배 ${f.d < 0 ? '롱' : '숏'}이 수익 나자 <b>${esc((fAsset(f.sym) || {}).n || '')}</b> 가격이 <b class="${f.d < 0 ? 'down' : 'up'}">${f.d < 0 ? '-' : '+'}${Math.round(f.mag * 100)}%</b> 꽂혔어요!`];
     case 'k_trap': return ['down', '💥', `<b>${nm}</b>님 ${esc((fAsset(f.sym) || {}).n || '')} ${f.x}배 ${f.d > 0 ? '롱' : '숏'} 함정! <b class="down">-${krw(f.amt)}</b>`];
     case 'k_fliq': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? ['down', '💀', `<b>${nm}</b>님 ${esc(c2.n)} <b>${f.x}배 ${f.d > 0 ? '롱' : '숏'} 청산</b> <b class="down">-${krw(f.amt)}</b>`] : null; }
     case 'k_ubuy': return UC[f.sym] ? ['up', '🇺🇸', `<b>${nm}</b>님이 ${esc(UC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;

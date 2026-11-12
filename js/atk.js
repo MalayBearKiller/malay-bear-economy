@@ -225,3 +225,110 @@ function renderDuelBar() {
   el.innerHTML = `<span class="tb-ic">⚔️</span><span class="tb-t"><b>결투 중 vs ${esc(other.name)} · ${mmss(d.end - now())}</b><small>나 <span class="${cls(rMe)}">${pctTxt(rMe)}</span> · 상대 <span class="${cls(rO)}">${pctTxt(rO)}</span> · ${rMe > rO ? '이기는 중 🔥' : '지는 중 😰'}</small></span>`;
 }
 document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-duel]'); if (t) duelStart(t.dataset.duel); });
+
+/* ═════════ 🎯 왕좌 저격 (모금형) — 1·2·3등을 여럿이 돈을 모아 쏴요 ═════════
+   목표 금액 = 그 사람 총자산의 15%. 나보다 높은 1~3등에게만 낼 수 있어요(1억 단위).
+   모금이 목표에 닿는 순간, 마지막으로 낸 사람 앱이 바로 발사해요(뽑은 번호 roll 기록).
+     성공 확률: 1등 30% · 2등 35% · 3등 40%.
+     성공 → 낸 사람 모두 낸 돈 + 이익(1등 2배 · 2등 1.7배 · 3등 1.5배)을 낸 비율대로. 상대는 그 이익만큼 잃어요(총자산 40% 한도, 현금이 모자라면 빚).
+     실패 → 모은 돈은 전부 사라지고, 그 절반은 상대가 '방어 보상'으로 받아요.
+   털린 사람은 30분 동안 보호막. 2시간 안에 목표를 못 채우면 각자 낸 돈을 돌려받아요.
+   낸 돈은 각자 지갑(sf)에, 발사 기록은 소식(k_sfire)과 쏜 사람 지갑(sfFire)에 남겨요 → 낸 사람·당한 사람 앱이 보고 스스로 반영해요. */
+const SNIPE = { GOAL: .15, P: [.30, .35, .40], PROF: [2, 1.7, 1.5], CAP: .40, SHIELD: 30 * 60e3, EXPIRE: 2 * H, UNIT: 1e8 };
+function sfFires(tid) {   // 그 사람에 대한 발사 기록들 (소식 + 쏜 사람 지갑)
+  const out = (S.feed || []).filter(f => f && f.kind === 'k_sfire' && f.target === tid);
+  Object.entries(S.players).forEach(([id, p]) => { const x = p && p.sfFire; if (x && x.t === tid && !out.some(f => Math.abs(f.ts - x.ts) < 2000)) out.push({ ...x, kind: 'k_sfire', uid: id, target: tid }); });
+  return out.sort((a, b) => b.ts - a.ts);
+}
+const sfLast = tid => (sfFires(tid)[0] || {}).ts || 0;
+function sfPool(tid) {
+  const last = sfLast(tid), list = [];
+  Object.entries(S.players).forEach(([id, p]) => { const c = p && p.sf && p.sf[tid]; if (c && c.amt > 0 && c.at > last && now() - c.at < SNIPE.EXPIRE) list.push({ id, amt: c.amt, at: c.at }); });
+  return { sum: list.reduce((a, x) => a + x.amt, 0), list: list.sort((a, b) => b.amt - a.amt) };
+}
+function snipeInfo(tid) {
+  const R = ranking(), tr = R.findIndex(x => x.id === tid) + 1, mr = R.findIndex(x => x.id === S.uid) + 1, t = R[tr - 1];
+  if (!S.me) return { ok: false, why: '참가하면 할 수 있어요' };
+  if (!(tr >= 1 && tr <= 3) || R.length < 2) return { ok: false, why: '1~3등만 노릴 수 있어요' };
+  const goal = Math.max(SNIPE.UNIT, Math.round(t.w * SNIPE.GOAL / SNIPE.UNIT) * SNIPE.UNIT), P = sfPool(tid), left = Math.max(0, goal - P.sum);
+  const I = { ok: true, tr, t, goal, pool: P.sum, list: P.list, left, prob: SNIPE.P[tr - 1], prof: SNIPE.PROF[tr - 1] };
+  const shielded = sfFires(tid).some(f => f.ok && now() - f.ts < SNIPE.SHIELD);
+  if (tid === S.uid) return { ...I, ok: false, why: '나예요 · 지금 표적!' };
+  if (mr && mr <= tr) return { ...I, ok: false, why: '나보다 높은 순위만 노릴 수 있어요' };
+  if (shielded) return { ...I, ok: false, why: '방금 털려서 30분 보호막 중' };
+  if (S.me.cash < Math.min(SNIPE.UNIT, left)) return { ...I, ok: false, why: '현금이 부족해요 (최소 1억)' };
+  return I;
+}
+async function sfGive(tid, amt) {
+  const I = snipeInfo(tid); if (!I.ok) { toast(I.why); return; } if (S.saving || S.readOnly) return;
+  amt = Math.min(Math.floor(amt), I.left, Math.floor(S.me.cash)); if (!(amt > 0)) return;
+  const before = S.me, me = clone(before); me.sf ||= {}; const c = me.sf[tid], fresh = c && c.at > sfLast(tid) && now() - c.at < SNIPE.EXPIRE;
+  me.sf[tid] = { amt: (fresh ? c.amt : 0) + amt, at: fresh ? c.at : now() }; me.cash = Math.round(me.cash - amt);
+  if (fresh === false && c) me.cash = Math.round(me.cash);   // (지난 판 기록은 정산 루프가 처리)
+  const full = I.pool + amt >= I.goal;
+  let ev = null;
+  if (full) {   // 목표 달성 → 내가 바로 발사
+    const roll = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296, ok = roll < I.prob, pool = I.pool + amt;
+    const X = ok ? Math.min(Math.round(pool * I.prof), Math.round(I.t.w * SNIPE.CAP)) : 0;
+    ev = { kind: 'k_sfire', target: tid, rank: I.tr, pool, goal: I.goal, ok, roll: +roll.toFixed(6), p: I.prob, X, n: I.list.filter(x => x.id !== S.uid).length + 1 };
+    me.sfFire = { t: tid, ts: now(), ok, X, pool, rank: I.tr, roll: ev.roll, p: I.prob };
+  }
+  if (!(await kSave(me, before))) return;
+  if (ev) { addFeed(ev); if (S.mode === 'demo' && S.players[tid]) { const t = S.players[tid]; t.cash = Math.round((t.cash || 0) + (ev.ok ? -ev.X : Math.floor(ev.pool / 2))); } }
+  else { addFeed({ kind: 'k_sfund', target: tid, amt, pool: I.pool + amt, goal: I.goal }); toast(`🎯 ${I.t.name}님 저격 모금에 ${krw(amt)} 보탰어요 · ${Math.round((I.pool + amt) / I.goal * 100)}%`); }
+  renderAll(); if (S.sheet && S.sheet.type === 'snipe') renderSheet();
+}
+// 내 모금 정산 (발사되면 내 몫 받기 · 2시간 지나면 돌려받기) + 당한 사람 반영
+let sfBusy = false;
+async function snipeSync() {
+  if (!S.me || S.readOnly || S.saving || sfBusy) return;
+  const me0 = S.me, mine = Object.entries(me0.sf || {}); let changed = false; const me = clone(me0), msgs = [];
+  mine.forEach(([tid, c]) => {
+    const fire = sfFires(tid).filter(f => f.ts >= c.at).sort((a, b) => a.ts - b.ts)[0];
+    if (fire) { if (fire.ok) { const get = c.amt + Math.round(fire.X * c.amt / fire.pool); me.cash = Math.round(me.cash + get); msgs.push(['win', get - c.amt, `🎯 ${nameOf(tid)}님 저격 성공! 내 몫`]); } else msgs.push(['lose', c.amt, `🛡️ ${nameOf(tid)}님 저격 실패… 모은 돈이 날아갔어요 -${krw(c.amt)}`]);
+      delete me.sf[tid]; changed = true; }
+    else if (now() - c.at > SNIPE.EXPIRE) { me.cash = Math.round(me.cash + c.amt); delete me.sf[tid]; changed = true; msgs.push(['info', c.amt, `⌛ ${nameOf(tid)}님 저격 모금이 2시간 안에 안 차서 ${krw(c.amt)} 돌려받았어요`]); }
+  });
+  // 당한 사람: 나를 향한 발사 기록 반영
+  const seen = me0.sfSeen ?? (me0.joined || 0), hits = sfFires(S.uid).filter(f => f.ts > seen).sort((a, b) => a.ts - b.ts);
+  hits.forEach(f => { me.cash = Math.round(me.cash + (f.ok ? -f.X : Math.floor(f.pool / 2))); msgs.push(f.ok ? ['lose', f.X, `🎯 ${f.n || '여러'}명이 모은 저격에 맞았어요! -${krw(f.X)} (30분 보호막)`] : ['win', Math.floor(f.pool / 2), `🛡️ 저격 모금 ${krw(f.pool)}을 막아냈어요! 방어 보상`]); });
+  if (hits.length) { me.sfSeen = hits[hits.length - 1].ts; changed = true; }
+  if (!changed) return;
+  sfBusy = true; const ok = await kSave(me, me0); sfBusy = false; if (!ok) return;
+  msgs.forEach(([k, v, t]) => { if (k === 'win') bigWin(v, t); else if (k === 'lose') cLose(t); else toast(t); });
+  renderAll();
+}
+function renderSnipeSheet(b, sh) {
+  const I = snipeInfo(sh.tid), t = S.players[sh.tid]; if (!t || !I.tr) { b.innerHTML = '<p class="atk-why">1~3등만 노릴 수 있어요</p>'; return; }
+  const pct = Math.round(I.prob * 100), fill = Math.min(100, I.pool / I.goal * 100), myC = ((S.me || {}).sf || {})[sh.tid];
+  const steps = [1e8, 5e8, 10e8].filter(v => v < I.left);
+  b.innerHTML = `<div class="atk-h"><span class="atk-k snipe">🎯 왕좌 저격 모금 · ${I.tr}등</span></div>
+    <div class="atk-vs">${ava({ id: sh.tid, ...t }, true)}<div><b>${esc(t.name)}</b><small>총자산 ${krw(I.t.w)}</small></div></div>
+    <div class="sf-goal"><div class="sf-gt"><span>모금 <b class="num">${krw(I.pool)}</b> / ${krw(I.goal)}</span><b class="num">${Math.round(fill)}%</b></div><div class="sf-bar"><i style="width:${fill}%"></i></div>
+      <small>${I.list.length ? I.list.slice(0, 6).map(x => `${esc(x.id === S.uid ? '나' : nameOf(x.id))} ${krwUnits(x.amt)}`).join(' · ') : '아직 아무도 안 냈어요. 첫 번째가 되어 보세요'}</small></div>
+    <div class="atk-io"><div class="win"><small>성공 ${pct}%</small><b class="num">×${(1 + I.prof).toFixed(1)}</b><span>낸 돈 + ${I.prof}배 이익 (낸 비율대로)</span></div>
+      <div class="lose"><small>실패 ${100 - pct}%</small><b class="num">전부 잃음</b><span>절반은 상대 방어 보상</span></div></div>
+    ${myC && myC.at > sfLast(sh.tid) ? `<p class="sf-mine">내가 낸 돈 <b class="num">${krw(myC.amt)}</b> · 2시간 안에 안 차면 돌려받아요</p>` : ''}
+    ${I.ok ? '' : `<p class="atk-why">${esc(I.why)}</p>`}
+    <div class="sf-btns">${steps.map(v => `<button type="button" data-sfgive="${v}" ${I.ok && S.me.cash >= v ? '' : 'disabled'}>+${krwUnits(v)}</button>`).join('')}
+      <button type="button" class="sf-fire" data-sfgive="${I.left}" ${I.ok && S.me.cash >= I.left ? '' : 'disabled'}>🎯 남은 ${krwUnits(I.left)} 채우고 발사</button></div>
+    <p class="atk-rule">목표 = 상대 총자산 15% · 다 차는 순간 발사 · 털린 사람 30분 보호막 · 2시간 안 차면 환불</p>`;
+}
+KSHEETS.snipe = renderSnipeSheet;
+// 홈: 1·2·3등 저격판 (접었다 펼 수 있어요)
+function throneHTML() {
+  const R = ranking(); if (R.length < 2 || !S.me) return '';
+  const top = R.slice(0, 3), mr = R.findIndex(x => x.id === S.uid) + 1, imTop = mr >= 1 && mr <= 3, open = S.thOpen ?? LS.get('thOpen', true);
+  const pools = top.map(p => sfPool(p.id).sum), live = pools.some(v => v > 0);
+  return `<div class="card throne${open ? '' : ' closed'}"><button type="button" class="th-h" id="thToggle"><span><b>🎯 왕좌 저격</b><small>${imTop ? `나는 ${mr}등 · 지금 표적이에요!` : live ? '모금 진행 중! 같이 모아서 쏴요' : '여럿이 돈을 모아 1·2·3등을 쏴요'}</small></span><i class="th-arrow">${open ? '▲' : '▼'}</i></button>
+    ${open ? top.map((p, i) => { const I = snipeInfo(p.id), B = i === 0 ? bountyOf(p) : 0, dw = duelWhy(p.id), me = p.id === S.uid, fill = I.goal ? Math.min(100, I.pool / I.goal * 100) : 0;
+      return `<div class="th-row r${i + 1}${me ? ' me' : ''}"><span class="th-rk">${['🥇', '🥈', '🥉'][i]}</span><button type="button" class="th-who" data-player="${esc(p.id)}">${ava(p)}<span><b>${esc(me ? '나' : p.name)}</b><small class="num">${(p.w / 1e8).toFixed(1)}억${B ? ` · <span class="bounty">💰현상금</span>` : ''}</small><span class="th-pool"><i style="width:${fill}%"></i></span><small class="num th-pt">모금 ${krwUnits(I.pool || 0)} / ${krwUnits(I.goal || 0)}${I.list && I.list.length ? ` · ${I.list.length}명` : ''}</small></span></button>
+        ${me ? '<span class="th-me">표적</span>' : `<span class="th-act"><button type="button" class="th-snipe" data-snipe="${esc(p.id)}" ${I.ok ? '' : 'disabled'}>🎯 ${Math.round(SNIPE.P[i] * 100)}%<small>×${(1 + SNIPE.PROF[i]).toFixed(1)}</small></button>${dw === 'ok' ? `<button type="button" class="th-duel" data-duel="${esc(p.id)}">⚔️</button>` : ''}</span>`}</div>`; }).join('')
+      + `<p class="th-note">목표는 상대 총자산 15% · 다 차면 발사 · 실패하면 모은 돈 전부 잃어요${!imTop ? (S.me.duelDay === kstDay(now()) ? ' · 오늘 결투권 사용함' : ' · ⚔️ 결투권 1장') : ''}</p>` : ''}</div>`;
+}
+document.addEventListener('click', e => {
+  const tg = e.target.closest && e.target.closest('#thToggle'); if (tg) { S.thOpen = !(S.thOpen ?? LS.get('thOpen', true)); LS.set('thOpen', S.thOpen); renderHome(); return; }
+  const t = e.target.closest && e.target.closest('[data-snipe]');
+  if (t) { e.stopPropagation(); if (!S.me) { openSheet('join'); return; } if (S.sheet) closeSheetRaw(); openSheet('snipe', { tid: t.dataset.snipe }); $('#sheetWrap').classList.add('center'); return; }
+  const g = e.target.closest && e.target.closest('[data-sfgive]'); if (g && S.sheet && S.sheet.type === 'snipe') sfGive(S.sheet.tid, +g.dataset.sfgive);
+}, true);

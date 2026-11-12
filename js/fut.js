@@ -44,24 +44,21 @@ async function fLiquidate(sym, trap) {
   FQ.busy = true;
   const before = S.me, me = clone(before), o = me[f][sym]; delete me[f][sym];
   const ok = await kSave(me, before); FQ.busy = false;
-  if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(trap ? `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} — 고배율 함정에 걸려 청산! 증거금 ${krw(o.m)} 증발` : `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
+  if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(`💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
 }
-/* ───────── 💀 고배율 함정: 수익(ROE)이 +2% 넘은 고배율 롱·숏은 1초마다 확률로 터져요 (2026-11-12) ─────────
-   100배: 20%로 -60% · 50배 이상: 15%로 -50% · 25배 이상: 6.7%로 -15% · 10배 이상: 2.5%로 -5% (포지션은 그대로, 청산 아님)
-   앱이 켜져 있을 때 1초마다 굴려요(kTick). */
-// 평균 버티는 시간 = 1 ÷ 확률(초): 100배 5초 · 50배 6.7초 · 25배 15초 · 10배 40초 (코인·주식·현물·국채 모두)
-const fTrapRule = x => (x >= 100 ? { p: .2, to: -.6 } : x >= 50 ? { p: .15, to: -.5 } : x >= 25 ? { p: .067, to: -.15 } : x >= 10 ? { p: .025, to: -.05 } : null);
-async function fTrap() {
+/* ───────── 💥 고배율 털기: 수익(ROE) +2% 넘은 고배율 롱·숏 → 1초마다 확률로 그 종목 가격이 반대로 꽂혀요 (모두에게) ─────────
+   평균 버티는 시간 = 1 ÷ 확률(초): 100배 5초 · 50배 약 7초 · 25배 15초 · 10배 40초. 꽂히는 크기: 50배 이상 25% · 25배 15% · 10배 5% (gm.js shockL)
+   앱이 켜져 있을 때 1초마다 굴려요(kTick). 국채 롱·숏은 빼요. */
+const fShockRule = x => (x >= 100 ? { p: .2, mag: .25 } : x >= 50 ? { p: .15, mag: .25 } : x >= 25 ? { p: .067, mag: .15 } : x >= 10 ? { p: .025, mag: .05 } : null);
+function fTrap() {
   if (!S.me || S.readOnly || S.saving || FQ.busy || !GM.ready) return;
-  for (const f of ['kFut', 'uFut', 'gFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {
-    const R = fTrapRule(o.x), p = fPx(sym); if (!R || !p || !o.m) continue;
-    if ((fVal(o, p) - o.m) / o.m < .02 || Math.random() >= R.p) continue;
-    if (R.to == null) { fLiquidate(sym, true); return; }
-    // 진입가를 옮겨서 지금 수익률이 R.to가 되게 해요 (값 = 증거금 × (1 + R.to))
-    const before = S.me, me = clone(before), n = me[f][sym], e2 = p + n.d * (-R.to * n.m + fFund(n)) / n.q;
-    me[f][sym] = { ...n, e: e2 }; FQ.busy = true; const ok = await kSave(me, before); FQ.busy = false;
-    if (ok) { addFeed({ kind: 'k_trap', sym, x: n.x, d: n.d, amt: Math.round(fVal(o, p) - n.m * (1 + R.to)) }); toast(`💥 ${fAsset(sym).n} ${n.x}배 ${fSide(n)} 함정! 수익이 날아가고 ${Math.round(R.to * 100)}%`); buzz([60, 40, 60]); renderAll(); if (S.sheet) renderSheet(); }
-    return;
+  for (const f of ['kFut', 'uFut']) for (const sym of Object.keys(S.me[f] || {})) fLiveCheck(sym);   // 충격으로 가격이 바뀌면 청산 확인
+  for (const f of ['kFut', 'uFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {
+    const R = fShockRule(o.x), p = fPx(sym); if (!R || !p || !o.m) continue;
+    if ((fVal(o, p) - o.m) / o.m < .02 || Math.random() >= R.p || now() - lastShock(sym) < SHOCK.GAP) continue;
+    addFeed({ kind: 'k_shock', sym, d: -o.d, mag: R.mag, x: o.x });
+    toast(`💥 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 수익이 나자 가격이 ${o.d > 0 ? '-' : '+'}${Math.round(R.mag * 100)}% 꽂혔어요!`); buzz([80, 40, 80]);
+    renderAll(); return;   // 한 번에 하나씩
   }
 }
 async function fScan() {

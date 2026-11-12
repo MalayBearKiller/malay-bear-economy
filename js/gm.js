@@ -122,6 +122,23 @@ function cbAlert(sym, d) {
   EVQ.q.push({ f: { kind: 'k_cb' }, t: d < 0 ? ['down', '💥', `<b>${esc(a.n)}</b> 과열! 갑자기 <b class="down">-15% 폭락</b>`] : ['up', '🚀', `<b>${esc(a.n)}</b> 바닥 찍고 <b class="up">+15% 폭등</b>`] });
   if (EVQ.q.length > 6) EVQ.q.splice(0, EVQ.q.length - 6); evNext(); buzz(60);
 }
+/* ───────── 💥 고배율 털기 충격: 고배율 롱·숏이 수익 +2%를 넘으면, 그 사람 앱이 1초마다 확률로 '가격 충격'을 기록(k_shock)해요 ─────────
+   기록을 받은 모든 폰에서 그 종목 가격이 그 포지션 반대 방향으로 3초 만에 꽂혀요 → 고배율은 당연히 청산, 같은 방향 들고 있던 사람도 같이 맞아요.
+   크기: 50배 이상 25% · 25배 15% · 10배 5%. 2분 버틴 뒤 30분에 걸쳐 원래대로. 같은 종목은 1분에 1번만. */
+const SHOCK = { HOLD: 2, FADE: 30, GAP: 60e3, RISE: 3 / 60 };
+let SHK_SRC = null, SHK_LEN = -1, SHK = {};
+function shockMap() {
+  const f = S.feed || []; if (f === SHK_SRC && f.length === SHK_LEN) return SHK; SHK_SRC = f; SHK_LEN = f.length; SHK = {};
+  const last = {}; f.filter(e => e && e.kind === 'k_shock' && e.sym && e.mag).sort((a, b) => a.ts - b.ts).forEach(e => { if (last[e.sym] && e.ts - last[e.sym] < SHOCK.GAP) return; last[e.sym] = e.ts; (SHK[e.sym] ||= []).push(e); });
+  return SHK;
+}
+const lastShock = sym => { const L = shockMap()[sym]; return L && L.length ? L[L.length - 1].ts : 0; };
+function shockL(sym, t) {
+  const L = shockMap()[sym]; if (!L) return 0; let v = 0;
+  L.forEach(e => { const tau = (t - e.ts) / MIN, lv = Math.log(Math.max(.05, 1 + e.d * e.mag)); if (tau < 0) return;
+    if (tau < SHOCK.RISE) v += lv * tau / SHOCK.RISE; else if (tau < SHOCK.RISE + SHOCK.HOLD) v += lv; else { const u = tau - SHOCK.RISE - SHOCK.HOLD; if (u < SHOCK.FADE) v += lv * (1 - u / SHOCK.FADE); } });
+  return v;
+}
 // 배율 (t 시각, chg = 그 시각 진짜 하루 등락률)
 function gmMult(sym, t, chg) {
   const P = gmCls(sym); if (!P || !GM.ready) return 1;
@@ -132,7 +149,7 @@ function gmMult(sym, t, chg) {
   if (mc && mc.bk === bk && GM.lastE === mc.le) L0 = mc.v;
   else { L0 = gmL0(sym, t, P); if (Math.abs(t - now()) < 2000) GM.mc[sym] = { bk, v: L0, le: GM.lastE }; }
   let C = 0; const tm = t / MIN; cbList(sym, m, chg, P).forEach(([j, d]) => { C += cbShape(d > 0 ? CB.UP : CB.DN, tm - j); });
-  return Math.max(.6, Math.min(1.6, Math.exp(A + L0 + C)));
+  return Math.max(.6, Math.min(1.6, Math.exp(A + L0 + C))) * Math.exp(shockL(sym, t));   // 털기 충격은 0.6~1.6 고정 밖에서 곱해요
 }
 // 서킷 배지: 터지고 3분 동안
 function cbBadge(sym, t = now()) {
