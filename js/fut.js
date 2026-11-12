@@ -47,10 +47,10 @@ async function fLiquidate(sym, trap) {
   if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(trap ? `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} — 고배율 함정에 걸려 청산! 증거금 ${krw(o.m)} 증발` : `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
 }
 /* ───────── 💀 고배율 함정: 수익(ROE)이 +2% 넘은 고배율 롱·숏은 1초마다 확률로 터져요 (2026-11-12) ─────────
-   100배: 33%로 -60% · 50배 이상: 15%로 -50% · 25배 이상: 6.7%로 -15% · 10배 이상: 2.5%로 -5% (포지션은 그대로, 청산 아님)
+   100배: 20%로 -60% · 50배 이상: 15%로 -50% · 25배 이상: 6.7%로 -15% · 10배 이상: 2.5%로 -5% (포지션은 그대로, 청산 아님)
    앱이 켜져 있을 때 1초마다 굴려요(kTick). */
-// 평균 버티는 시간 = 1 ÷ 확률(초): 100배 3초 · 50배 6.7초 · 25배 15초 · 10배 40초 (코인·주식·현물·국채 모두)
-const fTrapRule = x => (x >= 100 ? { p: .33, to: -.6 } : x >= 50 ? { p: .15, to: -.5 } : x >= 25 ? { p: .067, to: -.15 } : x >= 10 ? { p: .025, to: -.05 } : null);
+// 평균 버티는 시간 = 1 ÷ 확률(초): 100배 5초 · 50배 6.7초 · 25배 15초 · 10배 40초 (코인·주식·현물·국채 모두)
+const fTrapRule = x => (x >= 100 ? { p: .2, to: -.6 } : x >= 50 ? { p: .15, to: -.5 } : x >= 25 ? { p: .067, to: -.15 } : x >= 10 ? { p: .025, to: -.05 } : null);
 async function fTrap() {
   if (!S.me || S.readOnly || S.saving || FQ.busy || !GM.ready) return;
   for (const f of ['kFut', 'uFut', 'gFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {

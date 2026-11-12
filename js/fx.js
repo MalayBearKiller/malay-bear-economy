@@ -95,7 +95,7 @@ function spotPctNow(ratio, all) {
 const PROMO = { i: 0, t: 0 };
 function promoMsgs() {
   const k = n => n >= 1e8 ? +(n / 1e8).toFixed(1) + '억' : Math.round(n / 1e4) + '만';
-  const out = ['60초에 <em>2배</em>', '로켓 <em>100배</em>', '슬롯 <em>500배</em>', '보물 <em>35배</em>', '5연승 <em>2.3배</em>'];
+  const out = ['60초에 <em>2배</em>', '로켓 <em>50배</em>', '슬롯 <em>200배</em>', '보물 <em>35배</em>', '5연승 <em>2.3배</em>'];
   (S.feed || []).filter(f => f && f.kind === 'casino' && f.amt > 0 && Date.now() - f.ts < 864e5).slice(0, 4)
     .forEach(f => out.push(`${esc(nameOf(f.uid).slice(0, 3))} <em>+${k(f.amt)}</em>`));
   activePlayers().filter(p => (p.udStreak || 0) >= 2).slice(0, 2).forEach(p => out.push(`${esc(p.name.slice(0, 3))} <em>${p.udStreak}연승</em>`));

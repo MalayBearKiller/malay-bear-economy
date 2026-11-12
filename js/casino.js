@@ -4,14 +4,14 @@
    모두 같은 베팅 금액(betAmount)을 써요. 평균 돌려받는 비율은 94~97%라 오래 하면 조금씩 잃어요.
    로켓·보물상자는 시작할 때 건 돈을 먼저 빼고(저장), 멈추거나 끝날 때 받은 돈을 넣어요. 중간에 앱을 끄면 그 판은 잃어요. */
 // 🔒 도박장 잠금 (2026-11-12): true면 들어갈 수 없어요. 다시 열려면 false로
-const CASINO_OFF = true;
+const CASINO_OFF = false;   // 2026-11-12 배수 줄여서 다시 열었어요
 const CG = [
-  ['ud', '⚡', '업다운', '2.3배'], ['rocket', '🚀', '로켓', '100배'], ['mine', '💣', '보물상자', '35배'],
-  ['slot', '🎰', '슬롯', '500배'], ['race', '🏇', '경마', '3.8배'],
+  ['ud', '⚡', '업다운', '2.3배'], ['rocket', '🚀', '로켓', '50배'], ['mine', '💣', '보물상자', '35배'],
+  ['slot', '🎰', '슬롯', '200배'], ['race', '🏇', '경마', '3.8배'],
 ];
 const cgCur = () => (CG.some(([k]) => k === S.cg) ? S.cg : 'ud');
 // 판돈이 클수록 최대 배수가 줄어요: 1억 이하 300배 → 10억 20배 (그 사이는 로그로 이어요)
-const cgCap = bet => (bet <= 1e8 ? 300 : bet >= 1e9 ? 20 : Math.round(300 * Math.pow(20 / 300, Math.log10(bet / 1e8))));
+const cgCap = bet => (bet <= 1e8 ? 100 : bet >= 1e9 ? 10 : Math.round(100 * Math.pow(10 / 100, Math.log10(bet / 1e8))));   // 1억 이하 100배 → 10억 10배
 const fmtX = m => (m >= 10 ? m.toFixed(1) : m.toFixed(2)) + 'x';
 
 // 돈 넣고 빼기: d만큼 현금을 바꾸고 게임 손익(casino)에도 더해요
@@ -40,7 +40,7 @@ function casinoGameHTML() {
 
 /* ───────── 🚀 로켓: 배수가 계속 올라가요. 터지기 전에 STOP ─────────
    터지는 지점: 1/배수 확률로 살아남아요(×0.97). 3%는 1.00x에서 바로 터져요. 최대 100배 */
-const RK = { MAX: 100, raf: 0 };
+const RK = { MAX: 50, raf: 0 };
 const rkAt = t => Math.min(RK.MAX, Math.exp(t * 0.32));   // t초 → 배수 (2배 약 2.2초, 10배 약 7.2초)
 function rocketHTML() {
   const r = C.rk, live = r && r.live, bet = betAmount();
@@ -48,7 +48,7 @@ function rocketHTML() {
     <div class="cg-h"><div><h3>🚀 로켓</h3><p class="desc">배수가 계속 올라가요. 터지기 전에 STOP!</p></div></div>
     <div class="rk-sky" id="rkSky"><i class="rk-stars"></i><i class="rk-stars s2"></i>
       <span class="rk-ship" id="rkShip">🚀</span><b class="rk-x num" id="rkX">${r ? fmtX(r.m) : '1.00x'}</b>
-      <small class="rk-msg" id="rkMsg">${r && !live ? r.msg : '최대 100배'}</small></div>
+      <small class="rk-msg" id="rkMsg">${r && !live ? r.msg : '최대 50배'}</small></div>
     ${live ? `<button class="cta buy rk-stop" type="button" id="rkStop">💰 STOP · <span id="rkGet">${won(Math.floor(r.bet * r.m))}</span></button>`
       : `<button class="cta" type="button" id="rkGo" ${bet < MINBET || C.busy ? 'disabled' : ''}>🚀 <span data-betlbl>${won(bet)}</span> 걸고 발사</button>`}
     ${(C.rkHist || []).length ? `<div class="cg-hist">${C.rkHist.slice(-8).map(x => `<i class="${x >= 2 ? 'hi' : x < 1.2 ? 'lo' : ''}">${fmtX(x)}</i>`).join('')}</div>` : ''}
@@ -129,14 +129,14 @@ async function mineCash() {
 }
 
 /* ───────── 🎰 슬롯: 3줄이 같으면 대박 (평균 94%) ─────────
-   🍒 3개 3배 · 🍋 8배 · 🔔 30배 · 💎 80배 · 7️⃣ 500배 · 🍒 딱 2개면 본전 */
-const SL = { sym: ['🍒', '🍋', '🔔', '💎', '7️⃣'], w: [8, 6, 3, 2, 1], pay: { '🍒': 3, '🍋': 8, '🔔': 30, '💎': 80, '7️⃣': 500 } };
+   🍒 3개 3배 · 🍋 8배 · 🔔 35배 · 💎 80배 · 7️⃣ 200배 · 🍒 딱 2개면 본전 */
+const SL = { sym: ['🍒', '🍋', '🔔', '💎', '7️⃣'], w: [8, 6, 3, 2, 1], pay: { '🍒': 3, '🍋': 8, '🔔': 35, '💎': 80, '7️⃣': 200 } };   // 평균 돌려받기 약 92%
 const slPick = () => { let x = Math.random() * 20; for (let i = 0; i < SL.w.length; i++) { x -= SL.w[i]; if (x < 0) return SL.sym[i]; } return SL.sym[0]; };
 function slMult(a) { if (a[0] === a[1] && a[1] === a[2]) return SL.pay[a[0]]; return a.filter(s => s === '🍒').length === 2 ? 1 : 0; }
 function slotHTML() {
   const r = C.sl, bet = betAmount(), cur = (r && r.res) || ['7️⃣', '7️⃣', '7️⃣'];
   return `<div class="card game cgame slot${r && r.big ? ' jack' : ''}" id="slCard">
-    <div class="cg-h"><div><h3>🎰 슬롯</h3><p class="desc">세 줄을 맞춰라! 7️⃣7️⃣7️⃣ = 500배</p></div></div>
+    <div class="cg-h"><div><h3>🎰 슬롯</h3><p class="desc">세 줄을 맞춰라! 7️⃣7️⃣7️⃣ = 200배</p></div></div>
     <div class="sl-box"><div class="sl-reels">${[0, 1, 2].map(i => `<div class="sl-reel" id="slR${i}"><div class="sl-strip">${cur[i]}</div></div>`).join('')}</div><i class="sl-line"></i></div>
     <div class="sl-pay">${SL.sym.map(s => `<span>${s}${s}${s} <b>${SL.pay[s]}배</b></span>`).join('')}<span>🍒🍒 <b>본전</b></span></div>
     <p class="res" id="slMsg">${r && r.msg ? r.msg : ''}</p>
