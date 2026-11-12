@@ -1,6 +1,6 @@
 'use strict';
 /* ═════════ 업비트 코인 (게임 가격은 gm.js) · 돈은 원화 하나 ═════════ */
-const K_RESCUE = 5_000_000_000, K_RESCUE_AT = 200_000_000; // 총자산 2억원 밑이면 파산 지원금 50억원 (시작 자금과 같아요)
+const K_RESCUE = 2_000_000_000, K_RESCUE_AT = 200_000_000, K_RESCUE_CD = 3600e3; // 실질 총자산 2억 밑이면 파산 지원금 20억 (1시간에 1번)
 const KFEE = 0.0005, K_MIN = 5000;        // 업비트 수수료 0.05%, 최소 주문 5,000원
 const KCOINS = [
   ['BTC', '비트꼬인', 'major'], ['ETH', '이더리음', 'major'], ['XRP', '리뿔', 'major'], ['SOL', '쏠라나', 'major'], ['TRX', '트롱', 'major'],
@@ -177,11 +177,17 @@ async function kDoTrade() {
   if (sh.m === 'sell') { const pnl = Math.round(c.get - c.q * ((before.kCost || {})[sym] || p)); addFeed({ kind: 'k_sell', sym, amt: Math.round(c.get), pnl }); toast(`💸 ${n} 매도 · ${signKrw(pnl)}`); if (pnl > 0) bigWin(pnl); }
   sh.amt = ''; sh.qty = ''; sh.all = false; renderAll(); renderSheet();
 }
-const canKRescue = () => S.me && !S.readOnly && kWorth(S.me) < K_RESCUE_AT;
+// 실질 총자산 = 총자산 + 진행 중인 왕좌 저격 모금에 낸 돈 + 지금 도박장에 걸려 있는 돈 (모금함에 부어서 파산 지원금 받는 꼼수 방지)
+function realWorth(me) { if (!me) return 0; let v = worth(me);
+  Object.values(me.sf || {}).forEach(c => { if (c && c.amt > 0 && now() - c.at < 2 * H) v += c.amt; });
+  if (typeof C !== 'undefined') { if (C.rk && C.rk.live) v += C.rk.bet; if (C.mn && C.mn.live) v += C.mn.bet; }
+  return v; }
+const kRescueWait = () => Math.max(0, ((S.me && S.me.resAt) || 0) + K_RESCUE_CD - now());
+const canKRescue = () => S.me && !S.readOnly && realWorth(S.me) < K_RESCUE_AT && !kRescueWait();
 async function kRescue() {
   if (!canKRescue() || S.saving) return;
-  const before = S.me, me = clone(before); me.cash += K_RESCUE; me.inflow = (me.inflow || CASH0) + K_RESCUE; me.kResN = (me.kResN || 0) + 1;
-  if (await kSave(me, before)) { addFeed({ kind: 'k_rescue' }); toast('💸 파산 지원금 50억원이 들어왔어요'); renderAll(); }
+  const before = S.me, me = clone(before); me.cash += K_RESCUE; me.inflow = (me.inflow || CASH0) + K_RESCUE; me.kResN = (me.kResN || 0) + 1; me.resAt = now();
+  if (await kSave(me, before)) { addFeed({ kind: 'k_rescue' }); toast('💸 파산 지원금 20억원이 들어왔어요 (다음은 1시간 뒤)'); renderAll(); }
 }
 
 /* ───────── 연습봇: 원화 지갑도 채워요 ───────── */
@@ -240,7 +246,7 @@ function renderKCoinSheet(b, sh) {
   b.innerHTML = `<div class="shead">${kBadge(c)}<div><h3>${esc(c.n)}</h3><small>${c.a} · ${KCAT[c.c].n} · 업비트 원화마켓</small></div></div>
     <div class="bigp"><div class="p num" id="kLivePrice">${kPx(c.id) ? kWon(kPx(c.id)) + '원' : '…'}</div><div class="c num"><span class="${cls(kChgG(c.id))}" id="kLivePct">어제보다 ${kPx(c.id) ? pctTxt(kChgG(c.id)) : ''}</span> <span id="kBadge">${gmBadgeHTML(c.id)}</span></div><div class="realpx">진짜 시세 <b class="num">${o.p ? kWon(o.p) + '원' : '…'}</b></div></div>
     <div class="chartbox"><canvas class="chart" id="kChart" aria-label="최근 24시간 차트"></canvas><i class="cpulse"></i></div>
-    ${holdersHTML(c.id)}
+    ${holdersHTML(c.id)}${rumorRowHTML(c.id)}
     <div class="info info3"><div>24시간 거래대금<b class="num">${o.v ? krwUnits(o.v) : '-'}</b></div>
       <div>내 보유<b class="num">${held ? kQty(held) + ' ' + c.a : '-'}</b></div><div>평단<b class="num">${avg ? kWon(avg) + '원' : '-'}</b></div></div>
     ${canTrade ? `<div class="seg seg2">${[['buy', '현물 매수·매도'], ['fut', '선물 롱·숏']].map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${m === 'fut' ? sh.m === 'fut' : sh.m !== 'fut'}">${l}</button>`).join('')}</div>
@@ -283,6 +289,10 @@ function kFeedText(f) {
     case 'k_sell': return c ? (f.pnl >= 1e8 ? ['up', '💰', `<b>${nm}</b>님이 ${esc(c.n)}로 <b class="up">${signKrw(f.pnl)}</b> 벌었어요`] : ['down', '💸', `<b>${nm}</b>님이 ${esc(c.n)}을(를) <b>${krw(f.amt)}</b>어치 팔았어요`]) : null;
     case 'k_fopen': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? [f.d > 0 ? 'up' : 'down', f.d > 0 ? '🚀' : '📉', `<b>${nm}</b>님이 ${esc(c2.n)} <b>${f.x}배 ${f.d > 0 ? '롱' : '숏'}</b> 진입 (${krw(f.amt)})`] : null; }
     case 'k_fclose': { const c2 = KC[f.sym] || UC[f.sym] || GC[f.sym]; return c2 ? [f.pnl >= 0 ? 'up' : 'down', f.pnl >= 0 ? '🤑' : '😭', `<b>${nm}</b>님이 ${esc(c2.n)} ${f.x}배 ${f.d > 0 ? '롱' : '숏'} 종료 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null; }
+    case 'k_loan': return ['gold', '⛓️', `<b>${nm}</b>님이 <b>${esc(nameOf(f.target))}</b>님에게 사채 ${krw(f.amt)}을 꽂았어요 → 노예 계약 (빚 ${krw(f.debt)})`];
+    case 'k_tribute': return ['gold', '⛓️', `[노예] <b>${nm}</b>님이 수익을 내자 [주인] <b>${esc(nameOf(f.target))}</b>님이 상납금 <b>${krw(f.amt)}</b>을 뜯어갔어요${f.free ? ' · 해방!' : ''}`];
+    case 'k_repay': return f.refund ? null : ['up', '⛓️', `<b>${nm}</b>님이 ${esc(nameOf(f.target))}님 빚 ${krw(f.amt)}을 갚았어요${f.free ? ' · <b>해방!</b>' : ''}`];
+    case 'k_rumor': { const a2 = KC[f.sym] || UC[f.sym], rev = !f.ok && now() - f.ts >= 30e3; return a2 ? [f.d > 0 ? 'up' : 'down', rev ? '🚨' : '📰', rev ? `<b>${nm}</b>님이 뿌린 ${esc(a2.n)} 가짜 뉴스 들통! 정반대로 15% 급반전` : `[익명 속보] <b>${esc(a2.n)}</b> ${esc(f.txt || (f.d > 0 ? '호재 루머' : '악재 루머'))}?!`] : null; }
     case 'k_sfund': return ['gold', '🎯', `<b>${nm}</b>님이 ${esc(nameOf(f.target))}님 저격 모금에 <b>${krw(f.amt)}</b> 보탰어요 · ${Math.round(f.pool / f.goal * 100)}%`];
     case 'k_sfire': return [f.ok ? 'up' : 'down', '🎯', f.ok ? `<b>${f.n || 1}명</b>이 모은 ${krw(f.pool)} 저격 → <b>${f.rank}등 ${esc(nameOf(f.target))}</b>님 명중! <b class="down">-${krw(f.X)}</b>` : `${f.rank}등 <b>${esc(nameOf(f.target))}</b>님이 ${krw(f.pool)} 저격을 막아냈어요!`];
     case 'k_duel0': return ['gold', '⚔️', `<b>${nm}</b>님이 <b>${esc(nameOf(f.target))}</b>님에게 결투를 걸었어요!`];

@@ -56,6 +56,7 @@ async function doAttack(tid, field, sym) {
   if (B) { me.cash += B; ev.bounty = B; }
   if (ok) {
     me.cash += I.cost;
+    const reb = loanRebel(me, tid); if (reb) ev.rebel = reb;   // ⛓️ 노예가 주인을 털면 반란 성공
     if (I.type === 'loot') {   // 뺏은 수량을 내 지갑에 (평단 = 지금 가격)
       const hf = field, cf = field === 'kHold' ? 'kCost' : 'uCost'; me[hf] ||= {}; me[cf] ||= {};
       const h0 = me[hf][sym] || 0; me[cf][sym] = ((me[cf][sym] || 0) * h0 + I.dq * I.price) / (h0 + I.dq); me[hf][sym] = h0 + I.dq;
@@ -66,6 +67,7 @@ async function doAttack(tid, field, sym) {
   if (!(await kSave(me, before))) return;
   addFeed(ev); closeSheetRaw();
   if (S.mode === 'demo') atkApplyTo(S.players[tid], [{ ...ev, uid: S.uid, ts: now() }]);   // 연습봇은 바로 반영
+  if (ev.rebel) setTimeout(() => toast(`⛓️ 주인을 털었다! 반란 성공 · 빚 ${krw(ev.rebel)} 탕감`), 1800);
   if (ok) bigWin(I.win + B, (B ? `👑 현상금 ${krw(B)} + ` : '') + (I.type === 'loot' ? '💰 약탈 성공!' : I.exec ? '☠️ 참수 성공!' : '🎯 사냥 성공!'));
   else { toast(`🛡️ 막혔어요… ${krw(I.cost)} 잃음 (절반은 ${p.name}님 위자료)`); document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); buzz(120); }
   renderAll();
@@ -169,18 +171,19 @@ async function top1Track() {
    4등 아래는 하루 1번 1~3등에게 결투를 걸 수 있어요. 5분 동안 총자산 수익률 승부 (상대가 꺼져 있어도 시세로 계산돼요).
    이기면 상대 총자산의 3%(상대 현금 한도)를 가져오고, 지면 내 총자산의 3%(내 현금 한도)를 상대에게 줘요. 거절은 없어요.
    결투는 건 사람 지갑(duel)에 적고, 끝나면 건 사람 앱이 결과를 기록(k_duel) → 상대 앱이 보고 스스로 반영해요. */
-const DUEL = { MS: 5 * 60e3, STAKE: .03 };
+const DUEL = { MS: 5 * 60e3, STAKE: .05 };   // 판돈 = 두 사람 중 작은 총자산의 5% (같은 금액이 오가요)
 const rankOf = id => ranking().findIndex(x => x.id === id) + 1;
 function duelWhy(tid) {
   const me = S.me; if (!me) return '참가하면 할 수 있어요'; const mr = rankOf(S.uid), tr = rankOf(tid);
   if (!(tr >= 1 && tr <= 3)) return ''; if (mr && mr <= 3) return '1~3등끼리는 결투 못 해요';
   if (me.duel && now() < me.duel.end + 60e3) return '이미 결투 중이에요'; if (me.duelDay === kstDay(now())) return '오늘 결투권을 이미 썼어요';
   if (Object.values(S.players).some(p => p && p.duel && p.duel.t === tid && now() < p.duel.end)) return '그 사람은 지금 다른 결투 중이에요';
+  if (!isOn({ id: tid, ...S.players[tid] })) return '상대가 접속 중일 때만 걸 수 있어요';
   return 'ok';
 }
 async function duelStart(tid) {
   if (duelWhy(tid) !== 'ok' || S.saving || S.readOnly) return; const t = S.players[tid]; if (!t) return;
-  if (!S.dArm || S.dArm !== tid || Date.now() - (S.dArmT || 0) > 4000) { S.dArm = tid; S.dArmT = Date.now(); toast('⚔️ 한 번 더 누르면 결투 시작! (5분 수익률 승부, 판돈 총자산 3%)'); return; }
+  if (!S.dArm || S.dArm !== tid || Date.now() - (S.dArmT || 0) > 4000) { S.dArm = tid; S.dArmT = Date.now(); toast('⚔️ 한 번 더 누르면 결투 시작! (5분 수익률 승부, 판돈 = 둘 중 작은 총자산의 5%)'); return; }
   S.dArm = null;
   const before = S.me, me = clone(before); me.duel = { t: tid, at: now(), end: now() + DUEL.MS, a0: worth(me), b0: worth({ id: tid, ...t }) }; me.duelDay = kstDay(now());
   if (!(await kSave(me, before))) return;
@@ -191,10 +194,12 @@ async function duelTick() {
   const t = S.players[d.t]; const before = S.me, me = clone(before); delete me.duel;
   if (!t) { await kSave(me, before); return; }
   const ra = worth(before) / d.a0 - 1, rb = worth({ id: d.t, ...t }) / d.b0 - 1, win = ra > rb;
-  const amt = win ? Math.min(Math.round(worth({ id: d.t, ...t }) * DUEL.STAKE), Math.max(0, Math.floor(t.cash || 0))) : Math.min(Math.round(worth(before) * DUEL.STAKE), Math.max(0, Math.floor(me.cash || 0)));
+  const reb = win ? loanRebel(me, d.t) : 0;
+  const stake = Math.round(Math.min(worth(before), worth({ id: d.t, ...t })) * DUEL.STAKE);
+  const amt = win ? Math.min(stake, Math.max(0, Math.floor(t.cash || 0))) : Math.min(stake, Math.max(0, Math.floor(me.cash || 0)));
   me.cash = Math.round(me.cash + (win ? amt : -amt));
   if (!(await kSave(me, before))) return;
-  const ev = { kind: 'k_duel', target: d.t, win, amt, ra: +ra.toFixed(4), rb: +rb.toFixed(4) }; addFeed(ev);
+  const ev = { kind: 'k_duel', target: d.t, win, amt, ra: +ra.toFixed(4), rb: +rb.toFixed(4), rebel: reb || undefined }; addFeed(ev); if (reb) toast(`⛓️ 반란 성공! 빚 ${krw(reb)} 탕감`);
   if (S.mode === 'demo' && S.players[d.t]) S.players[d.t].cash = Math.round((S.players[d.t].cash || 0) + (win ? -amt : amt));
   if (win) bigWin(amt, `⚔️ 결투 승리! ${pctTxt(ra)} vs ${pctTxt(rb)}`); else cLose(`⚔️ 결투 패배… ${pctTxt(ra)} vs ${pctTxt(rb)} · -${krw(amt)}`);
   renderAll();

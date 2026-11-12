@@ -33,6 +33,7 @@ function profileBody(p, isMe) {
   h += HT.map(x => `<button type="button" class="pos" ${x.open}>${x.badge}<span class="sname"><b>${esc(x.name)} <span class="postag ${x.tagc}">${esc(x.tag)}</span></b><small class="dim num">${x.sub}${x.dist != null ? ` · 청산까지 ${(x.dist * 100).toFixed(1)}%` : ''}</small></span>
       <span class="r num"><b>${won(x.value)}</b><br><small class="${cls(x.pnl)}">${signWon(x.pnl)} (${pctTxt(x.pct)})</small></span></button>`).join('') || `<div class="empty">${pTab() !== 'all' ? '이 탭에는 가진 게 없어요.' : isMe ? '아직 아무것도 없어요. 거래소에서 시작해 보세요.' : '가진 게 없어요.'}</div>`;
   h += `</div></div>` + pAnalysisHTML(p, w, roi, rk, H0);
+  if (isMe) h = h.replace('<div class="sec ptabs-sec">', loanPanelHTML(p) + '<div class="sec ptabs-sec">');
   if (isMe) h += `<div class="ph-set">${[['photoBtn2', '📸 사진 바꾸기', 1], ['photoDel', '사진 지우기', !!p.photo], ['bannerDel', '배경 지우기', !!p.banner], ['bannerPick', `🖼️ 배경 바꾸기 · ${won(BANNER_COST)}`, 1], ['renameOpen', `✏️ 닉네임 · ${won(RENAME_COST)}`, 1], ['logoutBtn', '로그아웃', !!S.fb && S.mode === 'live']]
       .filter(x => x[2]).map(([id, l]) => `<button type="button" id="${id}">${l}</button>`).join('')}</div>`;
   return h;
@@ -117,12 +118,13 @@ function rivalHTML(p) {
   const stk = stakePositions(p), stop = guChief();
   return `<div class="rv-hero${bn ? ' bn' : ''}"${bn} style="--c:${col}${bn ? `;--bn:url(${p.banner})` : ''}">
       <div class="rv-ava${on ? ' on' : ''}">${ava(p, true)}</div>
-      <h2>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></h2>
+      <h2>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></h2>${slaveTag(p)}
       <div class="rv-badges">${rk ? `<span class="rk${rk <= 3 ? ' t' + rk : ''}">🏆 ${rk}위</span>` : ''}${lord ? `<span>👑 ${esc(lord)}</span>` : ''}<span class="${on ? 'live' : ''}">${on ? '● 접속 중' : seenAgo(p) || '오프라인'}</span></div>
     </div>
     <div class="rv-stats"><div><small>총자산</small><b class="num">${won(w)}</b></div><div><small>수익률</small><b class="num ${cls(roi)}">${pctTxt(roi)}</b></div><div><small>공격 전적</small><b class="num">${won_}승 ${lost_}패</b></div></div>
-    ${(() => { const why = duelWhy(p.id), B = bountyOf(p); return (B ? `<div class="rv-bounty">👑 1등 현상금 <b class="num">${krw(B)}</b> · 공격 성공하면 같이 받아요</div>` : '') + (why ? `<button type="button" class="cta duelgo${why === 'ok' ? '' : ' off'}" data-duel="${p.id}" ${why === 'ok' ? '' : 'disabled'}>⚔️ 결투 신청 <small>${why === 'ok' ? '5분 수익률 승부 · 판돈 총자산 3% · 하루 1번' : esc(why)}</small></button>` : ''); })()}
+    ${(() => { const why = duelWhy(p.id), B = bountyOf(p); return (B ? `<div class="rv-bounty">👑 1등 현상금 <b class="num">${krw(B)}</b> · 공격 성공하면 같이 받아요</div>` : '') + (why ? `<button type="button" class="cta duelgo${why === 'ok' ? '' : ' off'}" data-duel="${p.id}" ${why === 'ok' ? '' : 'disabled'}>⚔️ 결투 신청 <small>${why === 'ok' ? '5분 수익률 승부 · 판돈 = 작은 쪽 총자산 5% · 하루 1번' : esc(why)}</small></button>` : ''); })()}
     ${S.me && revengeOn(p.id) ? `<div class="rv-rev">🔥 이 사람이 방금 나를 공격했어요 · 10분 동안 <b>반값 복수</b></div>` : ''}
+    ${loanPanelHTML(p)}
     <div class="sec"><div class="sec-h"><h2>가진 것</h2><button type="button" class="atk-how" id="atkHelp">❓ 약탈·사냥이 뭐예요?</button><small>${myAtkWait() ? `· ⏳ ${Math.ceil(myAtkWait() / 6e4)}분 뒤 공격 가능` : ''}</small></div>
       <div class="slist">${rows.map(r => r.html).join('') || '<div class="empty">가진 게 없어요.</div>'}
       ${stk.map(x => `<div class="rvrow"><span class="logo-b bb" style="background:var(--krw)">${BOND[x.sym].i + 1}</span><span class="sname"><b>${x.sym}${(stop[x.sym] || {}).id === p.id ? ' 👑' : ''} <span class="postag spot">지분</span></b><small class="num">${x.q}%</small></span><span class="sprice"><div class="p num">${krw(x.value)}</div></span><span class="atkb off"><small>공격 불가</small></span></div>`).join('')}</div></div>`;

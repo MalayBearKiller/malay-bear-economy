@@ -1243,3 +1243,12 @@ body.bnbody{background-image:linear-gradient(rgba(255,255,255,.84),rgba(255,255,
 .sf-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.sf-btns button{height:40px;border-radius:12px;background:var(--paper);font-weight:800}
 .sf-btns .sf-fire{grid-column:1/-1;height:48px;background:linear-gradient(120deg,#7f1d1d,#e11d48);color:#fff;font-size:15px}
 .sf-btns button:disabled{opacity:.4}
+.slave{display:inline-block;margin-left:5px;padding:1px 7px;border-radius:99px;background:#3f3f46;color:#fff;font-size:10.5px;font-weight:800;vertical-align:2px}
+.loanbox{display:flex;flex-direction:column;gap:6px;margin:6px 0;padding:12px;border-radius:16px;background:linear-gradient(120deg,#27272a,#52525b);color:#fff}
+.loanbox b{font-size:14px;font-weight:900}.loanbox small{font-size:12px;opacity:.85;font-weight:600}
+.loanbox.own{background:linear-gradient(120deg,#78350f,#b45309);font-size:13px;font-weight:800}
+.lb-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.lb-btns button{height:38px;border-radius:12px;background:rgba(255,255,255,.18);color:#fff;font-weight:800}.lb-btns button:disabled{opacity:.4}
+.loanbox .cta{margin:2px 0 0}
+.rumor{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;padding:8px 10px;border-radius:14px;background:var(--paper);font-size:13px;font-weight:800}
+.rumor small{display:block;font-size:11px;color:var(--dim);font-weight:700}
+.rm-btns{display:flex;gap:6px;flex:none}.rm-btns button{height:34px;padding:0 10px;border-radius:10px;font-weight:800;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}.rm-btns button:disabled{opacity:.4}

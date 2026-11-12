@@ -176,7 +176,7 @@ function renderUSSheet(b, sh) {
     <div class="bigp"><div class="p num" id="uLivePrice">${uPx(c.id) ? uPrice(c.id) : '…'}</div><div class="c num"><span class="${cls(ch)}" id="uLivePct">${pctTxt(ch)}</span> <span class="dim" id="uLiveWon">${isFx ? '1달러' : '≈ ' + krw(uWon(c.id))}</span></div>${(UP[c.id] || {}).cap ? `<div class="mcap">시가총액 <b class="num">${usdBig(UP[c.id].cap)}</b> · 약 ${krwUnits(UP[c.id].cap * FX.p)}원</div>` : ''}</div>
     <div class="chartbox"><canvas class="chart" id="uChart" aria-label="하루 차트"></canvas><i class="cpulse"></i></div>
     ${held ? `<div class="kline"><span>내 보유 <b class="num">${uQty(held, c.id)}</b>${isFx ? '' : ` · ${usd(uUsdOf(c.id, held))}`} · 평단 ${krw(avg)}</span><span><b class="num ${cls(pos.pnl)}">${signKrw(pos.pnl)}</b></span></div>` : ''}
-    ${holdersHTML(c.id)}
+    ${holdersHTML(c.id)}${c.m !== 'fx' ? rumorRowHTML(c.id) : ''}
     ${me && !S.readOnly ? `<div class="seg seg2">${[['buy', '현물 매수·매도'], ['fut', '롱·숏']].map(([m, l]) => `<button type="button" data-km="${m}" aria-pressed="${m === 'fut' ? sh.m === 'fut' : sh.m !== 'fut'}">${l}</button>`).join('')}</div>
       ${sh.m === 'fut' ? fFormHTML(sh) : `${whole ? qtyForm : amtForm}<div class="est est2" id="kEst"></div><div class="pick2 bs2"><button class="cta buy" id="kBuyGo" type="button">매수하기</button><button class="cta sell" id="kSellGo" type="button">매도하기</button></div>`}` : ''}`;
   uLoadChart(c.id); requestAnimationFrame(uDrawChart); uUpdateEst();
@@ -307,7 +307,7 @@ function renderExchange(ctl) {
   if (!el.querySelector('#kList')) { el.innerHTML = `<div id="kTop"></div><div id="kCtl" class="kctl"></div><div class="slist" id="kList"></div>`; ctl = true; }
   if (ctl) $('#kCtl').innerHTML = xCtlHTML();
   const m = S.xMkt;
-  $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 50억원</b><small>총자산이 2억원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
+  $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 20억원</b><small>실질 총자산이 2억원 밑이에요 · 1시간에 1번</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
   const live = m === 'coin' ? kLive() : m === 'bond' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
   if (m === 'bond') {   // 채권 탭 안에서 [서울시 투자지분 | 국제채권]
     const sub = S.bondSub === 'world' ? 'world' : 'stake', kl = $('#kList'); kl._keys = null;

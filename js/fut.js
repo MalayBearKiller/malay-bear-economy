@@ -49,7 +49,7 @@ async function fLiquidate(sym, trap) {
   const ok = await kSave(me, before); FQ.busy = false;
   if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m - keep), keep, x: o.x, d: o.d }); toast(`💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)} 중 ${krw(keep)}(${Math.round(keep / o.m * 100)}%)은 건졌어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
 }
-/* ───────── 💥 고배율 털기: 수익(ROE) +2% 넘은 고배율 롱·숏 → 1초마다 확률로 그 종목 가격이 반대로 꽂혀요 (모두에게) ─────────
+/* ───────── 💥 고배율 털기: 수익(ROE) +25% 넘은 고배율 롱·숏 (증거금이 총자산 15% 이상 또는 5억 이상일 때만) → 1초마다 확률로 그 종목 가격이 반대로 꽂혀요 (모두에게) ─────────
    평균 버티는 시간 = 1 ÷ 확률(초): 100배 5초 · 50배 약 7초 · 25배 15초 · 10배 40초. 꽂히는 크기: 50배 이상 25% · 25배 15% · 10배 5% (gm.js shockL)
    앱이 켜져 있을 때 1초마다 굴려요(kTick). 국채 롱·숏은 빼요. */
 // 총자산 1,000억까지는 털기 확률이 낮아요: 50억이면 약 0.24배 → 1,000억에서 원래대로
@@ -60,7 +60,9 @@ function fTrap() {
   for (const f of ['kFut', 'uFut']) for (const sym of Object.keys(S.me[f] || {})) fLiveCheck(sym);   // 충격으로 가격이 바뀌면 청산 확인
   for (const f of ['kFut', 'uFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {
     const R = fShockRule(o.x), p = fPx(sym); if (!R || !p || !o.m) continue;
-    if ((fVal(o, p) - o.m) / o.m < .02 || Math.random() >= R.p * shockEase() || now() - lastShock(sym) < SHOCK.GAP) continue;
+    // 미끼 방지: 증거금이 내 총자산의 15% 이상이거나 5억 이상인 포지션만 · 수익률 +25%부터
+    if (!(o.m >= .15 * worth(S.me) || o.m >= 5e8)) continue;
+    if ((fVal(o, p) - o.m) / o.m < .25 || Math.random() >= R.p * shockEase() || now() - lastShock(sym) < SHOCK.GAP) continue;
     addFeed({ kind: 'k_shock', sym, d: -o.d, mag: R.mag, x: o.x });
     toast(`💥 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 수익이 나자 가격이 ${o.d > 0 ? '-' : '+'}${Math.round(R.mag * 100)}% 꽂혔어요!`); buzz([80, 40, 80]);
     renderAll(); return;   // 한 번에 하나씩

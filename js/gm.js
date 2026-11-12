@@ -133,10 +133,26 @@ function shockMap() {
   return SHK;
 }
 const lastShock = sym => { const L = shockMap()[sym]; return L && L.length ? L[L.length - 1].ts : 0; };
+// 꽂힌 뒤 모양(충격마다 난수): 70% 30분에 걸쳐 원래대로 · 20% 그대로 굳어서 4시간에 걸쳐 천천히 · 10% 2차로 한 번 더 꽂힌 뒤 1시간에 걸쳐
+function shockOne(e, tau) {
+  const lv = Math.log(Math.max(.05, 1 + e.d * e.mag)), r = gmHash('shk|' + e.sym + '|' + e.ts);
+  if (tau < 0) return 0; if (tau < SHOCK.RISE) return lv * tau / SHOCK.RISE;
+  const u = tau - SHOCK.RISE - SHOCK.HOLD; if (u < 0) return lv;
+  if (r < .7) return u < SHOCK.FADE ? lv * (1 - u / SHOCK.FADE) : 0;
+  if (r < .9) return u < 240 ? lv * (1 - u / 240) : 0;
+  const lv2 = lv * 1.6; if (u < 1) return lv + (lv2 - lv) * u; const v = u - 1; return v < 60 ? lv2 * (1 - v / 60) : 0;
+}
+// 📰 찌라시: 성공(70%)이면 그 방향으로 20초 만에 6~12%, 2분 버티고 10분에 걸쳐 원래대로.
+//          실패(30%)면 30초 뒤 정반대로 15% 급반전, 2분 버티고 20분에 걸쳐 원래대로
+function rumorOne(e, tau) {
+  if (tau < 0) return 0; const lv = Math.log(1 + e.d * e.mag);
+  if (e.ok) { if (tau < 1 / 3) return lv * tau * 3; if (tau < 2 + 1 / 3) return lv; const u = tau - 2 - 1 / 3; return u < 10 ? lv * (1 - u / 10) : 0; }
+  if (tau < .5) return lv * Math.min(1, tau * 3);
+  const lf = Math.log(1 - e.d * .15), k = tau - .5; if (k < 1 / 6) return lv + (lf - lv) * k * 6; if (k < 2 + 1 / 6) return lf; const u = k - 2 - 1 / 6; return u < 20 ? lf * (1 - u / 20) : 0;
+}
 function shockL(sym, t) {
-  const L = shockMap()[sym]; if (!L) return 0; let v = 0;
-  L.forEach(e => { const tau = (t - e.ts) / MIN, lv = Math.log(Math.max(.05, 1 + e.d * e.mag)); if (tau < 0) return;
-    if (tau < SHOCK.RISE) v += lv * tau / SHOCK.RISE; else if (tau < SHOCK.RISE + SHOCK.HOLD) v += lv; else { const u = tau - SHOCK.RISE - SHOCK.HOLD; if (u < SHOCK.FADE) v += lv * (1 - u / SHOCK.FADE); } });
+  let v = 0; const L = shockMap()[sym]; if (L) L.forEach(e => { v += shockOne(e, (t - e.ts) / MIN); });
+  (S.feed || []).forEach(e => { if (e && e.kind === 'k_rumor' && e.sym === sym && t - e.ts < 40 * MIN && t >= e.ts) v += rumorOne(e, (t - e.ts) / MIN); });
   return v;
 }
 // 배율 (t 시각, chg = 그 시각 진짜 하루 등락률)
