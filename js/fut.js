@@ -1,7 +1,7 @@
 'use strict';
 /* ═════════ 선물 롱·숏 — 코인 · 주식 · 현물 공용 (증거금은 원화) ═════════
    코인: 해외 선물거래소 방식. BTC·ETH 100배, 알트 50배, 밈 25배. 수수료 0.05%.
-   주식: 해외주식 CFD 방식. 2·3배 (국내 CFD 최소 증거금 40% ≈ 2.5배, 미국 신용 2배 언저리). 수수료 0.1%.
+   주식: 1·5·10·25배 (2026-11-12부터, 게임 가격이라 크게). 수수료 0.1%.
    현물(금·원유 등): 원자재 선물 방식. 2·5·10배. 수수료 0.1%.
    공통: 펀딩비(보유 비용) 8시간마다 0.01%, 유지증거금 0.5%.
    청산가: 롱 = 진입가 × (1 − 1/배수 + 0.5%), 숏 = 진입가 × (1 + 1/배수 − 0.5%). 청산되면 증거금 전부 잃어요.
@@ -17,7 +17,7 @@ const fOk = sym => (fIsCoin(sym) ? kFresh(sym) : GC[sym] ? gFresh(sym) : uFresh(
 const fFee = sym => (fIsCoin(sym) || GC[sym] ? 0.0005 : U_FEE);
 function fLevs(sym) {
   if (GC[sym]) return [2, 5, 10];
-  if (!fIsCoin(sym)) return UC[sym].m === 'us' ? [2, 3] : [2, 5, 10];   // 주식 2·3배, 원자재·달러 2·5·10배
+  if (!fIsCoin(sym)) return UC[sym].m === 'us' ? [1, 5, 10, 25] : [2, 5, 10];   // 주식 1·5·10·25배, 원자재·달러 2·5·10배
   const c = KC[sym], mx = (c.a === 'BTC' || c.a === 'ETH') ? 100 : c.c === 'meme' ? 25 : 50; return F_LEVS.filter(x => x <= mx);
 }
 const fShowPx = (sym, v) => (fIsCoin(sym) ? kWon(v) + '원' : GC[sym] ? `금리 ${gYieldAt(sym, v).toFixed(2)}%` : UC[sym].m === 'fx' ? v.toFixed(1) + '원' : FX.p ? usd(v / FX.p) : krw(v));
