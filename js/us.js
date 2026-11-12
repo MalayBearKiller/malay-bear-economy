@@ -307,7 +307,7 @@ function renderExchange(ctl) {
   if (!el.querySelector('#kList')) { el.innerHTML = `<div id="kTop"></div><div id="kCtl" class="kctl"></div><div class="slist" id="kList"></div>`; ctl = true; }
   if (ctl) $('#kCtl').innerHTML = xCtlHTML();
   const m = S.xMkt;
-  $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 50억원</b><small>총자산이 1억원 이하예요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
+  $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 50억원</b><small>총자산이 2억원 밑이에요.</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
   const live = m === 'coin' ? kLive() : m === 'bond' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
   if (m === 'bond') {   // 채권 탭 안에서 [서울시 투자지분 | 국제채권]
     const sub = S.bondSub === 'world' ? 'world' : 'stake', kl = $('#kList'); kl._keys = null;
