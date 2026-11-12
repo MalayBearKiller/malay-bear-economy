@@ -106,6 +106,19 @@ async function kGrant40() {
   const me = clone(m0); me.g40 = 1; me.cash = Math.round((me.cash || 0) + G40); me.inflow = (me.inflow || 1_000_000_000) + G40;
   if (await kSave(me, m0)) { bigWin(G40, '🎁 시작 자금 상향! 40억 지급'); renderAll(); }
 }
+// 🎁 1등 재산 절반 나눔 (2026-11-12, 한 번만): 그때 1등(아래 from)의 총자산 절반을 그 전에 참가한 나머지 11명에게 똑같이 나눠요
+//    각자 앱이 열릴 때 스스로 반영해요(rd1 표시로 두 번 안 해요). 받는 사람은 수익률 기준(inflow)에도 더해요.
+const REDIST = { id: 'rd1', from: 'SQ4KfpCSdGWML1KLI9Sf1aqkUSi2', amt: 380285652277948, share: 34571422934358, at: 1794487200000 };
+async function kRedist() {
+  const m0 = S.me; if (!m0 || m0[REDIST.id] || S.saving || S.readOnly || S.mode !== 'live') return;
+  const me = clone(m0); me[REDIST.id] = 1;
+  if (S.uid === REDIST.from) me.cash = Math.round((me.cash || 0) - REDIST.amt);
+  else if ((m0.joined || 0) < REDIST.at) { me.cash = Math.round((me.cash || 0) + REDIST.share); me.inflow = (me.inflow || CASH0) + REDIST.share; }
+  if (!(await kSave(me, m0))) return;
+  if (S.uid === REDIST.from) toast(`🎁 1등 재산 절반 ${krw(REDIST.amt)}이 모두에게 나눠졌어요`);
+  else if ((m0.joined || 0) < REDIST.at) bigWin(REDIST.share, '🎁 1등 재산 절반 나눔!');
+  renderAll();
+}
 // 🎁 리셋 뒤 시작 자금 20억 → 50억(2026-11-12): 그 전에 참가한 사람은 앱을 열 때 한 번만 +30억 (g30 표시로 두 번 안 받아요). 수익률 기준(inflow)에도 더해요
 const G30 = 3_000_000_000;
 async function kGrant30() {
@@ -125,7 +138,7 @@ async function kStipend() {
 function kTick() {
   if (!kLive() && Date.now() - KQ.poll > 3000) kFetchTickers();
   uTick(); gTick();
-  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kGrant30(); kStipend(); kCoupon(); fScan(); fTrap(); }   // 현금 자동 투자(kCashTax)는 없앴어요(2026-11-12)
+  if (S.me && !S.readOnly && S.loaded) { kGrant40(); kGrant30(); kRedist(); kStipend(); kCoupon(); fScan(); fTrap(); }   // 현금 자동 투자(kCashTax)는 없앴어요(2026-11-12)
 }
 
 /* ───────── 거래 ───────── */
