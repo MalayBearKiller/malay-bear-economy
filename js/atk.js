@@ -52,6 +52,8 @@ async function doAttack(tid, field, sym) {
   const roll = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296, ok = roll < I.prob;   // 공격할 때 뽑는 무작위 번호
   const before = S.me, me = clone(before); me.atkAt = now(); me.cash -= I.cost;
   const ev = { kind: 'k_atk', target: tid, sym, f: field, type: I.type, cost: I.cost, p: +I.prob.toFixed(4), roll: +roll.toFixed(6), ok, rev: !!I.rev };
+  const B = ok ? Math.min(bountyOf(p), Math.max(0, Math.floor(p.cash || 0))) : 0;   // 👑 1등이면 현상금 (상대 현금에서)
+  if (B) { me.cash += B; ev.bounty = B; }
   if (ok) {
     me.cash += I.cost;
     if (I.type === 'loot') {   // 뺏은 수량을 내 지갑에 (평단 = 지금 가격)
@@ -64,7 +66,7 @@ async function doAttack(tid, field, sym) {
   if (!(await kSave(me, before))) return;
   addFeed(ev); closeSheetRaw();
   if (S.mode === 'demo') atkApplyTo(S.players[tid], [{ ...ev, uid: S.uid, ts: now() }]);   // 연습봇은 바로 반영
-  if (ok) bigWin(I.win, I.type === 'loot' ? '💰 약탈 성공!' : I.exec ? '☠️ 참수 성공!' : '🎯 사냥 성공!');
+  if (ok) bigWin(I.win + B, (B ? `👑 현상금 ${krw(B)} + ` : '') + (I.type === 'loot' ? '💰 약탈 성공!' : I.exec ? '☠️ 참수 성공!' : '🎯 사냥 성공!'));
   else { toast(`🛡️ 막혔어요… ${krw(I.cost)} 잃음 (절반은 ${p.name}님 위자료)`); document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); buzz(120); }
   renderAll();
 }
@@ -73,6 +75,7 @@ async function doAttack(tid, field, sym) {
 function atkApplyTo(t, evs) {   // t = 지갑 객체(직접 고침)
   evs.forEach(e => {
     if (!e.ok) { t.cash = Math.round((t.cash || 0) + Math.floor(e.cost / 2)); return; }   // 막아냄 → 위자료
+    if (e.bounty) t.cash = Math.round(Math.max(0, (t.cash || 0) - e.bounty));          // 1등 현상금 지급
     if (e.type === 'loot') {
       const hf = e.f, cf = hf === 'kHold' ? 'kCost' : 'uCost', q = (t[hf] || {})[e.sym] || 0; if (!q) return;
       const left = Math.max(0, q - e.dq); t[cf] ||= {};
@@ -98,7 +101,7 @@ async function atkSync() {
   if (!ok) return;
   evs.forEach(e => { const who = nameOf(e.uid), a = assetOf(e.sym);
     if (!e.ok) toast(`🛡️ ${who}님의 공격을 막았어요! 위자료 +${krw(Math.floor(e.cost / 2))}`);
-    else toast(e.type === 'loot' ? `💰 ${who}님이 내 ${a ? a.n : ''} 수익 ${krw(e.gain)}을(를) 약탈했어요! 10분 안에 반값 복수 가능` : e.exec ? `☠️ ${who}님에게 ${a ? a.n : ''} 참수당했어요! 10분 안에 반값 복수 가능` : `🎯 ${who}님이 내 ${a ? a.n : ''} 증거금 ${krw(e.take)}을(를) 사냥했어요!`); });
+    else toast((e.bounty ? `👑 현상금 ${krw(e.bounty)}까지 뺏겼어요! ` : '') + (e.type === 'loot' ? `💰 ${who}님이 내 ${a ? a.n : ''} 수익 ${krw(e.gain)}을(를) 약탈했어요! 10분 안에 반값 복수 가능` : e.exec ? `☠️ ${who}님에게 ${a ? a.n : ''} 참수당했어요! 10분 안에 반값 복수 가능` : `🎯 ${who}님이 내 ${a ? a.n : ''} 증거금 ${krw(e.take)}을(를) 사냥했어요!`)); });
   if (evs.some(e => e.ok)) { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); buzz([100, 60, 100]); }
   renderAll();
 }
@@ -111,6 +114,7 @@ function renderAtkSheet(b, sh) {
   const pct = Math.round((I.prob || 0) * 100);
   b.innerHTML = `<div class="atk-h"><span class="atk-k ${isFut ? 'hunt' : 'loot'}">${isFut ? '🎯 마진 사냥' : '💰 수익 약탈'}</span>${I.rev ? '<span class="atk-rev">🔥 복수 반값</span>' : ''}</div>
     <div class="atk-vs">${ava(p, true)}<div><b>${esc(p.name)}</b><small>${esc(a ? a.n : '')}${isFut && I.o ? ` · ${I.o.x}배 ${fSide(I.o)}` : ''}</small></div></div>
+    ${bountyOf(p) ? `<div class="atk-bounty">👑 1등 현상금 · 성공하면 <b class="num">+${krw(Math.min(bountyOf(p), Math.max(0, p.cash || 0)))}</b> 더</div>` : ''}
     <div class="atk-p"><div class="atk-pt"><span>성공 확률</span><b class="num">${pct}%</b></div><div class="atk-bar"><i style="width:${pct}%"></i></div></div>
     <div class="atk-io">
       <div class="win"><small>성공하면</small><b class="num">+${krw(I.win || 0)}</b><span>${isFut ? (I.exec ? '☠️ 참수! 증거금 전부' : '증거금 50% 뺏기 + 비용 환급') : '수익 전부 뺏기 + 비용 환급'}</span></div>
@@ -143,3 +147,81 @@ async function heartbeat() {
 const liveCount = () => activePlayers().filter(isOn).length;
 
 document.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('atk-help') && S.sheet && S.sheet.type === 'atk') S.sheet.help = e.target.open; }, true);
+
+/* ═════════ 👑 1등 현상금 ═════════
+   1등(2명 이상일 때)에게 현상금이 붙어요: 총자산의 1% + 1등을 지킨 시간 1시간마다 +0.5% (최대 5%).
+   1등을 공격해서 성공하면 원래 이득에 현상금까지(1등의 현금에서) 받아요. 1등이 된 시각(top1At)은 1등 본인 앱이 적어요. */
+const BOUNTY = { BASE: .01, PER_H: .005, MAX: .05 };
+function bountyOf(p) {
+  const R = ranking(); if (R.length < 2 || !p || R[0].id !== p.id) return 0;
+  const pp = S.players[p.id] || p, hrs = pp.top1At ? Math.max(0, (now() - pp.top1At) / H) : 0;
+  return Math.round(R[0].w * Math.min(BOUNTY.MAX, BOUNTY.BASE + BOUNTY.PER_H * Math.floor(hrs)));
+}
+let TOP1_T = 0;
+async function top1Track() {
+  if (!S.me || S.readOnly || S.saving || S.mode !== 'live' || Date.now() - TOP1_T < 10e3) return; TOP1_T = Date.now();
+  const R = ranking(), am1 = R.length > 1 && R[0].id === S.uid;
+  if (am1 === !!S.me.top1At) return;
+  const before = S.me, me = clone(before); if (am1) me.top1At = now(); else delete me.top1At; await kSave(me, before);
+}
+
+/* ═════════ ⚔️ 1등 결투권 ═════════
+   4등 아래는 하루 1번 1~3등에게 결투를 걸 수 있어요. 5분 동안 총자산 수익률 승부 (상대가 꺼져 있어도 시세로 계산돼요).
+   이기면 상대 총자산의 3%(상대 현금 한도)를 가져오고, 지면 내 총자산의 3%(내 현금 한도)를 상대에게 줘요. 거절은 없어요.
+   결투는 건 사람 지갑(duel)에 적고, 끝나면 건 사람 앱이 결과를 기록(k_duel) → 상대 앱이 보고 스스로 반영해요. */
+const DUEL = { MS: 5 * 60e3, STAKE: .03 };
+const rankOf = id => ranking().findIndex(x => x.id === id) + 1;
+function duelWhy(tid) {
+  const me = S.me; if (!me) return '참가하면 할 수 있어요'; const mr = rankOf(S.uid), tr = rankOf(tid);
+  if (!(tr >= 1 && tr <= 3)) return ''; if (mr && mr <= 3) return '1~3등끼리는 결투 못 해요';
+  if (me.duel && now() < me.duel.end + 60e3) return '이미 결투 중이에요'; if (me.duelDay === kstDay(now())) return '오늘 결투권을 이미 썼어요';
+  if (Object.values(S.players).some(p => p && p.duel && p.duel.t === tid && now() < p.duel.end)) return '그 사람은 지금 다른 결투 중이에요';
+  return 'ok';
+}
+async function duelStart(tid) {
+  if (duelWhy(tid) !== 'ok' || S.saving || S.readOnly) return; const t = S.players[tid]; if (!t) return;
+  if (!S.dArm || S.dArm !== tid || Date.now() - (S.dArmT || 0) > 4000) { S.dArm = tid; S.dArmT = Date.now(); toast('⚔️ 한 번 더 누르면 결투 시작! (5분 수익률 승부, 판돈 총자산 3%)'); return; }
+  S.dArm = null;
+  const before = S.me, me = clone(before); me.duel = { t: tid, at: now(), end: now() + DUEL.MS, a0: worth(me), b0: worth({ id: tid, ...t }) }; me.duelDay = kstDay(now());
+  if (!(await kSave(me, before))) return;
+  addFeed({ kind: 'k_duel0', target: tid }); toast(`⚔️ ${t.name}님에게 결투 신청! 5분 동안 수익률로 승부해요`); buzz([50, 30, 50]); renderAll(); if (S.profile) renderFriendProfile();
+}
+async function duelTick() {
+  const d = S.me && S.me.duel; if (!d || now() < d.end || S.saving || S.readOnly) return;
+  const t = S.players[d.t]; const before = S.me, me = clone(before); delete me.duel;
+  if (!t) { await kSave(me, before); return; }
+  const ra = worth(before) / d.a0 - 1, rb = worth({ id: d.t, ...t }) / d.b0 - 1, win = ra > rb;
+  const amt = win ? Math.min(Math.round(worth({ id: d.t, ...t }) * DUEL.STAKE), Math.max(0, Math.floor(t.cash || 0))) : Math.min(Math.round(worth(before) * DUEL.STAKE), Math.max(0, Math.floor(me.cash || 0)));
+  me.cash = Math.round(me.cash + (win ? amt : -amt));
+  if (!(await kSave(me, before))) return;
+  const ev = { kind: 'k_duel', target: d.t, win, amt, ra: +ra.toFixed(4), rb: +rb.toFixed(4) }; addFeed(ev);
+  if (S.mode === 'demo' && S.players[d.t]) S.players[d.t].cash = Math.round((S.players[d.t].cash || 0) + (win ? -amt : amt));
+  if (win) bigWin(amt, `⚔️ 결투 승리! ${pctTxt(ra)} vs ${pctTxt(rb)}`); else cLose(`⚔️ 결투 패배… ${pctTxt(ra)} vs ${pctTxt(rb)} · -${krw(amt)}`);
+  renderAll();
+}
+// 결투를 당한 사람: 결과 기록을 보고 내 지갑에 반영
+let duelBusy = false;
+async function duelSync() {
+  if (!S.me || S.readOnly || S.saving || duelBusy || S.mode !== 'live') return;
+  const seen = S.me.duelSeen ?? (S.me.joined || 0);
+  const evs = (S.atkFeed || []).filter(f => (f.kind === 'k_duel' || f.kind === 'k_duel0') && f.target === S.uid && f.ts > seen).sort((a, b) => a.ts - b.ts);
+  if (!evs.length) return;
+  duelBusy = true; const before = S.me, me = clone(before);
+  evs.forEach(e => { if (e.kind === 'k_duel') me.cash = Math.round(Math.max(0, (me.cash || 0) + (e.win ? -e.amt : e.amt))); });
+  me.duelSeen = evs[evs.length - 1].ts; const ok = await kSave(me, before); duelBusy = false; if (!ok) return;
+  evs.forEach(e => { const who = nameOf(e.uid);
+    if (e.kind === 'k_duel0') toast(`⚔️ ${who}님이 결투를 걸었어요! 5분 동안 수익률 승부`);
+    else if (e.win) cLose(`⚔️ ${who}님과의 결투에서 졌어요… -${krw(e.amt)}`); else bigWin(e.amt, `⚔️ ${who}님 결투 방어 성공!`); });
+  renderAll();
+}
+// 결투 중이면 화면 아래 막대 (건 사람·당한 사람 모두)
+function renderDuelBar() {
+  let el = $('#duelbar'); if (!el) { el = document.createElement('div'); el.id = 'duelbar'; el.className = 'taxbar duelbar'; document.body.appendChild(el); }
+  let d = null, mine = true, other = null;
+  if (S.me && S.me.duel && now() < S.me.duel.end) { d = S.me.duel; other = S.players[d.t]; }
+  else { const e = Object.entries(S.players).find(([, p]) => p && p.duel && p.duel.t === S.uid && now() < p.duel.end); if (e) { d = e[1].duel; other = { id: e[0], ...e[1] }; mine = false; } }
+  const show = !!d && !!other && !S.sheet && !S.profile && !S.board; el.hidden = !show; document.body.classList.toggle('has-taxbar', show); if (!show) return;
+  const meW = worth(S.me), oW = worth(mine ? { id: d.t, ...other } : other), rMe = meW / (mine ? d.a0 : d.b0) - 1, rO = oW / (mine ? d.b0 : d.a0) - 1;
+  el.innerHTML = `<span class="tb-ic">⚔️</span><span class="tb-t"><b>결투 중 vs ${esc(other.name)} · ${mmss(d.end - now())}</b><small>나 <span class="${cls(rMe)}">${pctTxt(rMe)}</span> · 상대 <span class="${cls(rO)}">${pctTxt(rO)}</span> · ${rMe > rO ? '이기는 중 🔥' : '지는 중 😰'}</small></span>`;
+}
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-duel]'); if (t) duelStart(t.dataset.duel); });

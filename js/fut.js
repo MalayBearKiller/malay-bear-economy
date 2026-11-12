@@ -47,9 +47,9 @@ async function fLiquidate(sym, trap) {
   if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(trap ? `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} — 고배율 함정에 걸려 청산! 증거금 ${krw(o.m)} 증발` : `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
 }
 /* ───────── 💀 고배율 함정: 수익(ROE)이 +2% 넘은 고배율 롱·숏은 1초마다 확률로 터져요 (2026-11-12) ─────────
-   50배 이상: 50% 확률로 바로 청산 · 25배 이상: 30% 확률로 수익률이 -15%로 · 10배 이상: 10% 확률로 -5%로 (포지션은 그대로)
+   50배 이상: 30% 확률로 수익률이 -50%(반토막) · 25배 이상: 20% 확률로 -15% · 10배 이상: 7% 확률로 -5% (포지션은 그대로, 청산 아님)
    앱이 켜져 있을 때 1초마다 굴려요(kTick). */
-const fTrapRule = x => (x >= 50 ? { p: .5, to: null } : x >= 25 ? { p: .3, to: -.15 } : x >= 10 ? { p: .1, to: -.05 } : null);
+const fTrapRule = x => (x >= 50 ? { p: .3, to: -.5 } : x >= 25 ? { p: .2, to: -.15 } : x >= 10 ? { p: .07, to: -.05 } : null);   // 청산 대신 반토막(2026-11-12 완화)
 async function fTrap() {
   if (!S.me || S.readOnly || S.saving || FQ.busy || !GM.ready) return;
   for (const f of ['kFut', 'uFut', 'gFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {

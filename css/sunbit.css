@@ -1207,3 +1207,7 @@ body.bnbody{background-image:linear-gradient(rgba(255,255,255,.84),rgba(255,255,
 .shopitem.off{opacity:.55}
 /* 상단 알림 띠: 크기는 그대로, 터치는 아래로 통과 → 뒤로가기·닫기 버튼을 그대로 누를 수 있어요 */
 .evbar{pointer-events:none}
+.atk-bounty,.rv-bounty{margin:2px 0 6px;padding:9px 12px;border-radius:12px;background:linear-gradient(120deg,#fff3c4,#ffe08a);color:#5a3d00;font-size:13px;font-weight:800;text-align:center}
+.duelgo{display:flex;flex-direction:column;align-items:center;gap:1px;margin:4px 0 8px;background:linear-gradient(120deg,#7f1d1d,#e11d48)}.duelgo small{font-size:11px;font-weight:700;opacity:.85}.duelgo.off{background:var(--paper2);color:var(--dim)}
+.lrow .bounty{color:#b45309;font-weight:900}
+.duelbar{background:linear-gradient(120deg,#3b0764,#be123c)}
