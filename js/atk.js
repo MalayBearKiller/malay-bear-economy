@@ -318,7 +318,7 @@ KSHEETS.snipe = renderSnipeSheet;
 // 홈: 1·2·3등 저격판 (접었다 펼 수 있어요)
 function throneHTML() {
   const R = ranking(); if (R.length < 2 || !S.me) return '';
-  const top = R.slice(0, 3), mr = R.findIndex(x => x.id === S.uid) + 1, imTop = mr >= 1 && mr <= 3, open = S.thOpen ?? LS.get('thOpen', true);
+  const top = R.slice(0, 3), mr = R.findIndex(x => x.id === S.uid) + 1, imTop = mr >= 1 && mr <= 3, open = S.thOpen ?? LS.get('thOpen', false);
   const pools = top.map(p => sfPool(p.id).sum), live = pools.some(v => v > 0);
   return `<div class="card throne${open ? '' : ' closed'}"><button type="button" class="th-h" id="thToggle"><span><b>🎯 왕좌 저격</b><small>${imTop ? `나는 ${mr}등 · 지금 표적이에요!` : live ? '모금 진행 중! 같이 모아서 쏴요' : '여럿이 돈을 모아 1·2·3등을 쏴요'}</small></span><i class="th-arrow">${open ? '▲' : '▼'}</i></button>
     ${open ? top.map((p, i) => { const I = snipeInfo(p.id), B = i === 0 ? bountyOf(p) : 0, dw = duelWhy(p.id), me = p.id === S.uid, fill = I.goal ? Math.min(100, I.pool / I.goal * 100) : 0;
@@ -327,7 +327,7 @@ function throneHTML() {
       + `<p class="th-note">목표는 상대 총자산 15% · 다 차면 발사 · 실패하면 모은 돈 전부 잃어요${!imTop ? (S.me.duelDay === kstDay(now()) ? ' · 오늘 결투권 사용함' : ' · ⚔️ 결투권 1장') : ''}</p>` : ''}</div>`;
 }
 document.addEventListener('click', e => {
-  const tg = e.target.closest && e.target.closest('#thToggle'); if (tg) { S.thOpen = !(S.thOpen ?? LS.get('thOpen', true)); LS.set('thOpen', S.thOpen); renderHome(); return; }
+  const tg = e.target.closest && e.target.closest('#thToggle'); if (tg) { S.thOpen = !(S.thOpen ?? LS.get('thOpen', false)); LS.set('thOpen', S.thOpen); renderHome(); return; }
   const t = e.target.closest && e.target.closest('[data-snipe]');
   if (t) { e.stopPropagation(); if (!S.me) { openSheet('join'); return; } if (S.sheet) closeSheetRaw(); openSheet('snipe', { tid: t.dataset.snipe }); $('#sheetWrap').classList.add('center'); return; }
   const g = e.target.closest && e.target.closest('[data-sfgive]'); if (g && S.sheet && S.sheet.type === 'snipe') sfGive(S.sheet.tid, +g.dataset.sfgive);
