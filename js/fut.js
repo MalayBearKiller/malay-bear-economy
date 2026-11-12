@@ -46,14 +46,21 @@ async function fLiquidate(sym, trap) {
   const ok = await kSave(me, before); FQ.busy = false;
   if (ok) { addFeed({ kind: 'k_fliq', sym, amt: Math.round(o.m), x: o.x, d: o.d }); toast(trap ? `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} — 고배율 함정에 걸려 청산! 증거금 ${krw(o.m)} 증발` : `💀 ${fAsset(sym).n} ${o.x}배 ${fSide(o)} 청산! 증거금 ${krw(o.m)}을(를) 다 잃었어요`); buzz(150); renderAll(); if (S.sheet) renderSheet(); }
 }
-/* ───────── 💀 고배율 함정: 수익(ROE)이 +2% 넘은 고배율 롱·숏은 1초마다 확률로 바로 청산돼요 ─────────
-   50배 이상 50% · 25배 이상 30% · 10배 이상 10% (2026-11-12). 앱이 켜져 있을 때 1초마다 굴려요(kTick). */
-const fTrapP = x => (x >= 50 ? .5 : x >= 25 ? .3 : x >= 10 ? .1 : 0);
-function fTrap() {
+/* ───────── 💀 고배율 함정: 수익(ROE)이 +2% 넘은 고배율 롱·숏은 1초마다 확률로 터져요 (2026-11-12) ─────────
+   50배 이상: 50% 확률로 바로 청산 · 25배 이상: 30% 확률로 수익률이 -15%로 · 10배 이상: 10% 확률로 -5%로 (포지션은 그대로)
+   앱이 켜져 있을 때 1초마다 굴려요(kTick). */
+const fTrapRule = x => (x >= 50 ? { p: .5, to: null } : x >= 25 ? { p: .3, to: -.15 } : x >= 10 ? { p: .1, to: -.05 } : null);
+async function fTrap() {
   if (!S.me || S.readOnly || S.saving || FQ.busy || !GM.ready) return;
   for (const f of ['kFut', 'uFut', 'gFut']) for (const [sym, o] of Object.entries(S.me[f] || {})) {
-    const pr = fTrapP(o.x), p = fPx(sym); if (!pr || !p || !o.m) continue;
-    if ((fVal(o, p) - o.m) / o.m >= .02 && Math.random() < pr) { fLiquidate(sym, true); return; }   // 한 번에 하나씩
+    const R = fTrapRule(o.x), p = fPx(sym); if (!R || !p || !o.m) continue;
+    if ((fVal(o, p) - o.m) / o.m < .02 || Math.random() >= R.p) continue;
+    if (R.to == null) { fLiquidate(sym, true); return; }
+    // 진입가를 옮겨서 지금 수익률이 R.to가 되게 해요 (값 = 증거금 × (1 + R.to))
+    const before = S.me, me = clone(before), n = me[f][sym], e2 = p + n.d * (-R.to * n.m + fFund(n)) / n.q;
+    me[f][sym] = { ...n, e: e2 }; FQ.busy = true; const ok = await kSave(me, before); FQ.busy = false;
+    if (ok) { addFeed({ kind: 'k_trap', sym, x: n.x, d: n.d, amt: Math.round(fVal(o, p) - n.m * (1 + R.to)) }); toast(`💥 ${fAsset(sym).n} ${n.x}배 ${fSide(n)} 함정! 수익이 날아가고 ${Math.round(R.to * 100)}%`); buzz([60, 40, 60]); renderAll(); if (S.sheet) renderSheet(); }
+    return;
   }
 }
 async function fScan() {
