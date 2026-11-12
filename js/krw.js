@@ -1,6 +1,6 @@
 'use strict';
 /* ═════════ 업비트 코인 (게임 가격은 gm.js) · 돈은 원화 하나 ═════════ */
-const K_RESCUE = 1_000_000_000, K_RESCUE_AT = 100_000_001; // 총자산 1억원 이하면 파산 지원금 10억원
+const K_RESCUE = 5_000_000_000, K_RESCUE_AT = 100_000_001; // 총자산 1억원 이하면 파산 지원금 50억원 (시작 자금과 같아요)
 const KFEE = 0.0005, K_MIN = 5000;        // 업비트 수수료 0.05%, 최소 주문 5,000원
 const KCOINS = [
   ['BTC', '비트꼬인', 'major'], ['ETH', '이더리음', 'major'], ['XRP', '리뿔', 'major'], ['SOL', '쏠라나', 'major'], ['TRX', '트롱', 'major'],
@@ -168,7 +168,7 @@ const canKRescue = () => S.me && !S.readOnly && kWorth(S.me) < K_RESCUE_AT;
 async function kRescue() {
   if (!canKRescue() || S.saving) return;
   const before = S.me, me = clone(before); me.cash += K_RESCUE; me.inflow = (me.inflow || CASH0) + K_RESCUE; me.kResN = (me.kResN || 0) + 1;
-  if (await kSave(me, before)) { addFeed({ kind: 'k_rescue' }); toast('💸 파산 지원금 10억원이 들어왔어요'); renderAll(); }
+  if (await kSave(me, before)) { addFeed({ kind: 'k_rescue' }); toast('💸 파산 지원금 50억원이 들어왔어요'); renderAll(); }
 }
 
 /* ───────── 연습봇: 원화 지갑도 채워요 ───────── */
