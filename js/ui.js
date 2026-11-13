@@ -15,7 +15,13 @@ function renderHome() {
     <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>` + throneHTML() + (typeof bountyBoardHTML === 'function' ? bountyBoardHTML() : '');
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
-    h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">50억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
+    if (S.mode === 'live' && !S.loaded) {
+      h += `<div class="card join"><b>지갑을 불러오는 중…</b><span class="dim" style="font-size:13px;font-weight:600">${S.userEmail ? esc(S.userEmail) + ' 계정 확인 중' : '잠시만 기다려 주세요'}</span></div>`;
+    } else if (S.loadErr) {
+      h += `<div class="card join"><b>서버에서 지갑을 불러오지 못했어요</b><span class="dim" style="font-size:13px;font-weight:600">기존 데이터 보호를 위해 새로고침하거나 계정을 다시 확인해 주세요${S.userEmail ? ` (${esc(S.userEmail)})` : ''}</span><button class="cta soft" type="button" id="switchAcctBtn">🔄 다른 Google 계정으로 로그인</button></div>`;
+    } else {
+      h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">${S.userEmail ? `현재 <b>${esc(S.userEmail)}</b> 계정에는 참가 기록이 없어요.<br>원래 하던 캐릭터가 있다면 아래에서 Google 계정을 바꿔 주세요!` : '50억원으로 시작해요'}</span><button class="cta" type="button" data-join>이 계정으로 새로 참가하기</button>${S.fb && S.mode === 'live' ? `<button class="cta soft" type="button" id="switchAcctBtn" style="margin-top:6px">🔄 다른 Google 계정으로 로그인</button>` : ''}</div>`;
+    }
   }
   if (S.readOnly) h += `<p class="hint keep" style="margin:-8px 0 0">관전 모드예요. 거래하려면 방장에게 편집자 초대를 받아야 해요.</p>`;
 
@@ -338,12 +344,16 @@ function renderProfile() { renderFriendProfile(); } // 새 프로필 화면 (me.
 function renderJoinSheet(b) {
   const prev = (S.players[S.uid] && S.players[S.uid].name) || LS.get('nick', '') || '존버의신';
   b.innerHTML = `<div class="rv-head"><span class="k">SUNBIT</span><h3>50억원으로 시작</h3></div>
-    <p class="hint keep" style="text-align:center">코인·미국 주식·현물·채권(서울시 투자지분·국제채권)을 한 지갑으로 굴려요. 가격은 진짜 시세를 따라가되 훨씬 크게 출렁여요. 총자산 1등을 노려 보세요.</p>
+    ${S.userEmail ? `<div class="atk-shwarn" style="margin-bottom:8px">현재 로그인된 Google 계정: <b>${esc(S.userEmail)}</b><br><small>기존에 하던 캐릭터가 안 보이면 <b>다른 Google 계정</b>으로 자동 로그인된 상태예요!</small></div>` : ''}
+    ${S.fb && S.mode === 'live' ? `<button class="cta soft" type="button" id="switchAcctBtn" style="margin-bottom:10px">🔄 원래 하던 다른 Google 계정으로 로그인</button>` : ''}
+    <p class="hint keep" style="text-align:center">처음 오셨다면 아래에 닉네임을 적고 새 지갑(50억원)을 만드세요.</p>
     <div class="field"><label for="nick" class="dim" style="font-size:13px;font-weight:700">닉네임</label><input id="nick" maxlength="10" placeholder="예: 존버의신" value="${esc(prev)}"></div>
     <p class="hint nickwarn">⚠️ 실명은 쓰지 마세요. 닉네임은 순위·채팅에서 모두에게 보여요.</p>
-    <button class="cta" type="button" id="joinBtn">참가하기</button>`;
+    <button class="cta" type="button" id="joinBtn">새로 참가하기</button>`;
 }
 async function doJoin() {
+  if (S.mode === 'live' && (!S.loaded || S.loadErr)) { toast('아직 기존 지갑 확인 중이에요. 잠시 후 다시 시도해 주세요.'); return; }
+  if (S.players[S.uid] && S.players[S.uid].name) { S.me = S.players[S.uid]; closeSheet(); renderAll(); return; }
   const inputEl = $('#nick');
   const nick = ((inputEl && inputEl.value) || '').trim().slice(0, 10) || '존버의신';
   LS.set('nick', nick);
@@ -407,7 +417,7 @@ function renderHelp(b) {
   <button class="cta soft" type="button" id="sheetX2">닫기</button>`;
 }
 function maybeJoin() {
-  if (S.me || S.readOnly || S.joinShown || S.sheet || S.mode === 'loading') return;
+  if (S.me || S.readOnly || S.joinShown || S.sheet || S.mode === 'loading' || S.loadErr) return;
   if (S.mode === 'live' && !S.loaded) return;
   if (seasonOver()) return;
   S.joinShown = true; openSheet('join');

@@ -44,7 +44,7 @@ document.addEventListener('click', e => {
     case 'sheetX': case 'sheetX2': closeSheet(); break;
     case 'googleBtn': t.disabled = true; S.fb.signIn().catch(() => toast('로그인하지 못했어요. 다시 시도해 주세요.')).finally(() => { t.disabled = false; }); break;
     case 'demoBtn': $('#login').hidden = true; document.body.classList.remove('noscroll'); startDemo(); break;
-    case 'logoutBtn': S.fb.signOut().then(() => location.reload()); break;
+    case 'logoutBtn': case 'switchAcctBtn': if (S.fb) S.fb.signOut().then(() => location.reload()); break;
   }
 });
 $('#scrim').addEventListener('click', closeSheet);

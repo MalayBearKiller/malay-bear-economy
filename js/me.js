@@ -87,7 +87,7 @@ function pAnalysisHTML(p, w, roi, rk, H0) {
 function renderMe() {
   const el = $('#tab-wallet'); if (!el) return;
   bnBody();
-  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 프로필이 없어요.' : '참가하면 50억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>참가하기</button>'}`; return; }
+  if (!S.me) { el.innerHTML = `<div class="empty">${S.readOnly ? '관전 중에는 프로필이 없어요.' : S.userEmail ? `현재 ${esc(S.userEmail)} 계정에는 참가 기록이 없어요.` : '참가하면 50억원으로 시작해요.'}</div>${S.readOnly ? '' : '<button class="cta" type="button" data-join>이 계정으로 참가하기</button>'}${S.fb && S.mode === 'live' ? '<button class="cta soft" type="button" id="switchAcctBtn" style="margin-top:8px">🔄 다른 Google 계정으로 로그인</button>' : ''}`; return; }
   el.innerHTML = profileBody({ id: S.uid, ...S.me }, true);
 }
 function renderFriendProfile() {

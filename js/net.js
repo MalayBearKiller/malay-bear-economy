@@ -114,7 +114,7 @@ async function firebaseBackend(cfg) {
       });
     }).catch(mapErr),
     onUser: cb => auM.onAuthStateChanged(auth, cb),
-    signIn: async () => { const pr = new auM.GoogleAuthProvider(); try { await auM.signInWithPopup(auth, pr); } catch (e) { if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) await auM.signInWithRedirect(auth, pr); else throw e; } },
+    signIn: async () => { const pr = new auM.GoogleAuthProvider(); pr.setCustomParameters({ prompt: 'select_account' }); try { await auM.signInWithPopup(auth, pr); } catch (e) { if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) await auM.signInWithRedirect(auth, pr); else throw e; } },
     signOut: () => auM.signOut(auth),
   };
 }
@@ -124,27 +124,31 @@ async function bootFirebase(cfg) {
   try { fb = await firebaseBackend(cfg); } catch (e) { $('#loginMsg').textContent = '서버에 연결하지 못했어요. 연습 모드로 둘러볼 수 있어요.'; return; }
   S.fb = fb; let started = false;
   fb.onUser(u => {
-    if (!u) { L.hidden = false; document.body.classList.add('noscroll'); return; }
+    if (!u) { S.userEmail = ''; L.hidden = false; document.body.classList.add('noscroll'); return; }
+    S.userEmail = u.email || '';
     L.hidden = true; document.body.classList.remove('noscroll');
     // Google 실명은 닉네임 칸에 자동으로 넣지 않아요 (순위·채팅에 그대로 보이니까)
+    if (started && S.uid && S.uid !== u.uid) { location.reload(); return; }
     if (!started) { started = true; startLive(fb.db, u.uid); }
   });
 }
 function startLive(db, uid) {
-  S.mode = 'live'; S.db = db; S.uid = uid;
+  S.mode = 'live'; S.db = db; S.uid = uid; S.loadErr = false;
   renderAll();
   const timer = setTimeout(() => { if (!S.loaded) toast('시장 서버가 느려요. 조금만 기다려 주세요.'); }, 10000);
   db.collection(COL_P).onSnapshot(snap => {
+    S.loadErr = false;
     const next = {}; snap.docs.forEach(d => next[d.id] = d.data());
     // 표시용 별명: 다른 사람 화면에서만 바꿔 보여줘요. 데이터는 그대로이고, 본인 화면은 원래 이름이에요.
     Object.entries(next).forEach(([id, pl]) => { if (id !== S.uid && pl && NAME_ALIAS[pl.name]) next[id] = { ...pl, name: NAME_ALIAS[pl.name] }; });
     if (S.saving && S.me) next[S.uid] = S.me;
     S.players = next;
     const mine = next[S.uid]; S.me = mine && mine.name ? mine : null;
+    if (S.me && S.sheet && S.sheet.type === 'join') closeSheetRaw();
     if (!snap.metadata.fromCache && !S.loaded) { S.loaded = true; clearTimeout(timer); }
     renderAll();
     if (S.loaded) maybeJoin();
-  }, () => { clearTimeout(timer); S.loaded = true; toast('순위를 불러오지 못했어요.'); renderAll(); });
+  }, () => { clearTimeout(timer); S.loaded = true; S.loadErr = true; toast('순위를 불러오지 못했어요. 규칙 설정이나 네트워크를 확인해 주세요.'); renderAll(); });
   db.collection('sb_talk').orderBy('ts', 'desc').limit(150).onSnapshot(snap => { S.talk = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (S.board === 'talk') renderBoard(); }, () => {});
   // 나를 노린 공격 기록만 따로 (오래된 것도 빠짐없이) → 내 지갑에 반영
   db.collection(COL_F).where('target', '==', uid).onSnapshot(snap => { S.atkFeed = snap.docs.map(d => d.data()); atkSync(); }, () => {});
