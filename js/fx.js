@@ -55,7 +55,7 @@ function evFeed(list) {
 function evNext() {
   if (EVQ.busy || !EVQ.q.length) return;
   const { f, t } = EVQ.q.shift(), [c, ic, tx] = t; EVQ.busy = true;
-  const big = f.kind === 'k_fliq' || f.kind === 'k_atk' || Math.abs(f.pnl || 0) >= 1e8 || (f.amt || 0) >= 5e8;
+  const big = f.kind === 'k_fliq' || f.kind === 'k_atk' || /^k_bty_/.test(f.kind || '') || Math.abs(f.pnl || 0) >= 1e8 || (f.amt || 0) >= 5e8;
   let el = $('#evbar'); if (!el) { el = document.createElement('div'); el.id = 'evbar'; document.body.appendChild(el); }
   el.className = 'evbar ' + (f.kind === 'k_fliq' || (f.kind === 'k_atk' && f.target === S.uid && f.ok) ? 'liq' : big ? 'big' : c);
   el.innerHTML = `<span class="ic">${ic}</span><span class="tx">${tx}</span>`;

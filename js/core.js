@@ -2,7 +2,7 @@
 /* ═════════ 공통: 상수 · 상태 · 포맷 · 사진/닉네임 · 순위 ═════════ */
 /* ───────── constants ───────── */
 // 🗂️ 저장 위치: 2026-11-12 리셋으로 새 컬렉션(sb2_)에서 다시 시작해요. 예전 sb_players·sb_feed는 지우지 않고 그대로 둬요. 건의(sb_talk)는 이어서 써요.
-const COL_P = 'sb2_players', COL_F = 'sb2_feed';
+const COL_P = 'sb2_players', COL_F = 'sb2_feed', COL_B = 'sb2_bounties';
 const FEE = 0.003, CASH0 = 5_000_000_000 /* 시작 50억원 (2026-11-12 리셋 뒤 20억 → 50억) */, NT = 21;
 const BONUS = 200_000_000, MAXBET = 200_000_000, MINBET = 1_000_000;
 // 10x 대박 룰렛: 20칸, 평균 0.975배 (홀짝과 같은 2.5% 하우스 엣지)
@@ -30,7 +30,7 @@ function seasonAt(t) {
 /* ───────── state ───────── */
 const S = {
   mode: 'loading', db: null, uid: null, readOnly: false, loaded: false,
-  players: {}, feed: [], talk: [], estates: {}, sub: 'wallet', alertBase: {}, drafts: {}, me: null, season: null, SE: null, tick: 0,
+  players: {}, feed: [], talk: [], bounties: [], estates: {}, sub: 'wallet', alertBase: {}, drafts: {}, me: null, season: null, SE: null, tick: 0,
   tab: 'home', filter: 'all', sheet: null, saving: false, joinShown: false, rival: null, feedSeen: 0,
 };
 const LS = {

@@ -1,43 +1,176 @@
 'use strict';
-/* ═════════ 공격 (PvP) ═════════
-   💰 현물 수익분 약탈: 수익 중인 현물만. 비용 = 그 종목 평가이익의 25%, 성공 25%.
-      성공 → 평가이익 전부(그만큼의 수량)를 뺏어 옴 + 비용 환급. 상대 원금은 그대로.
-   🎯 선물 마진 사냥(하이리스크 하이리턴): 모든 롱·숏. 비용 = 남은 증거금의 15%, 성공 25% + 배수×0.2 (최대 45%).
-      성공 → 남은 증거금 50%를 뺏어 옴 + 비용 환급. 그 바람에 청산가에 닿으면 ☠️ 참수: 나머지 증거금까지 전부.
-   실패 → 비용 잃음, 절반은 상대에게 위자료.
-   공격자 쿨타임 10분 · 같은 종목 30분에 1번 · 털린 종목은 3시간 보호막 · 공격당하면 10분 동안 그 사람에게 반값 복수.
-   결과는 공격할 때 뽑은 무작위 번호(roll)로 정하고 기록에 남겨요. 남의 지갑은 못 고치니까, 당한 사람 앱이 기록을 보고 스스로 반영해요. */
-const ATK = { LOOT_COST: .25, LOOT_P: .25, HUNT_COST: .15, HUNT_TAKE: .50, MY_CD: 10 * 60e3, POS_CD: 30 * 60e3, SHIELD: 3 * H, REVENGE: 10 * 60e3, MIN: 100_000 };
-const atkEvents = () => [...(S.feed || []), ...(S.atkFeed || [])].filter(f => f && f.kind === 'k_atk');
+/* ═════════ 공격 (PvP) · 전투력(LV) 보정 · 약자 보호 · 보호막 ═════════
+   💰 현물 수익분 약탈: 수익 중인 현물만. 비용 = 그 종목 평가이익의 25%, 기본 성공 25%.
+      성공 → 평가이익(양학 페널티 적용 후 수량)을 뺏어 옴 + 비용 환급. 상대 원금은 그대로.
+   🎯 선물 마진 사냥(하이리스크 하이리턴): 모든 롱·숏. 비용 = 남은 증거금의 15%, 기본 성공 25% + 배수×0.2 (최대 45%).
+      성공 → 남은 증거금 50%(양학 페널티 적용)를 뺏어 옴 + 비용 환급. 그 바람에 청산가에 닿으면 ☠️ 참수.
+   ⚔️ 전투력(LV) 보정: 18%p × tanh((공격LV - 방어LV) / 45), 최종 성공률 8% ~ 65%.
+   🛡️ 약자 보호 (LV 차이와 실질자산 차이가 둘 다 클 때만! 레벨 안 올린 부자는 보호 0%):
+      - 양학 페널티: 공격LV - 방어LV ≥ 15 이고 공격자 실질자산 ≥ 방어자 × 1.5 → 약탈금 20%~60% 감액 (덜 뺏긴 몫은 피해자에게 남음).
+      - 하극상 보너스: 방어LV - 공격LV ≥ 15 이고 방어자 실질자산 ≥ 공격자 × 2 → 기본 약탈금의 +25% 시스템 보너스 (1회 5억 · 하루 15억 한도).
+      - 동네북 방지: 같은 상대를 24시간 롤링 기준 최대 2번까지만 성공 가능 · 24시간 내 3번 털리면 6시간 집중포화 보호막 발동.
+      - 선공 시 보호막 파괴: 내 보호막이 켜진 채 남을 먼저 공격·결투하면 확인창을 거쳐 내 보호막이 즉시 해제돼요. */
+const ATK = {
+  LOOT_COST: .25, LOOT_P: .25, HUNT_COST: .15, HUNT_TAKE: .50,
+  MY_CD: 10 * 60e3, POS_CD: 30 * 60e3, SHIELD: 3 * H, REVENGE: 10 * 60e3, MIN: 100_000,
+  FOCUS_SH: 6 * H, FOCUS_N: 3, PER_TGT: 2,
+  GK_RATE: .25, GK_HIT_CAP: 500_000_000, GK_DAY_CAP: 1_500_000_000,
+};
+const atkEvents = () => {
+  const seen = new Set(), out = [];
+  for (const f of [...(S.feed || []), ...(S.atkFeed || [])]) {
+    if (!f || f.kind !== 'k_atk') continue;
+    const k = (f.uid || '') + '|' + (f.target || '') + '|' + (f.ts || 0) + '|' + (f.sym || '');
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(f);
+  }
+  return out;
+};
 // 지금 이 사람에게 반값 복수 가능? (그 사람이 10분 안에 나를 공격했으면)
 const revengeOn = tid => atkEvents().some(f => f.uid === tid && f.target === S.uid && now() - f.ts < ATK.REVENGE);
 const assetOf = sym => KC[sym] || UC[sym];
 const pxKrw = sym => (KC[sym] ? kPx(sym) : uWon(sym));
+
+/* ───────── 전투력(LV) · 양학 페널티 · 하극상 보너스 · 보호막 계산 ───────── */
+const lvShift = (attLv, defLv) => 0.18 * Math.tanh((attLv - defLv) / 45);
+const clampAtkProb = p => Math.max(0.08, Math.min(0.65, p));
+
+function bullyPen(att, def) {
+  if (!att || !def) return 0;
+  const dLv = lvOf(att) - lvOf(def);
+  if (dLv < 15) return 0;
+  const aW = realWorth(att), dW = realWorth(def);
+  if (aW < dW * 1.5) return 0;   // 스머프 부자(레벨만 낮고 재산 많은 상대)는 보호하지 않아요
+  return +(0.20 + 0.40 * Math.min(1, (dLv - 15) / 20)).toFixed(3);
+}
+
+function underdogInfo(att, def, baseWin) {
+  if (!att || !def) return { ok: false, bonus: 0, rem: 0 };
+  const dLv = lvOf(def) - lvOf(att);
+  if (dLv < 15) return { ok: false, bonus: 0, rem: 0 };
+  const aW = realWorth(att), dW = realWorth(def);
+  if (dW < aW * 2) return { ok: false, bonus: 0, rem: 0 };
+  const day = kstDay(now()), used = att.gkDay === day ? (att.gkSum || 0) : 0;
+  const rem = Math.max(0, ATK.GK_DAY_CAP - used);
+  const bonus = Math.min(Math.round((baseWin || 0) * ATK.GK_RATE), ATK.GK_HIT_CAP, rem);
+  return { ok: true, bonus, rem, capped: rem <= 0 };
+}
+
+// 전체 보호막(집중포화 6시간 + 왕좌 저격 30분) 발동 구간 목록 — 선공 시 보호막 파괴(shBreakAt) 반영
+function globalShieldSpans(tid) {
+  const p = S.players[tid] || {}, brk = p.shBreakAt || 0;
+  const raw = [];
+  const calcBatch = (evs) => {
+    let end = 0, win = [];
+    for (const f of evs) {
+      if (f.ts < end) continue;
+      win = win.filter(t => f.ts - t < D && t >= end);
+      win.push(f.ts);
+      if (win.length >= ATK.FOCUS_N) { end = f.ts + ATK.FOCUS_SH; raw.push([f.ts, end]); win = []; }
+    }
+  };
+  const allHits = atkEvents().filter(f => f.ok && f.target === tid && now() - f.ts < 48 * H).sort((a, b) => a.ts - b.ts);
+  if (brk > 0) {
+    calcBatch(allHits.filter(f => f.ts <= brk));
+    for (let i = 0; i < raw.length; i++) if (raw[i][1] > brk) raw[i][1] = brk;
+    calcBatch(allHits.filter(f => f.ts > brk));
+  } else {
+    calcBatch(allHits);
+  }
+  sfFires(tid).filter(f => f.ok && now() - f.ts < 48 * H).forEach(f => {
+    const s0 = f.ts, s1 = f.ts <= brk ? Math.min(f.ts + SNIPE.SHIELD, brk) : f.ts + SNIPE.SHIELD;
+    if (s1 > s0) raw.push([s0, s1]);
+  });
+  raw.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const [s0, s1] of raw) {
+    if (s1 <= s0) continue;
+    if (!merged.length || s0 > merged[merged.length - 1][1]) merged.push([s0, s1]);
+    else merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], s1);
+  }
+  return merged;
+}
+
+function focusShieldEnd(tid) {
+  const p = S.players[tid] || {}, brk = p.shBreakAt || 0;
+  const asc = atkEvents().filter(f => f.ok && f.target === tid && f.ts > brk && now() - f.ts < 36 * H).sort((a, b) => a.ts - b.ts);
+  let end = 0, win = [];
+  for (const f of asc) {
+    if (f.ts < end) continue;
+    win = win.filter(t => f.ts - t < D && t >= end);
+    win.push(f.ts);
+    if (win.length >= ATK.FOCUS_N) { end = f.ts + ATK.FOCUS_SH; win = []; }
+  }
+  return end > now() ? end : 0;
+}
+function snipeShieldEnd(tid) {
+  const brk = ((S.players[tid] || {}).shBreakAt) || 0;
+  const f = sfFires(tid).find(x => x.ok && x.ts > brk && x.ts + SNIPE.SHIELD > now());
+  return f ? f.ts + SNIPE.SHIELD : 0;
+}
+const globalShieldEnd = tid => Math.max(focusShieldEnd(tid), snipeShieldEnd(tid));
+
+// 내가 지금 가지고 있는 모든 보호막(전체 보호막 + 보유 중인 종목 보호막) 중 가장 늦게 끝나는 시각
+function myShieldEnd(uid = S.uid) {
+  const p = S.players[uid]; if (!p) return 0;
+  const brk = p.shBreakAt || 0;
+  let mx = globalShieldEnd(uid);
+  atkEvents().forEach(f => {
+    if (!f.ok || f.target !== uid || f.ts <= brk || f.ts + ATK.SHIELD <= now()) return;
+    const bag = p[f.f] || {};
+    if (bag[f.sym]) mx = Math.max(mx, f.ts + ATK.SHIELD);
+  });
+  return mx > now() ? mx : 0;
+}
+
 // 상대(p)의 한 종목에 대한 공격 정보: 가능 여부·이유·비용·확률·성공 시 얻는 돈
 function atkInfo(p, field, sym) {
   const isFut = field === 'kFut' || field === 'uFut', price = pxKrw(sym), a = assetOf(sym);
   if (!a || !price) return { ok: false, why: '시세 받는 중' };
+  const att = S.me ? { id: S.uid, ...S.me } : null;
+  const attLv = att ? lvOf(att) : 1, defLv = lvOf(p), shift = lvShift(attLv, defLv);
+  const pen = att ? bullyPen(att, p) : 0;
+  const brk = p.shBreakAt || 0;
+
+  // 1) 집중포화 전체 보호막 · 같은 공격자 24시간 2회 제한
+  const fSh = focusShieldEnd(p.id);
+  if (fSh) return { ok: false, why: `🛡️ 집중보호막 ${hms(fSh - now()).slice(0, 5)}` };
+  if (att) {
+    const myHits24 = atkEvents().filter(f => f.ok && f.uid === S.uid && f.target === p.id && now() - f.ts < D).length;
+    if (myHits24 >= ATK.PER_TGT) return { ok: false, why: '24시간 내 2번 성공 완료' };
+  }
+
+  // 2) 종목별 보호막·쿨타임 (상대가 선공해 shBreakAt을 갱신했으면 그 이전 보호막은 해제됨)
   const evs = atkEvents().filter(f => f.target === p.id && f.sym === sym && f.f === field);
-  const lastHit = evs.filter(f => f.ok).reduce((m, f) => Math.max(m, f.ts), 0), last = evs.reduce((m, f) => Math.max(m, f.ts), 0);
-  // 보호막·쿨타임을 먼저 알려줘요 (털린 직후엔 '본전'이라도 보호막이 이유)
+  const lastHit = evs.filter(f => f.ok && f.ts > brk).reduce((m, f) => Math.max(m, f.ts), 0);
+  const last = evs.reduce((m, f) => Math.max(m, f.ts), 0);
   if (lastHit && now() - lastHit < ATK.SHIELD) return { ok: false, why: `🛡️ 보호막 ${hms(ATK.SHIELD - (now() - lastHit)).slice(0, 5)}` };
   if (last && now() - last < ATK.POS_CD) return { ok: false, why: `${Math.ceil((ATK.POS_CD - (now() - last)) / 6e4)}분 뒤 가능` };
+
   let info;
   if (!isFut) {
     const q = (p[field] || {})[sym] || 0, cost0 = ((field === 'kHold' ? p.kCost : p.uCost) || {})[sym] || price, profit = q * (price - cost0);
-    // 주식·달러는 1주(1달러) 단위로만 뺏어요 → 수익으로 살 수 있는 만큼만
-    const whole = UC[sym] && UC[sym].m !== 'cm', dq = profit > 0 ? (whole ? Math.floor(profit / price) : profit / price) : 0, loot = dq * price;
-    info = { type: 'loot', q, price, profit, prob: ATK.LOOT_P, cost: Math.round(loot * ATK.LOOT_COST), win: Math.round(loot), dq, a };
+    const whole = UC[sym] && UC[sym].m !== 'cm';
+    const rawDq = profit > 0 ? (whole ? Math.floor(profit / price) : profit / price) : 0;
+    const dq = profit > 0 ? (whole ? Math.floor(rawDq * (1 - pen)) : rawDq * (1 - pen)) : 0;
+    const rawLoot = rawDq * price, loot = dq * price, baseP = ATK.LOOT_P;
+    info = { type: 'loot', q, price, profit, baseP, shift, prob: clampAtkProb(baseP + shift), cost: Math.round(rawLoot * ATK.LOOT_COST), win: Math.round(loot), rawWin: Math.round(rawLoot), dq, pen, attLv, defLv, a };
     if (!(profit > 0)) return { ...info, ok: false, why: '손해 중이라 못 털어요' };
-    if (whole && dq < 1) return { ...info, ok: false, why: '수익이 1주 미만' };
+    if (whole && rawDq < 1) return { ...info, ok: false, why: '수익이 1주 미만' };
+    if (whole && dq < 1) return { ...info, ok: false, why: '양학 감액 시 1주 미만' };
     if (profit < ATK.MIN) return { ...info, ok: false, why: '수익이 너무 작아요' };
   } else {
     const o = (p[field] || {})[sym]; if (!o) return { ok: false, why: '포지션 없음' };
-    const E = fVal(o, price), take = E * ATK.HUNT_TAKE, m2 = o.m - take, x2 = o.q * o.e / Math.max(1, m2);
+    const E = fVal(o, price), rawTake = E * ATK.HUNT_TAKE, take = rawTake * (1 - pen);
+    const m2 = o.m - take, x2 = o.q * o.e / Math.max(1, m2);
     const exec = fDead({ ...o, m: m2, x: x2 }, price) || E - take <= 0;
-    info = { type: 'hunt', o, E, price, prob: Math.min(.45, .25 + o.x * .002), cost: Math.round(E * ATK.HUNT_COST), win: Math.round(exec ? E : take), exec, m2, x2, a };
+    const baseP = Math.min(.45, .25 + o.x * .002);
+    const rawWin = exec ? E : rawTake, win = Math.round(rawWin * (1 - pen)), keep = exec && pen ? Math.max(0, Math.round(E - win)) : 0;
+    info = { type: 'hunt', o, E, price, baseP, shift, prob: clampAtkProb(baseP + shift), cost: Math.round(E * ATK.HUNT_COST), win, rawWin: Math.round(rawWin), take: Math.round(take), keep, exec, m2, x2, pen, attLv, defLv, a };
     if (E < ATK.MIN) return { ...info, ok: false, why: '증거금이 너무 작아요' };
   }
+  const ud = att ? underdogInfo(att, p, info.win) : { ok: false, bonus: 0, rem: 0 };
+  info.udog = ud.bonus; info.udogOk = ud.ok; info.udogCapped = ud.capped;
   info.rev = revengeOn(p.id); if (info.rev) info.cost = Math.round(info.cost / 2);
   return { ...info, ok: true };
 }
@@ -49,27 +182,61 @@ async function doAttack(tid, field, sym) {
   const I = atkInfo(p, field, sym); if (!I.ok) { toast(I.why); return; }
   if (myAtkWait()) { toast(`⏳ ${Math.ceil(myAtkWait() / 6e4)}분 뒤에 다시 공격할 수 있어요`); return; }
   if (S.me.cash < I.cost) { toast(`현금이 ${krw(I.cost - S.me.cash)} 부족해요`); return; }
+
+  // 선공 시 내 보호막 파괴 2단계 확인창
+  const mySh = myShieldEnd(S.uid);
+  if (mySh > 0) {
+    const sh = S.sheet;
+    if (!sh || !sh.shArm || Date.now() - sh.shArm > 5000) {
+      if (sh) { sh.shArm = Date.now(); renderSheet(); }
+      toast(`🛡️ 내 보호막(남은 ${hms(mySh - now()).slice(0, 5)})이 사라집니다! 한 번 더 누르면 감수하고 공격해요`);
+      return;
+    }
+  }
+
   const roll = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296, ok = roll < I.prob;   // 공격할 때 뽑는 무작위 번호
   const before = S.me, me = clone(before); me.atkAt = now(); me.cash -= I.cost;
-  const ev = { kind: 'k_atk', target: tid, sym, f: field, type: I.type, cost: I.cost, p: +I.prob.toFixed(4), roll: +roll.toFixed(6), ok, rev: !!I.rev };
-  const B = ok ? Math.min(bountyOf(p), Math.max(0, Math.floor(p.cash || 0))) : 0;   // 👑 1등이면 현상금 (상대 현금에서)
+  if (mySh > 0) me.shBreakAt = now();
+  const ev = {
+    kind: 'k_atk', target: tid, sym, f: field, type: I.type, cost: I.cost,
+    p: +I.prob.toFixed(4), roll: +roll.toFixed(6), ok, rev: !!I.rev,
+    alv: I.attLv, dlv: I.defLv,
+  };
+  if (I.pen > 0) ev.pen = I.pen;
+  const rawB = ok ? Math.min(bountyOf(p), Math.max(0, Math.floor(p.cash || 0))) : 0;   // 👑 1등이면 현상금 (상대 현금에서, 양학 감액 동일 적용)
+  const B = rawB ? Math.round(rawB * (1 - (I.pen || 0))) : 0;
   if (B) { me.cash += B; ev.bounty = B; }
   if (ok) {
     me.cash += I.cost;
     const reb = loanRebel(me, tid); if (reb) ev.rebel = reb;   // ⛓️ 노예가 주인을 털면 반란 성공
+    if (I.udog > 0) {
+      const day = kstDay(now());
+      me.gkDay = day; me.gkSum = (before.gkDay === day ? (before.gkSum || 0) : 0) + I.udog;
+      me.cash += I.udog; ev.udog = I.udog;
+    }
     if (I.type === 'loot') {   // 뺏은 수량을 내 지갑에 (평단 = 지금 가격)
       const hf = field, cf = field === 'kHold' ? 'kCost' : 'uCost'; me[hf] ||= {}; me[cf] ||= {};
       const h0 = me[hf][sym] || 0; me[cf][sym] = ((me[cf][sym] || 0) * h0 + I.dq * I.price) / (h0 + I.dq); me[hf][sym] = h0 + I.dq;
       Object.assign(ev, { dq: I.dq, px: I.price, gain: I.win });
-    } else { me.cash += I.win; Object.assign(ev, { oat: I.o.at, take: Math.round(I.E * ATK.HUNT_TAKE), exec: I.exec, gain: I.win }); }
+    } else {
+      me.cash += I.win;
+      Object.assign(ev, { oat: I.o.at, take: I.take, keep: I.keep || undefined, exec: I.exec, gain: I.win });
+    }
   }
   me.cash = Math.round(me.cash);
   if (!(await kSave(me, before))) return;
   addFeed(ev); closeSheetRaw();
   if (S.mode === 'demo') atkApplyTo(S.players[tid], [{ ...ev, uid: S.uid, ts: now() }]);   // 연습봇은 바로 반영
+  if (ok && typeof bountyClaim === 'function') await bountyClaim(tid, I.pen || 0, I.exec ? 'exec' : I.type);
   if (ev.rebel) setTimeout(() => toast(`⛓️ 주인을 털었다! 반란 성공 · 빚 ${krw(ev.rebel)} 탕감`), 1800);
-  if (ok) bigWin(I.win + B, (B ? `👑 현상금 ${krw(B)} + ` : '') + (I.type === 'loot' ? '💰 약탈 성공!' : I.exec ? '☠️ 참수 성공!' : '🎯 사냥 성공!'));
-  else { toast(`🛡️ 막혔어요… ${krw(I.cost)} 잃음 (절반은 ${p.name}님 위자료)`); document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); buzz(120); }
+  if (ok) {
+    const totWin = I.win + B + (I.udog || 0);
+    const tag = (I.udog ? `🔥 하극상 +${krw(I.udog)} · ` : '') + (B ? `👑 1등 현상금 ${krw(B)} + ` : '');
+    bigWin(totWin, tag + (I.type === 'loot' ? '💰 약탈 성공!' : I.exec ? '☠️ 참수 성공!' : '🎯 사냥 성공!'));
+  } else {
+    toast(`🛡️ 막혔어요… ${krw(I.cost)} 잃음 (절반은 ${p.name}님 위자료)`);
+    document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); buzz(120);
+  }
   renderAll();
 }
 
@@ -86,7 +253,7 @@ function atkApplyTo(t, evs) {   // t = 지갑 객체(직접 고침)
       if (left * e.px < 1) { delete t[hf][e.sym]; delete t[cf][e.sym]; } else { t[cf][e.sym] = Math.min(e.px, principal / left); t[hf][e.sym] = left; }
     } else {
       const o = (t[e.f] || {})[e.sym]; if (!o || o.at !== e.oat) return;
-      if (e.exec) { delete t[e.f][e.sym]; return; }
+      if (e.exec) { delete t[e.f][e.sym]; if (e.keep > 0) t.cash = Math.round((t.cash || 0) + e.keep); return; }
       o.m = Math.max(1, o.m - e.take); o.x = +(o.q * o.e / o.m).toFixed(2);
     }
   });
@@ -113,21 +280,32 @@ function renderAtkSheet(b, sh) {
   const p = S.players[sh.tid] ? { id: sh.tid, ...S.players[sh.tid] } : null; if (!p) { b.innerHTML = ''; return; }
   const I = atkInfo(p, sh.f, sh.sym), a = assetOf(sh.sym), isFut = sh.f === 'kFut' || sh.f === 'uFut', wait = myAtkWait();
   const can = I.ok && !wait && S.me && S.me.cash >= I.cost && !S.saving;
-  const pct = Math.round((I.prob || 0) * 100);
+  const pct = Math.round((I.prob || 0) * 100), basePct = Math.round((I.baseP || 0) * 100), dPct = pct - basePct;
+  const myLv = S.me ? lvOf(S.me) : 1, defLv = lvOf(p);
+  const mySh = S.me ? myShieldEnd(S.uid) : 0, shArmed = mySh > 0 && sh.shArm && Date.now() - sh.shArm < 5000;
+  const openBty = typeof openBountyOf === 'function' ? openBountyOf(p.id) : null;
+  const canClaimBty = openBty && !(openBty.contributors && openBty.contributors[S.uid]);
+  const btyPay = canClaimBty ? Math.round(openBty.total * (1 - (I.pen || 0))) : 0;
+  const topBty = bountyOf(p) ? Math.round(Math.min(bountyOf(p), Math.max(0, p.cash || 0)) * (1 - (I.pen || 0))) : 0;
+
   b.innerHTML = `<div class="atk-h"><span class="atk-k ${isFut ? 'hunt' : 'loot'}">${isFut ? '🎯 마진 사냥' : '💰 수익 약탈'}</span>${I.rev ? '<span class="atk-rev">🔥 복수 반값</span>' : ''}</div>
-    <div class="atk-vs">${ava(p, true)}<div><b>${esc(p.name)}</b><small>${esc(a ? a.n : '')}${isFut && I.o ? ` · ${I.o.x}배 ${fSide(I.o)}` : ''}</small></div></div>
-    ${bountyOf(p) ? `<div class="atk-bounty">👑 1등 현상금 · 성공하면 <b class="num">+${krw(Math.min(bountyOf(p), Math.max(0, p.cash || 0)))}</b> 더</div>` : ''}
-    <div class="atk-p"><div class="atk-pt"><span>성공 확률</span><b class="num">${pct}%</b></div><div class="atk-bar"><i style="width:${pct}%"></i></div></div>
+    <div class="atk-vs">${ava(p, true)}<div><b>${esc(p.name)} <span class="lvtag">LV.${defLv}</span></b><small>${esc(a ? a.n : '')}${isFut && I.o ? ` · ${I.o.x}배 ${fSide(I.o)}` : ''} · 나 LV.${myLv}</small></div></div>
+    ${topBty ? `<div class="atk-bounty">👑 1등 현상금 · 성공하면 <b class="num">+${krw(topBty)}</b> 더</div>` : ''}
+    ${canClaimBty ? `<div class="atk-bounty bty-open">📜 현상수배 사냥 · 성공하면 <b class="num">+${krw(btyPay)}</b> 즉시 수령!</div>` : ''}
+    ${I.pen > 0 ? `<div class="atk-mod pen">⚖️ 양학 페널티 -${Math.round(I.pen * 100)}% <small>(레벨 +${myLv - defLv} & 자산 우위 → 덜 뺏긴 몫은 상대에게 남음)</small></div>` : ''}
+    ${I.udog > 0 ? `<div class="atk-mod udog">🔥 하극상 보너스 <b class="num">+${krw(I.udog)}</b> (+25%) <small>강자를 꺾으면 추가 보상!</small></div>` : I.udogOk && I.udogCapped ? `<div class="atk-mod dim">🔥 오늘 하극상 보너스 한도(15억)를 다 받았어요</div>` : ''}
+    ${mySh > 0 ? `<div class="atk-shwarn">🛡️ 내 보호막(남은 <b class="num">${hms(mySh - now()).slice(0, 5)}</b>)이 켜져 있어요 · 먼저 공격하면 사라집니다!</div>` : ''}
+    <div class="atk-p"><div class="atk-pt"><span>성공 확률 <small class="dim">(기본 ${basePct}% ${dPct >= 0 ? `+ 전투력 ${dPct}%p` : `- 전투력 ${Math.abs(dPct)}%p`})</small></span><b class="num">${pct}%</b></div><div class="atk-bar"><i style="width:${pct}%"></i></div></div>
     <div class="atk-io">
-      <div class="win"><small>성공하면</small><b class="num">+${krw(I.win || 0)}</b><span>${isFut ? (I.exec ? '☠️ 참수! 증거금 전부' : '증거금 50% 뺏기 + 비용 환급') : '수익 전부 뺏기 + 비용 환급'}</span></div>
+      <div class="win"><small>성공하면</small><b class="num">+${krw((I.win || 0) + (I.udog || 0))}</b><span>${isFut ? (I.exec ? '☠️ 참수! 증거금 사냥' : '증거금 사냥 + 비용 환급') : '수익 약탈 + 비용 환급'}${I.udog ? ' + 하극상' : ''}</span></div>
       <div class="lose"><small>실패하면</small><b class="num">-${krw(I.cost || 0)}</b><span>절반은 상대 위자료</span></div>
     </div>
     ${!I.ok ? `<p class="atk-why">${esc(I.why)}</p>` : wait ? `<p class="atk-why">⏳ ${Math.ceil(wait / 6e4)}분 뒤에 다시 공격할 수 있어요</p>` : S.me && S.me.cash < I.cost ? '<p class="atk-why">현금이 부족해요</p>' : ''}
-    <details class="atk-help"${sh.help ? ' open' : ''}><summary>❓ ${isFut ? '마진 사냥' : '수익 약탈'}이 뭐예요?</summary>${isFut
-      ? `<p>상대가 <b>롱·숏</b>으로 걸어 둔 돈(증거금)을 노려요.</p><ul><li>성공하면 상대 증거금의 <b>절반(50%)</b>을 가져와요. 낸 돈도 돌려받아요.</li><li>그걸로 상대가 청산 직전까지 몰리면 <b>☠️ 참수</b> — 증거금을 <b>전부</b> 가져와요.</li><li>배수가 높은 사람일수록 <b>성공 확률이 조금 높아요</b> (10배 27% · 50배 35% · 최대 45%).</li><li>실패하면 낸 돈(증거금의 15%)을 잃고, 절반은 상대가 가져가요.</li></ul>`
-      : `<p>상대가 <b>수익 보고 있는</b> 코인·주식을 노려요. 손해 중인 건 못 털어요.</p><ul><li>성공(25%)하면 그 종목의 <b>번 돈만큼</b>을 내 것으로 가져와요. 낸 돈도 돌려받아요.</li><li>상대가 처음 넣은 원금은 안 건드려요.</li><li>실패하면 낸 돈(수익의 25%)을 잃고, 절반은 상대가 가져가요.</li></ul>`}
-      <p class="atk-rule">공격은 10분에 1번 · 털린 종목은 3시간 보호막 · 당하면 10분 동안 반값 복수</p></details>
-    <button class="cta atk-go" id="atkGo" type="button" ${can ? '' : 'disabled'}>💥 공격하기 · ${krw(I.cost || 0)}</button>`;
+    <details class="atk-help"${sh.help ? ' open' : ''}><summary>❓ 전투력 · 약자 보호 · 사냥 규칙</summary>${isFut
+      ? `<p>상대가 <b>롱·숏</b>으로 걸어 둔 증거금을 노려요.</p><ul><li>성공하면 상대 증거금의 <b>50%</b>를 가져오고 낸 돈도 돌려받아요. 청산 직전이면 <b>☠️ 참수</b>!</li><li><b>전투력(LV)</b>이 높을수록 성공률이 최대 ±18%p 보정돼요 (최종 8%~65%).</li><li>레벨과 재산이 모두 크게 앞서는 강자가 약자를 치면 <b>양학 페널티(-20~60%)</b>가 걸리고, 반대로 약자가 강자를 잡으면 <b>🔥 하극상 보너스(+25%)</b>가 붙어요.</li></ul>`
+      : `<p>상대가 <b>수익 보고 있는</b> 코인·주식을 노려요. 원금은 안 건드려요.</p><ul><li>기본 성공률 25% + <b>전투력(LV) 보정</b>(최대 ±18%p, 최종 8%~65%).</li><li>레벨을 안 올린 부자는 양학 보호를 받지 못해요! 반대로 진짜 약자는 24시간 3번 털리면 <b>6시간 보호막</b>이 켜져요.</li></ul>`}
+      <p class="atk-rule">공격 10분 쿨 · 같은 상대 24시간 2번 한도 · 선공 시 내 보호막 해제</p></details>
+    <button class="cta atk-go${shArmed ? ' sh-armed' : ''}" id="atkGo" type="button" ${can ? '' : 'disabled'}>${shArmed ? `🛡️ 보호막 포기하고 공격! · ${krw(I.cost || 0)}` : `💥 공격하기 · ${krw(I.cost || 0)}`}</button>`;
 }
 KSHEETS.atk = renderAtkSheet;
 document.addEventListener('click', e => {
@@ -169,9 +347,8 @@ async function top1Track() {
 
 /* ═════════ ⚔️ 1등 결투권 ═════════
    4등 아래는 하루 1번 1~3등에게 결투를 걸 수 있어요. 5분 동안 총자산 수익률 승부 (상대가 꺼져 있어도 시세로 계산돼요).
-   이기면 상대 총자산의 3%(상대 현금 한도)를 가져오고, 지면 내 총자산의 3%(내 현금 한도)를 상대에게 줘요. 거절은 없어요.
-   결투는 건 사람 지갑(duel)에 적고, 끝나면 건 사람 앱이 결과를 기록(k_duel) → 상대 앱이 보고 스스로 반영해요. */
-const DUEL = { MS: 5 * 60e3, STAKE: .05 };   // 판돈 = 두 사람 중 작은 총자산의 5% (같은 금액이 오가요)
+   판돈 = 두 사람 중 작은 총자산의 5% (같은 금액이 오가요). 선공 시 내 보호막이 있으면 확인 안내 후 함께 깨져요. */
+const DUEL = { MS: 5 * 60e3, STAKE: .05 };
 const rankOf = id => ranking().findIndex(x => x.id === id) + 1;
 function duelWhy(tid) {
   const me = S.me; if (!me) return '참가하면 할 수 있어요'; const mr = rankOf(S.uid), tr = rankOf(tid);
@@ -183,9 +360,16 @@ function duelWhy(tid) {
 }
 async function duelStart(tid) {
   if (duelWhy(tid) !== 'ok' || S.saving || S.readOnly) return; const t = S.players[tid]; if (!t) return;
-  if (!S.dArm || S.dArm !== tid || Date.now() - (S.dArmT || 0) > 4000) { S.dArm = tid; S.dArmT = Date.now(); toast('⚔️ 한 번 더 누르면 결투 시작! (5분 수익률 승부, 판돈 = 둘 중 작은 총자산의 5%)'); return; }
+  const mySh = myShieldEnd(S.uid);
+  if (!S.dArm || S.dArm !== tid || Date.now() - (S.dArmT || 0) > 4500) {
+    S.dArm = tid; S.dArmT = Date.now();
+    toast(mySh > 0 ? `🛡️ 내 보호막(남은 ${hms(mySh - now()).slice(0, 5)})이 사라집니다! 한 번 더 누르면 결투 시작` : '⚔️ 한 번 더 누르면 결투 시작! (5분 수익률 승부, 판돈 = 둘 중 작은 총자산의 5%)');
+    return;
+  }
   S.dArm = null;
-  const before = S.me, me = clone(before); me.duel = { t: tid, at: now(), end: now() + DUEL.MS, a0: worth(me), b0: worth({ id: tid, ...t }) }; me.duelDay = kstDay(now());
+  const before = S.me, me = clone(before);
+  if (mySh > 0) me.shBreakAt = now();
+  me.duel = { t: tid, at: now(), end: now() + DUEL.MS, a0: worth(me), b0: worth({ id: tid, ...t }) }; me.duelDay = kstDay(now());
   if (!(await kSave(me, before))) return;
   addFeed({ kind: 'k_duel0', target: tid }); toast(`⚔️ ${t.name}님에게 결투 신청! 5분 동안 수익률로 승부해요`); buzz([50, 30, 50]); renderAll(); if (S.profile) renderFriendProfile();
 }
@@ -201,6 +385,7 @@ async function duelTick() {
   if (!(await kSave(me, before))) return;
   const ev = { kind: 'k_duel', target: d.t, win, amt, ra: +ra.toFixed(4), rb: +rb.toFixed(4), rebel: reb || undefined }; addFeed(ev); if (reb) toast(`⛓️ 반란 성공! 빚 ${krw(reb)} 탕감`);
   if (S.mode === 'demo' && S.players[d.t]) S.players[d.t].cash = Math.round((S.players[d.t].cash || 0) + (win ? -amt : amt));
+  if (win && typeof bountyClaim === 'function') await bountyClaim(d.t, bullyPen({ id: S.uid, ...before }, { id: d.t, ...t }), 'duel');
   if (win) bigWin(amt, `⚔️ 결투 승리! ${pctTxt(ra)} vs ${pctTxt(rb)}`); else cLose(`⚔️ 결투 패배… ${pctTxt(ra)} vs ${pctTxt(rb)} · -${krw(amt)}`);
   renderAll();
 }
@@ -231,19 +416,22 @@ function renderDuelBar() {
 }
 document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-duel]'); if (t) duelStart(t.dataset.duel); });
 
-/* ═════════ 🎯 왕좌 저격 (모금형) — 1·2·3등을 여럿이 돈을 모아 쏴요 ═════════
-   목표 금액 = 그 사람 총자산의 15%. 나보다 높은 1~3등에게만 낼 수 있어요(1억 단위).
-   모금이 목표에 닿는 순간, 마지막으로 낸 사람 앱이 바로 발사해요(뽑은 번호 roll 기록).
-     성공 확률: 1등 30% · 2등 35% · 3등 40%.
-     성공 → 낸 사람 모두 낸 돈 + 이익(1등 2배 · 2등 1.7배 · 3등 1.5배)을 낸 비율대로. 상대는 그 이익만큼 잃어요(총자산 40% 한도, 현금이 모자라면 빚).
-     실패 → 모은 돈은 전부 사라지고, 그 절반은 상대가 '방어 보상'으로 받아요.
-   털린 사람은 30분 동안 보호막. 2시간 안에 목표를 못 채우면 각자 낸 돈을 돌려받아요.
-   낸 돈은 각자 지갑(sf)에, 발사 기록은 소식(k_sfire)과 쏜 사람 지갑(sfFire)에 남겨요 → 낸 사람·당한 사람 앱이 보고 스스로 반영해요. */
-const SNIPE = { GOAL: .15, P: [.30, .35, .40], PROF: [2, 1.7, 1.5], CAP: .40, SHIELD: 30 * 60e3, EXPIRE: 2 * H, UNIT: 1e8 };
-function sfFires(tid) {   // 그 사람에 대한 발사 기록들 (소식 + 쏜 사람 지갑)
-  const out = (S.feed || []).filter(f => f && f.kind === 'k_sfire' && f.target === tid);
-  Object.entries(S.players).forEach(([id, p]) => { const x = p && p.sfFire; if (x && x.t === tid && !out.some(f => Math.abs(f.ts - x.ts) < 2000)) out.push({ ...x, kind: 'k_sfire', uid: id, target: tid }); });
-  return out.sort((a, b) => b.ts - a.ts);
+/* ═════════ 🎯 왕좌 저격 (모금형) — 1·2·3등을 여럿이 돈을 모아 쏴요 ═════════ */
+const SNIPE = { GOAL: .15, P: [.30, .35, .40], PROF: [2, 1.7, 1.5], CAP: .40, SHIELD: 30 * 60e3, EXPIRE: 2 * H, UNIT: 1e8, DEDUP: 30e3 };
+// 동시 마지막 입금 경쟁 시 이중 타격·이중 정산을 막기 위해 30초 안의 중복 발사는 가장 먼저 기록된 1건만 인정해요
+function sfFires(tid) {
+  const raw = (S.feed || []).filter(f => f && f.kind === 'k_sfire' && f.target === tid).map(f => ({ ...f }));
+  Object.entries(S.players).forEach(([id, p]) => {
+    const x = p && p.sfFire;
+    if (x && x.t === tid && !raw.some(f => f.uid === id && Math.abs(f.ts - x.ts) < 2000)) raw.push({ ...x, kind: 'k_sfire', uid: id, target: tid });
+  });
+  raw.sort((a, b) => (a.ts - b.ts) || String(a.uid || '').localeCompare(String(b.uid || '')));
+  const canon = [];
+  for (const f of raw) {
+    if (canon.length && f.ts - canon[canon.length - 1].ts < SNIPE.DEDUP) continue;
+    canon.push(f);
+  }
+  return canon.sort((a, b) => b.ts - a.ts);
 }
 const sfLast = tid => (sfFires(tid)[0] || {}).ts || 0;
 function sfPool(tid) {
@@ -257,7 +445,7 @@ function snipeInfo(tid) {
   if (!(tr >= 1 && tr <= 3) || R.length < 2) return { ok: false, why: '1~3등만 노릴 수 있어요' };
   const goal = Math.max(SNIPE.UNIT, Math.round(t.w * SNIPE.GOAL / SNIPE.UNIT) * SNIPE.UNIT), P = sfPool(tid), left = Math.max(0, goal - P.sum);
   const I = { ok: true, tr, t, goal, pool: P.sum, list: P.list, left, prob: SNIPE.P[tr - 1], prof: SNIPE.PROF[tr - 1] };
-  const shielded = sfFires(tid).some(f => f.ok && now() - f.ts < SNIPE.SHIELD);
+  const shielded = snipeShieldEnd(tid) > now();
   if (tid === S.uid) return { ...I, ok: false, why: '나예요 · 지금 표적!' };
   if (mr && mr <= tr) return { ...I, ok: false, why: '나보다 높은 순위만 노릴 수 있어요' };
   if (shielded) return { ...I, ok: false, why: '방금 털려서 30분 보호막 중' };
@@ -283,18 +471,28 @@ async function sfGive(tid, amt) {
   else { addFeed({ kind: 'k_sfund', target: tid, amt, pool: I.pool + amt, goal: I.goal }); toast(`🎯 ${I.t.name}님 저격 모금에 ${krw(amt)} 보탰어요 · ${Math.round((I.pool + amt) / I.goal * 100)}%`); }
   renderAll(); if (S.sheet && S.sheet.type === 'snipe') renderSheet();
 }
-// 내 모금 정산 (발사되면 내 몫 받기 · 2시간 지나면 돌려받기) + 당한 사람 반영
+// 내 모금 정산 (발사되면 내 몫 받기 · 동시 입금 경합분 즉시 환불 · 2시간 지나면 돌려받기) + 당한 사람 반영
 let sfBusy = false;
 async function snipeSync() {
   if (!S.me || S.readOnly || S.saving || sfBusy) return;
   const me0 = S.me, mine = Object.entries(me0.sf || {}); let changed = false; const me = clone(me0), msgs = [];
   mine.forEach(([tid, c]) => {
-    const fire = sfFires(tid).filter(f => f.ts >= c.at).sort((a, b) => a.ts - b.ts)[0];
-    if (fire) { if (fire.ok) { const get = c.amt + Math.round(fire.X * c.amt / fire.pool); me.cash = Math.round(me.cash + get); msgs.push(['win', get - c.amt, `🎯 ${nameOf(tid)}님 저격 성공! 내 몫`]); } else msgs.push(['lose', c.amt, `🛡️ ${nameOf(tid)}님 저격 실패… 모은 돈이 날아갔어요 -${krw(c.amt)}`]);
-      delete me.sf[tid]; changed = true; }
-    else if (now() - c.at > SNIPE.EXPIRE) { me.cash = Math.round(me.cash + c.amt); delete me.sf[tid]; changed = true; msgs.push(['info', c.amt, `⌛ ${nameOf(tid)}님 저격 모금이 2시간 안에 안 차서 ${krw(c.amt)} 돌려받았어요`]); }
+    const fires = sfFires(tid);
+    const fire = fires.filter(f => f.ts >= c.at).sort((a, b) => a.ts - b.ts)[0];
+    const raceFire = !fire && fires.find(f => c.at > f.ts && c.at - f.ts < SNIPE.DEDUP);
+    if (fire) {
+      if (fire.ok) { const get = c.amt + Math.round(fire.X * c.amt / Math.max(1, fire.pool)); me.cash = Math.round(me.cash + get); msgs.push(['win', get - c.amt, `🎯 ${nameOf(tid)}님 저격 성공! 내 몫`]); }
+      else msgs.push(['lose', c.amt, `🛡️ ${nameOf(tid)}님 저격 실패… 모은 돈이 날아갔어요 -${krw(c.amt)}`]);
+      delete me.sf[tid]; changed = true;
+    } else if (raceFire) {
+      me.cash = Math.round(me.cash + c.amt); delete me.sf[tid]; changed = true;
+      msgs.push(['info', c.amt, `🎯 직전에 이미 발사되어 ${krw(c.amt)}을(를) 바로 돌려받았어요`]);
+    } else if (now() - c.at > SNIPE.EXPIRE) {
+      me.cash = Math.round(me.cash + c.amt); delete me.sf[tid]; changed = true;
+      msgs.push(['info', c.amt, `⌛ ${nameOf(tid)}님 저격 모금이 2시간 안에 안 차서 ${krw(c.amt)} 돌려받았어요`]);
+    }
   });
-  // 당한 사람: 나를 향한 발사 기록 반영
+  // 당한 사람: 나를 향한 발사 기록 반영 (sfFires가 중복 발사를 걸러내어 1번만 반영됨)
   const seen = me0.sfSeen ?? (me0.joined || 0), hits = sfFires(S.uid).filter(f => f.ts > seen).sort((a, b) => a.ts - b.ts);
   hits.forEach(f => { me.cash = Math.round(me.cash + (f.ok ? -f.X : Math.floor(f.pool / 2))); msgs.push(f.ok ? ['lose', f.X, `🎯 ${f.n || '여러'}명이 모은 저격에 맞았어요! -${krw(f.X)} (30분 보호막)`] : ['win', Math.floor(f.pool / 2), `🛡️ 저격 모금 ${krw(f.pool)}을 막아냈어요! 방어 보상`]); });
   if (hits.length) { me.sfSeen = hits[hits.length - 1].ts; changed = true; }

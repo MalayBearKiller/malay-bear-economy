@@ -1252,3 +1252,55 @@ body.bnbody{background-image:linear-gradient(rgba(255,255,255,.84),rgba(255,255,
 .rumor{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;padding:8px 10px;border-radius:14px;background:var(--paper);font-size:13px;font-weight:800}
 .rumor small{display:block;font-size:11px;color:var(--dim);font-weight:700}
 .rm-btns{display:flex;gap:6px;flex:none}.rm-btns button{height:34px;padding:0 10px;border-radius:10px;font-weight:800;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}.rm-btns button:disabled{opacity:.4}
+/* ⚔️ 전투력 · 양학 · 하극상 · 선공 보호막 경고 · 📜 현상수배 게시판 */
+.lv-desc{padding:12px 14px;background:linear-gradient(120deg,var(--violet-bg),var(--paper))}
+.lv-desc b{display:block;font-size:13.5px;font-weight:900;margin-bottom:2px}.lv-desc small{font-size:12px;font-weight:600;color:var(--dim);line-height:1.45}.lv-desc small b{display:inline;color:var(--violet)}
+.atk-mod{margin:2px 0 6px;padding:8px 11px;border-radius:12px;font-size:12.5px;font-weight:800;text-align:center}
+.atk-mod small{display:block;font-size:11px;font-weight:700;opacity:.85;margin-top:1px}
+.atk-mod.pen{background:#fef2f2;color:#991b1b;box-shadow:inset 0 0 0 1px #fecaca}
+.atk-mod.udog{background:linear-gradient(120deg,#fff7ed,#ffedd5);color:#9a3412;box-shadow:inset 0 0 0 1px #fdba74}
+.atk-mod.dim{background:var(--paper);color:var(--dim)}
+.atk-shwarn{margin:2px 0 6px;padding:9px 11px;border-radius:12px;background:linear-gradient(120deg,#fef3c7,#fde68a);color:#78350f;font-size:12.5px;font-weight:800;text-align:center;box-shadow:inset 0 0 0 1px #f59e0b}
+.atk-go.sh-armed{background:linear-gradient(120deg,#b45309,#dc2626)!important;animation:armp .45s ease-in-out infinite alternate}
+.atk-bounty.bty-open{background:linear-gradient(120deg,#fef3c7,#fcd34d);color:#78350f;box-shadow:inset 0 0 0 1px #f59e0b}
+.atk-k.bty{background:linear-gradient(120deg,#78350f,#d97706);color:#fff}
+.btyboard{padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(155deg,#291709,#451a03 55%,#78350f);color:#fff;box-shadow:0 8px 22px rgba(69,26,3,.22),inset 0 0 0 1.5px rgba(251,191,36,.4)}
+.btyboard.closed{padding:10px 14px}
+.btyboard.wanted-me{box-shadow:0 8px 22px rgba(185,28,28,.3),inset 0 0 0 2px #f87171}
+.bty-top{display:flex;align-items:center;gap:8px}
+.bty-h{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;text-align:left}
+.bty-h>span{min-width:0;display:flex;flex-direction:column}
+.bty-h b{font-size:16px;font-weight:900;color:#fde68a;display:flex;align-items:center;gap:6px}
+.bty-h b i{font-style:normal;padding:1px 7px;border-radius:99px;background:#f59e0b;color:#1c1917;font-size:11.5px;font-weight:900}
+.bty-h small{font-size:11.5px;font-weight:700;opacity:.88;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bty-new{flex:none;height:32px;padding:0 11px;border-radius:99px;background:linear-gradient(180deg,#fbbf24,#d97706);color:#1c1917;font-size:12px;font-weight:900;box-shadow:0 2px 0 #92400e}
+.bty-empty{padding:8px 4px 2px;font-size:12px;font-weight:700;opacity:.82;text-align:center}
+.bty-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:13px;background:rgba(255,255,255,.09)}
+.bty-row.me{box-shadow:inset 0 0 0 1.5px #fbbf24}
+.bty-who{flex:1;min-width:0;display:flex;align-items:center;gap:8px;color:#fff;text-align:left}
+.bty-who>:first-child{flex:none;width:32px;height:32px;font-size:14px}.bty-who>:first-child img{width:32px;height:32px}
+.bty-who>span{min-width:0;display:flex;flex-direction:column;gap:1px}
+.bty-who b{font-size:13.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bty-who b em{font-style:normal;color:#fde68a;font-size:12.5px;margin-left:4px}
+.bty-q{font-size:11.5px;font-weight:700;color:#fed7aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;quotes:none}
+.bty-who small{font-size:10.5px;opacity:.82;font-weight:700}
+.bty-act{display:flex;align-items:center;gap:5px;flex:none}
+.bty-add,.bty-hunt{height:30px;padding:0 9px;border-radius:10px;font-size:11.5px;font-weight:900}
+.bty-add{background:rgba(255,255,255,.16);color:#fde68a}
+.bty-hunt{background:linear-gradient(180deg,#fb7185,#e11d48);color:#fff;box-shadow:0 2px 0 #9f1239}
+.bty-tag{padding:4px 8px;border-radius:99px;font-size:10.5px;font-weight:900;background:rgba(255,255,255,.15);color:#fde68a}
+.bty-tag.me{background:#ef4444;color:#fff}
+.bty-prof-btn{margin:4px 0 8px}
+.rv-btycard{display:flex;flex-direction:column;gap:5px;margin:4px 0 8px;padding:11px 13px;border-radius:15px;background:linear-gradient(135deg,#451a03,#78350f);color:#fff;box-shadow:inset 0 0 0 1px rgba(251,191,36,.4)}
+.rvb-h{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:900;color:#fde68a}
+.rvb-h small{font-size:11.5px;color:#fed7aa;font-weight:700}
+.rvb-q{margin:0;font-size:12.5px;font-weight:800;color:#fff}
+.rvb-sub{font-size:12px;font-weight:700;opacity:.92}
+.bty-topup{margin-top:3px;height:34px;border-radius:10px;background:rgba(255,255,255,.16);color:#fde68a;font-size:12.5px;font-weight:900}
+.bty-sel{width:100%;height:42px;padding:0 10px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);font-size:14px;font-weight:800;color:var(--ink)}
+.bty-cur{padding:8px 11px;border-radius:11px;background:var(--gold-bg);font-size:12.5px;font-weight:800;text-align:center}
+.bty-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.bty-chips button{height:34px;border-radius:10px;background:var(--paper);font-size:12px;font-weight:800}
+.bty-chips button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.bty-rules{margin:4px 0 8px;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:var(--dim);line-height:1.4}
+.bty-go{background:linear-gradient(120deg,#92400e,#d97706)}

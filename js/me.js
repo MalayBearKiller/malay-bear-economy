@@ -21,9 +21,12 @@ function profileBody(p, isMe) {
     ['주식', sum(x => x.kind === 'us'), '#2b2745'], ['채권', sum(x => x.kind === 'gb' || (x.kind === 'fut' && GC[x.sym])), '#1450d2'], ['지분', sum(x => x.kind === 'stake'), '#7c3aed']].filter(x => x[1] > 0);
   const tot = parts.reduce((a, x) => a + x[1], 0) || 1;
   const bn = okPhoto(p.banner) ? ` style="--bn:url(${p.banner})"` : '';
+  const mySh = isMe && typeof myShieldEnd === 'function' ? myShieldEnd(S.uid) : 0;
+  const myBty = isMe && typeof openBountyOf === 'function' ? openBountyOf(S.uid) : null;
   let h = `<div class="phero${bn ? ' bn' : ''}"${bn}>
       <div class="ph-id">${isMe ? `<button type="button" class="ph-ava" id="photoBtn" aria-label="사진 바꾸기">${ava(p, true)}<i>📷</i></button>` : ava(p, true)}
-        <div class="ph-nm"><b>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></b><small>${rk ? rk + '위' : ''}${lord ? ` · 👑 ${lord}` : ''}</small></div></div>
+        <div class="ph-nm"><b>${esc(p.name)} <span class="lvtag">⚔️LV.${lvOf(p)}</span></b><small>${rk ? rk + '위' : ''}${lord ? ` · 👑 ${lord}` : ''}${mySh > 0 ? ` · 🛡️보호막 ${hms(mySh - now()).slice(0, 5)}` : ''}</small></div></div>
+      ${myBty ? `<div class="rv-bounty">🚨 내게 현상금 <b class="num">${krw(myBty.total)}</b>이 걸려 있어요 · 방어 ${bountyDefHits(myBty).length}/3 성공 시 절반 역수령!</div>` : ''}
       ${(() => { const u = uPositions(p).filter(x => x.kind === 'us').reduce((a, x) => a + uUsdOf(x.sym, x.q), 0); return u ? `<div class="ph-usd">💵 달러 자산 <b class="num">${usd(u)}</b> <small>(${krw(u * FX.p)})</small></div>` : ''; })()}<div class="ph-w"><small>총자산</small><b class="num" data-roll="ph-${p.id}" data-v="${w}">${won(w)}</b><span class="num"><b class="${cls(roi)}">${pctTxt(roi)}</b> · 현금 ${won(p.cash || 0)}</span></div>
       <div class="ws-bar">${parts.map(x => `<i style="width:${(x[1] / tot * 100).toFixed(2)}%;background:${x[2]}"></i>`).join('')}</div>
       <div class="ph-leg">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} <b class="num">${(x[1] / tot * 100).toFixed(0)}%</b></span>`).join('')}</div>
@@ -116,13 +119,15 @@ function rivalHTML(p) {
   uPositions(p).forEach(x => add(x.kind === 'fut' ? 'uFut' : 'uHold', x.sym, x));
   rows.sort((a, b) => b.v - a.v);
   const stk = stakePositions(p), stop = guChief();
+  const fSh = typeof focusShieldEnd === 'function' ? focusShieldEnd(p.id) : 0;
   return `<div class="rv-hero${bn ? ' bn' : ''}"${bn} style="--c:${col}${bn ? `;--bn:url(${p.banner})` : ''}">
       <div class="rv-ava${on ? ' on' : ''}">${ava(p, true)}</div>
-      <h2>${esc(p.name)} <span class="lvtag">LV.${lvOf(p)}</span></h2>${slaveTag(p)}
-      <div class="rv-badges">${rk ? `<span class="rk${rk <= 3 ? ' t' + rk : ''}">🏆 ${rk}위</span>` : ''}${lord ? `<span>👑 ${esc(lord)}</span>` : ''}<span class="${on ? 'live' : ''}">${on ? '● 접속 중' : seenAgo(p) || '오프라인'}</span></div>
+      <h2>${esc(p.name)} <span class="lvtag">⚔️LV.${lvOf(p)}</span></h2>${slaveTag(p)}
+      <div class="rv-badges">${rk ? `<span class="rk${rk <= 3 ? ' t' + rk : ''}">🏆 ${rk}위</span>` : ''}${lord ? `<span>👑 ${esc(lord)}</span>` : ''}${fSh > 0 ? `<span>🛡️ 보호막 ${hms(fSh - now()).slice(0, 5)}</span>` : ''}<span class="${on ? 'live' : ''}">${on ? '● 접속 중' : seenAgo(p) || '오프라인'}</span></div>
     </div>
     <div class="rv-stats"><div><small>총자산</small><b class="num">${won(w)}</b></div><div><small>수익률</small><b class="num ${cls(roi)}">${pctTxt(roi)}</b></div><div><small>공격 전적</small><b class="num">${won_}승 ${lost_}패</b></div></div>
     ${(() => { const why = duelWhy(p.id), B = bountyOf(p); return (B ? `<div class="rv-bounty">👑 1등 현상금 <b class="num">${krw(B)}</b> · 공격 성공하면 같이 받아요</div>` : '') + (why ? `<button type="button" class="cta duelgo${why === 'ok' ? '' : ' off'}" data-duel="${p.id}" ${why === 'ok' ? '' : 'disabled'}>⚔️ 결투 신청 <small>${why === 'ok' ? '5분 수익률 승부 · 판돈 = 작은 쪽 총자산 5% · 하루 1번' : esc(why)}</small></button>` : ''); })()}
+    ${typeof rivalBountyHTML === 'function' ? rivalBountyHTML(p) : ''}
     ${S.me && revengeOn(p.id) ? `<div class="rv-rev">🔥 이 사람이 방금 나를 공격했어요 · 10분 동안 <b>반값 복수</b></div>` : ''}
     ${loanPanelHTML(p)}
     <div class="sec"><div class="sec-h"><h2>가진 것</h2><button type="button" class="atk-how" id="atkHelp">❓ 약탈·사냥이 뭐예요?</button><small>${myAtkWait() ? `· ⏳ ${Math.ceil(myAtkWait() / 6e4)}분 뒤 공격 가능` : ''}</small></div>

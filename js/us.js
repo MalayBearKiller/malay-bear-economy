@@ -307,7 +307,14 @@ function renderExchange(ctl) {
   if (!el.querySelector('#kList')) { el.innerHTML = `<div id="kTop"></div><div id="kCtl" class="kctl"></div><div class="slist" id="kList"></div>`; ctl = true; }
   if (ctl) $('#kCtl').innerHTML = xCtlHTML();
   const m = S.xMkt;
-  $('#kTop').innerHTML = canKRescue() ? `<div class="card rescue"><span class="t"><b>💸 파산 지원금 20억원</b><small>실질 총자산이 2억원 밑이에요 · 1시간에 1번</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>` : '';
+  $('#kTop').innerHTML = canKRescue() ? (() => {
+    const ri = kRescueInfo(S.me);
+    const sub = ri.bonus > 0 ? `기본 20억 + 전투력 보너스 ${krw(ri.bonus)} (보너스는 24시간 1번)`
+      : ri.bonusCd > 0 ? `실질자산 2억 미만 · 전투력 보너스 쿨타임(${hms(ri.bonusCd).slice(0, 5)}) 중이라 기본 20억`
+      : ri.spent24 > 0 && ri.rawBonus > 0 ? `실질자산 2억 미만 · 최근 24시간 레벨업 지출 차감 후 지급`
+      : '실질 총자산이 2억원 밑이에요 · 기본 1시간에 1번';
+    return `<div class="card rescue"><span class="t"><b>💸 파산 지원금 ${krw(ri.amt)}</b><small>${sub}</small></span><button type="button" id="kRescueBtn" ${S.saving ? 'disabled' : ''}>받기</button></div>`;
+  })() : '';
   const live = m === 'coin' ? kLive() : m === 'bond' ? true : uLive(), lt = $('#kLiveTag'); if (lt) lt.className = 'livetag' + (live ? ' on' : '');
   if (m === 'bond') {   // 채권 탭 안에서 [서울시 투자지분 | 국제채권]
     const sub = S.bondSub === 'world' ? 'world' : 'stake', kl = $('#kList'); kl._keys = null;

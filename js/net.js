@@ -34,6 +34,51 @@ function loadDemo() {
   const bf = Object.keys(S.players).filter(id => id !== 'me').map((id, i) => ({ kind: 'join', uid: id, season: S.season.sid, ts: S.season.start + (i + 1) * 7 * 60e3, bot: true }));
   S.feed = [...LS.get('demoFeedAll', []), ...bf].sort((a, b) => b.ts - a.ts);
   S.talk = LS.get('demoTalk', []);
+  const db0 = LS.get('demoBounties', null);
+  S.bounties = db0 !== null ? db0 : [{ id: 'b_demo0', status: 'open', target: 'bot1', poster: 'bot0', total: 300_000_000, contributors: { bot0: 300_000_000 }, refunded: {}, reason: '단타 그만 치고 정정당당 승부하자', ts: Date.now() - 20 * 60e3, updatedAt: Date.now() - 20 * 60e3 }];
+}
+// 지갑 + 현상수배 문서 원자적 트랜잭션 (동시 수령·중복 환불 돈 복사 방지. 모든 읽기를 쓰기보다 먼저 실행해야 해요)
+function runWalletTx(fn) {
+  const run = async () => {
+    S.saving = true;
+    try {
+      if (S.mode === 'demo') {
+        const bMap = Object.fromEntries((S.bounties || []).map(b => [b.id, JSON.parse(JSON.stringify(b))]));
+        const pDoc = S.me ? JSON.parse(JSON.stringify(S.me)) : null;
+        const writes = [];
+        const tx = {
+          get: async path => {
+            if (path === COL_P + '/' + S.uid) return pDoc ? JSON.parse(JSON.stringify(pDoc)) : null;
+            if (path.startsWith(COL_B + '/')) { const id = path.slice(COL_B.length + 1); return bMap[id] ? JSON.parse(JSON.stringify(bMap[id])) : null; }
+            return null;
+          },
+          set: (path, data) => writes.push([path, JSON.parse(JSON.stringify(data))]),
+        };
+        const res = await fn(tx);
+        if (res === null || res === false) return null;
+        writes.forEach(([path, data]) => {
+          if (path === COL_P + '/' + S.uid) { S.me = data; S.players[S.uid] = data; LS.set('demoMe', data); }
+          else if (path.startsWith(COL_B + '/')) { const id = path.slice(COL_B.length + 1); bMap[id] = { id, ...data }; }
+        });
+        S.bounties = Object.values(bMap).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        LS.set('demoBounties', S.bounties);
+        return res;
+      }
+      if (!S.fb || !S.fb.runTx) return null;
+      let nextMe = null;
+      const res = await S.fb.runTx(async tx => {
+        nextMe = null;
+        const wrapped = {
+          get: tx.get,
+          set: (path, data) => { if (path === COL_P + '/' + S.uid) nextMe = data; tx.set(path, data); },
+        };
+        return await fn(wrapped);
+      });
+      if (res !== null && res !== false && nextMe) { S.me = nextMe; S.players[S.uid] = nextMe; }
+      return res;
+    } finally { S.saving = false; }
+  };
+  const p = saveChain.then(run); saveChain = p.catch(() => {}); return p;
 }
 function startDemo() { S.mode = 'demo'; S.loaded = true; loadDemo(); if (KQ.first) kOnFirstPrices(); renderAll(); maybeJoin(); }
 /* ───────── live mode ───────── */
@@ -61,6 +106,13 @@ async function firebaseBackend(cfg) {
   };
   return {
     db,
+    runTx: fn => fsM.runTransaction(fs, async tx => {
+      const ref = path => fsM.doc(fs, path);
+      return await fn({
+        get: async path => { const s = await tx.get(ref(path)); return s.exists() ? s.data() : null; },
+        set: (path, d) => tx.set(ref(path), d),
+      });
+    }).catch(mapErr),
     onUser: cb => auM.onAuthStateChanged(auth, cb),
     signIn: async () => { const pr = new auM.GoogleAuthProvider(); try { await auM.signInWithPopup(auth, pr); } catch (e) { if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) await auM.signInWithRedirect(auth, pr); else throw e; } },
     signOut: () => auM.signOut(auth),
@@ -100,4 +152,9 @@ function startLive(db, uid) {
     S.feed = snap.docs.map(d => d.data()); evFeed(S.feed);
     renderAll();
   }, () => {});
+  db.collection(COL_B).orderBy('ts', 'desc').limit(100).onSnapshot(snap => {
+    S.btyNoRule = false;
+    S.bounties = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, () => { S.btyNoRule = true; });
 }

@@ -11,8 +11,8 @@ function renderHome() {
     const chief = GU_RANK.filter(g => (guChief()[g] || {}).id === S.uid);
     const bnr = okPhoto(me.banner);
     h += `<button type="button" class="wal krwwal one${bnr ? ' bn' : ''}" data-tab-go="assets"${bnr ? ` style="--bn:url(${me.banner})"` : ''}><span class="wl-h"><span class="wl-ic">₩</span>내 총자산<small>${rk ? rk + '위' : ''}</small></span>
-      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.length > 1 ? chief.length + '곳' : chief[0]}` : ''}</span></button>
-    <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>` + throneHTML();
+      <b class="num" data-roll="home" data-v="${w}">${won(w)}</b><span class="wl-s num">${pctTxt(r)} · 현금 ${won(me.cash)} · ⚔️LV.${lvOf(me)}${chief.length ? ` · 👑 ${chief.length > 1 ? chief.length + '곳' : chief[0]}` : ''}</span></button>
+    <div class="stipbar">💵 다음 지원금 <b class="num">${krwUnits(STIP)}원</b> · <span class="num">${hms(stipNext() - now())}</span> 뒤</div>` + throneHTML() + (typeof bountyBoardHTML === 'function' ? bountyBoardHTML() : '');
   }
   if (!S.me && !S.readOnly && S.mode !== 'loading') {
     h += `<div class="card join"><b>썬빗에 참가하세요</b><span class="dim" style="font-size:13px;font-weight:600">50억원으로 시작해요</span><button class="cta" type="button" data-join>참가하기</button></div>`;
@@ -37,8 +37,10 @@ function renderHome() {
     h += `<div class="card lb lbk">`;
     cur.slice(S.rankPage * RPG, (S.rankPage + 1) * RPG).forEach((p, j) => {
       const i = S.rankPage * RPG + j, lord = lordOf(p.id, TOPS), r = roiOf(p, p.w);
+      const ob = typeof openBountyOf === 'function' ? openBountyOf(p.id) : null;
+      const shOn = typeof focusShieldEnd === 'function' && focusShieldEnd(p.id) > 0;
       h += `<button class="lrow${p.id === S.uid ? ' isme' : ''}${okPhoto(p.banner) ? ' bn' : ''}" type="button" data-player="${esc(p.id)}"${okPhoto(p.banner) ? ` style="--bn:url(${p.banner})"` : ''}><span class="rk r${i + 1}">${i + 1}</span><span class="avw${isOn(p) ? ' on' : ''}">${ava(p)}</span>
-        <span class="who"><b>${esc(p.name)}</b>${slaveTag(p)}${p.bot ? '<span class="tag bot">봇</span>' : ''}<small class="lv">LV.${lvOf(p)}${lord ? ` · <span class="lord">👑 ${lord}</span>` : ''}${i === 0 && bountyOf(p) ? ` · <span class="bounty">💰 현상금 ${krwUnits(bountyOf(p))}</span>` : ''}</small></span>
+        <span class="who"><b>${esc(p.name)}</b>${slaveTag(p)}${p.bot ? '<span class="tag bot">봇</span>' : ''}<small class="lv">⚔️LV.${lvOf(p)}${shOn ? ' · 🛡️' : ''}${lord ? ` · <span class="lord">👑 ${lord}</span>` : ''}${i === 0 && bountyOf(p) ? ` · <span class="bounty">💰 현상금 ${krwUnits(bountyOf(p))}</span>` : ''}${ob ? ` · <span class="bounty">📜 수배 ${krwUnits(ob.total)}</span>` : ''}</small></span>
         <span class="r num"><b>${man(p.w)}원</b><small class="${cls(r)}">${pctTxt(r)}</small></span></button>`;
     });
     h += `</div>`;
@@ -155,27 +157,39 @@ async function postBoard() {
   if (S.mode === 'demo') { S.talk.unshift({ id: 't' + Date.now(), ...item }); LS.set('demoTalk', S.talk.filter(t => !t.bot)); renderBoard(); return; }
   try { await S.db.collection('sb_talk').add(item); } catch (e) { toast('건의를 보내지 못했어요. 잠시 후 다시 해주세요.'); i.value = text; }
 }
-// ⭐ 레벨: 상점에서 현금으로 올려요. LV.1에서 시작, 첫 레벨업 100원, 올릴 때마다 1.14배 (LV.200 근처가 상위권)
-// (레벨 초기화 2번째: 예전 필드 lv·lvl 대신 lv3을 써요. 데이터는 지우지 않아요)
+// ⚔️ 전투력(LV): 상점에서 현금으로 올려요. LV.1에서 시작, 첫 레벨업 100원, 올릴 때마다 1.14배 (LV.200 근처가 상위권)
+// 파산 지원금 무한 루프 방지를 위해 실질 총자산 5억원(LV_KEEP) 밑으로는 레벨업에 현금을 쓸 수 없고, 최근 24시간 레벨업 지출(lvLog)을 기록해요.
+const LV_KEEP = 500_000_000;
 const lvOf = p => Math.max(1, Math.floor((p && p.lv3) || 1));
 const lvCost = lv => Math.max(100, Math.round(100 * Math.pow(1.14, lv - 1)));
+const lvSpendable = me => me ? Math.max(0, Math.min(Math.floor(me.cash || 0), Math.floor(realWorth(me) - LV_KEEP))) : 0;
+function pushLvSpend(me, amt) {
+  const t = now(), cut = t - D;
+  const arr = (me.lvLog || []).filter(x => Array.isArray(x) && x[0] > cut);
+  if (arr.length && t - arr[arr.length - 1][0] < 300e3) arr[arr.length - 1][1] = Math.round(arr[arr.length - 1][1] + amt);
+  else arr.push([t, Math.round(amt)]);
+  me.lvLog = arr.slice(-48);
+}
 async function levelUp() {
   if (!S.me || S.saving || S.readOnly) return;
-  const lv = lvOf(S.me), cost = lvCost(lv); if (S.me.cash < cost) { toast(`현금이 ${won(cost - S.me.cash)} 부족해요`); return; }
-  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - cost); me.lv3 = lv + 1;
+  const lv = lvOf(S.me), cost = lvCost(lv);
+  if (S.me.cash < cost) { toast(`현금이 ${won(cost - S.me.cash)} 부족해요`); return; }
+  if (lvSpendable(S.me) < cost) { toast('실질 총자산 최소 5억원은 남겨야 레벨업할 수 있어요'); return; }
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - cost); me.lv3 = lv + 1; pushLvSpend(me, cost);
   S.saving = true; const ok = await saveMe(me, before); S.saving = false;
-  if (ok) { toast(`⭐ LV.${lv + 1} 달성!`); confetti(); buzz(60); renderAll(); }
+  if (ok) { toast(`⚔️ 전투력 LV.${lv + 1} 달성!`); confetti(); buzz(60); renderAll(); }
 }
-// 현금으로 갈 수 있는 데까지 한 번에 올리기 (두 번 눌러야 결제)
+// 쓸 수 있는 현금(실질자산 5억원 초과분)으로 갈 수 있는 데까지 한 번에 올리기 (두 번 눌러야 결제)
 function lvMaxPlan(cash, lv) { let n = lv, spent = 0; while (n < 100000) { const c = lvCost(n); if (spent + c > cash) break; spent += c; n++; } return { to: n, spent }; }
 async function levelMax() {
   if (!S.me || S.saving || S.readOnly) return;
-  const lv = lvOf(S.me), plan = lvMaxPlan(S.me.cash, lv); if (plan.to <= lv) { toast('현금이 부족해요'); return; }
+  const lv = lvOf(S.me), plan = lvMaxPlan(lvSpendable(S.me), lv);
+  if (plan.to <= lv) { toast(S.me.cash >= lvCost(lv) ? '실질 총자산 최소 5억원은 남겨야 해요' : '현금이 부족해요'); return; }
   if (!S.lvArm || Date.now() - S.lvArm > 4000) { S.lvArm = Date.now(); renderShop(); return; }
   S.lvArm = 0;
-  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - plan.spent); me.lv3 = plan.to;
+  const before = S.me, me = JSON.parse(JSON.stringify(before)); me.cash = Math.round(me.cash - plan.spent); me.lv3 = plan.to; pushLvSpend(me, plan.spent);
   S.saving = true; const ok = await saveMe(me, before); S.saving = false;
-  if (ok) { toast(`⭐ LV.${plan.to} 달성! (${plan.to - lv}레벨 · ${won(plan.spent)})`); confetti(); buzz(80); renderAll(); }
+  if (ok) { toast(`⚔️ 전투력 LV.${plan.to} 달성! (+${plan.to - lv}레벨 · ${won(plan.spent)})`); confetti(); buzz(80); renderAll(); }
 }
 // 🖼️ 순위 배경 변경권: 사면 잠금이 풀리고, 배경을 한 번 바꾸면 다시 잠겨요
 async function buyBannerTicket() {
@@ -195,14 +209,17 @@ function renderShop() {
     if (!el.querySelector('#tab-casino')) el.innerHTML = `<button type="button" class="back-link" id="shopBack">← 상점으로</button><section class="sec" id="tab-casino" style="gap:18px"></section>`;
     if (!C.busy && !C.live) renderCasino(); return;
   }
-  const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv), plan = S.me ? lvMaxPlan(S.me.cash, lv) : { to: lv, spent: 0 }, armed = S.lvArm && Date.now() - S.lvArm < 4000;
-  el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⭐</span><span class="si-t"><b>레벨업 · 지금 LV.${lv}</b><small>LV.${lv + 1}로 올려요. 올릴 때마다 1.14배</small></span><button type="button" id="lvUp" ${S.me && !S.readOnly && S.me.cash >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
+  const lv = S.me ? lvOf(S.me) : 1, lc = lvCost(lv), spend = S.me ? lvSpendable(S.me) : 0;
+  const plan = S.me ? lvMaxPlan(spend, lv) : { to: lv, spent: 0 }, armed = S.lvArm && Date.now() - S.lvArm < 4000;
+  const resPct = Math.round(60 * Math.tanh((lv - 1) / 60));
+  const holdWarn = S.me && S.me.cash >= lc && spend < lc;
+  el.innerHTML = `<div class="card shopitem lvitem"><span class="si-ic">⚔️</span><span class="si-t"><b>전투력 레벨업 · LV.${lv}</b><small>약탈·사냥 공방 확률 최대 ±18%p · 파산 지원금 보너스 +${resPct}%</small>${holdWarn ? `<small class="down">비상금 5억원(실질자산 기준)은 남겨야 레벨업 가능해요</small>` : ''}</span><button type="button" id="lvUp" ${S.me && !S.readOnly && spend >= lc && !S.saving ? '' : 'disabled'}>${won(lc)}</button></div>
     ${plan.to > lv + 1 ? `<button type="button" class="cta ${armed ? 'buy' : 'soft'} lvmax" id="lvMax" ${S.saving || S.readOnly ? 'disabled' : ''}>${armed ? `한 번 더 누르면 LV.${plan.to}까지 · ${won(plan.spent)} 결제` : `⏫ 최대한 올리기 · LV.${plan.to}까지 ${won(plan.spent)}`}</button>` : ''}
+    <div class="card lv-desc"><div><b>⚔️ 전투력 효과</b><small>상대보다 레벨이 높으면 내 공격 성공률이 오르고, 상대가 나를 털 확률은 내려가요 (LV.1 vs LV.${lv} 기준 <b class="num">${lv > 1 ? '+' : ''}${(18 * Math.tanh((lv - 1) / 45)).toFixed(1)}%p</b>). 부자가 레벨을 안 올리면 동네북이 돼요!</small></div></div>
 <div class="sec"><div class="sec-h"><h2>게임</h2></div><button type="button" class="card shopitem${CASINO_OFF ? ' off' : ''}" id="shopGame"><span class="si-ic">${CASINO_OFF ? '🔒' : '🎰'}</span><span class="si-t"><b>도박장 · 게임 5개${CASINO_OFF ? ' (잠시 닫힘)' : ''}</b><small>${CASINO_OFF ? '지금은 들어갈 수 없어요' : '⚡업다운 🚀로켓 💣보물상자 🎰슬롯 🏇경마'}</small></span><span class="si-go">›</span></button></div>`;
 }
-// 소식에는 놀릴 거리만 남겨요: 100억 이상 청산, 티배깅, 건물 매입·강제 매입·파괴, 참수 성공한 공격
-// 소식 알림 점: 큰 청산·큰 수익·구채·게임 대박만
-const brag = f => f && (f.kind === 'k_fliq' || f.kind === 'k_bond' || (f.pnl || 0) >= 1e8 || (f.kind === 'casino' && f.amt >= 1e8));
+// 소식에는 놀릴 거리만 남겨요: 큰 청산·큰 수익·지분·현상수배·하극상/참수
+const brag = f => f && (f.kind === 'k_fliq' || f.kind === 'k_bond' || f.kind === 'k_bty_add' || f.kind === 'k_bty_claim' || f.kind === 'k_bty_def' || (f.kind === 'k_atk' && (f.exec || f.udog)) || (f.pnl || 0) >= 1e8 || (f.kind === 'casino' && f.amt >= 1e8));
 function renderFeed() {
   const el = $('#tab-feed');
   const items = S.feed.filter(brag).map(f => [f, feedText(f)]).filter(x => x[1]);
@@ -340,8 +357,9 @@ const HELP = {
     '돈은 <b>원화</b> 하나예요. 처음 <b>50억원</b>. 코인·주식·현물·국채·지분과 게임·상점에 다 같이 써요.',
     '<b>총자산</b> = 현금 + 코인(현물·선물) + 주식 + 국채. 순위는 총자산 순서예요.',
     '<b>💵 지원금</b>: <b>2시간마다 420만원</b>(하루 약 5,000만원)이 자동으로 들어와요. 짝수 시 정각마다, 앱을 꺼 둬도 쌓여요(최대 7일치).',
-    '<b>📜 로그</b>: 홈 위쪽 로그 버튼. 모든 거래·공격(뽑은 번호까지)·청산·세금이 다 같이 보는 기록으로 남아요.',
-    '<b>파산</b>: 실질 총자산(왕좌 저격에 낸 돈·도박장에 걸린 돈 포함)이 2억원 밑이면 거래소 탭에서 <b>20억원</b>을 받아요. 1시간에 1번.',
+    '<b>📜 현상수배 게시판</b>: 누구에게나(본인 제외) 한 줄 사유와 함께 현상금을 걸거나 돈을 더 얹을 수 있어요. 돈을 안 얹은 제3자 사냥꾼이 공격·결투로 잡으면 수령하고, 표적이 3번 막아내면 현상금 절반을 역수령해요.',
+    '<b>📜 로그</b>: 홈 위쪽 로그 버튼. 모든 거래·공격(뽑은 번호까지)·청산·현상수배가 다 같이 보는 기록으로 남아요.',
+    '<b>파산</b>: 실질 총자산(저격 모금·현상수배 예치금·도박장 베팅 포함)이 2억원 밑이면 거래소 탭에서 기본 <b>20억원</b> + 전투력 보너스(최대 +60%, 24시간 1회·최근 레벨업 지출 차감)를 받아요.',
     '이름을 누르면 그 사람 지갑이 다 보여요.']],
   coin: ['거래소', '주식 · 코인 · 현물 · 채권', [
     '<b>주식</b>: 미국 99종목(빅테크·반도체·AI·전기차·코인주·양자·금융·소비재·헬스케어·산업·ETF), 실시간(프리·애프터 포함). 원화를 실시간 환율로 자동 환전해서 사요. 1주 단위 거래, 수수료 0.1%. <b>롱·숏 1·5·10·25·50배</b>.',
@@ -361,17 +379,19 @@ const HELP = {
     '세계 지도에서 <b>지역을 누르면 확대</b>돼요. 나라마다 국채를 <b>가장 많이 넣은 사람</b>(현물 원금 + 롱·숏 증거금)의 프로필이 지도에 찍혀요.',
     '현물 수수료 0.05%, 롱·숏 2·5·10배. 국채 롱은 금리가 내리면, 숏은 오르면 이득이에요.',
     '<b>🏛️ 서울시 투자지분</b>(거래소 › 채권): 구마다 지분 100%. 가장 많이 가진 사람이 <b>구청장</b>. 팔릴수록 1% 값이 비싸지고(최대 2.5배), 매시간 <b>배당</b>(강남 0.03% ~ 도봉 0.08%)이 들어와요. 팔 때 수수료 1%.']],
-  atk: ['공격', '친구 프로필의 💰·🎯 버튼', [
-    '<b>💰 수익 약탈</b>: 친구가 <b>수익 보고 있는</b> 코인·주식을 털어요. 성공(25%)하면 그 종목에서 <b>번 돈만큼</b> 가져와요. 친구 원금은 안 건드려요.',
-    '<b>🎯 마진 사냥</b>: 친구의 <b>롱·숏</b>을 노려요. 성공하면 증거금 <b>50%</b>를 가져와요(비용은 증거금의 15%). 그걸로 청산 직전까지 몰리면 <b>☠️ 참수</b>, 증거금을 <b>전부</b> 가져와요. 배수가 높은 친구일수록 조금 더 잘 털려요(10배 27% · 50배 35% · 최대 45%).',
-    '성공하면 낸 돈을 돌려받고, <b>실패하면 낸 돈을 잃어요</b>. 그중 절반은 친구가 위자료로 받아요.',
-    '공격은 10분에 1번이에요. 털린 종목은 3시간 동안 못 털고, 공격당한 사람은 10분 동안 <b>반값으로 복수</b>할 수 있어요.']],
+  atk: ['공격 · 전투력 · 현상수배', '친구 프로필의 💰·🎯·📜 버튼', [
+    '<b>⚔️ 전투력(LV) 보정</b>: 공격·방어 모두 레벨 차이로 성공 확률이 최대 <b>±18%p</b> 보정돼요(최종 8%~65%). 부자가 레벨을 안 올리면 동네북이 돼요!',
+    '<b>💰 수익 약탈</b>: 친구가 <b>수익 보고 있는</b> 코인·주식을 털어요. 기본 성공 25%, 번 돈만큼 가져오고 원금은 안 건드려요.',
+    '<b>🎯 마진 사냥</b>: 친구의 <b>롱·숏</b>을 노려요. 성공하면 증거금 <b>50%</b>를 가져오고, 청산 직전이면 <b>☠️ 참수</b>로 전부 가져와요.',
+    '<b>⚖️ 양학 페널티 & 🔥 하극상</b>: 레벨과 실질자산이 둘 다 크게 앞서는 강자가 약자를 치면 약탈금·현상금이 <b>20~60% 감액</b>돼요(스머프 부자는 보호 0%). 반대로 약자가 강자를 잡으면 <b>+25% 하극상 보너스</b>(1회 5억·하루 15억 한도)를 받아요.',
+    '<b>🛡️ 보호막 & 선공 규칙</b>: 같은 상대는 24시간 내 2번까지만 털 수 있고, 24시간 내 3번 털리면 <b>6시간 집중보호막</b>이 켜져요. 단, 내 보호막이 켜진 채 남을 먼저 공격·결투하면 확인창을 거쳐 <b>내 보호막이 즉시 사라져요</b>.',
+    '<b>📜 현상수배</b>: 제3자 사냥꾼이 약탈·사냥·결투로 잡으면 수령하고, 수배자가 제3자의 공격(비용 5,000만원+)을 3번 막아내면 50%를 역수령해요.']],
   assets: ['내 자산', '나와 내 자산 · 분석', [
     '맨 위에 총자산·수익률·현금과 자산 구성(현금·코인·선물·주식·채권·지분)이 보여요.',
     '<b>가진 것</b>: 내가 가진 걸 전부 평가금액 순으로 모았어요. 누르면 바로 거래창이 열려요.',
     '사진을 누르면 바꿀 수 있어요. 맨 아래에서 <b>순위 배경</b>(200만원)·<b>닉네임</b>(200만원)을 바로 바꿔요. 친구 프로필도 같은 모양이에요.']],
-  shop: ['상점', '현금으로 사는 것들', [
-    '<b>⭐ 레벨업</b>: 현금으로 올려요. 올릴 때마다 가격이 1.14배가 돼요.',
+  shop: ['상점', '전투력 레벨업 · 도박장', [
+    '<b>⚔️ 전투력 레벨업</b>: 현금으로 올려요(1.14배씩 상승, 실질자산 최소 5억원은 비상금으로 남겨야 해요). 레벨이 높을수록 PvP 공격·방어 확률이 유리해지고, 파산 시 지원금 보너스(최대 +60%, 24시간 1회)도 올라가요.',
     
     '<b>⚡ 1분 업다운</b>: 진짜 업비트 시세로 1분 뒤 오를지 내릴지 맞혀요. 맞히면 1.9배, 3연승째부터 2.0배, 5연승째부터 2.3배. 가격이 똑같으면 돌려받아요. 앱을 꺼도 1분 뒤 시세로 결과가 정해져요.',
     '<b>🚀 로켓</b>: 배수가 1.00x부터 계속 올라가요. 터지기 전에 <b>STOP</b>을 누르면 그 배수만큼 받아요. 최대 50배. 3%는 출발하자마자 터져요.',

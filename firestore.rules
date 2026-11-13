@@ -75,6 +75,44 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
+    // ───── 📜 현상수배 (sb2_bounties): 동시 수령·중복 환불 방지를 위해 별도 문서 + 트랜잭션으로 정산 ─────
+    match /sb2_bounties/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.status == 'open'
+        && request.resource.data.target is string
+        && request.resource.data.target != request.auth.uid
+        && request.resource.data.total is number
+        && request.resource.data.total >= 100000000
+        && request.resource.data.contributors is map
+        && request.resource.data.contributors[request.auth.uid] == request.resource.data.total
+        && (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() <= 40));
+      allow update: if signedIn() && (
+        // 1) 진행 중(open) 수배에 현상금 추가 적립 (표적 변경 불가, 총액 증가만 허용)
+        (resource.data.status == 'open' && request.resource.data.status == 'open'
+          && request.resource.data.target == resource.data.target
+          && request.resource.data.target != request.auth.uid
+          && request.resource.data.total > resource.data.total)
+        // 2) 사냥꾼 수령(open -> claimed): 표적 본인 및 돈을 얹은 의뢰인은 수령 불가
+        || (resource.data.status == 'open' && request.resource.data.status == 'claimed'
+          && request.resource.data.claimedBy == request.auth.uid
+          && resource.data.target != request.auth.uid
+          && !(request.auth.uid in resource.data.contributors))
+        // 3) 수배자 방어 3회 역수령(open -> defended): 표적 본인만 전환 가능
+        || (resource.data.status == 'open' && request.resource.data.status == 'defended'
+          && resource.data.target == request.auth.uid)
+        // 4) 만료 전환(open -> expired)
+        || (resource.data.status == 'open' && request.resource.data.status == 'expired'
+          && request.resource.data.refundPool == resource.data.total)
+        // 5) 종료된 수배에서 의뢰인의 1회 환불 수령 기록 (이미 환불받은 키는 재수정 불가)
+        || (resource.data.status in ['claimed', 'defended', 'expired']
+          && request.resource.data.status == resource.data.status
+          && (request.auth.uid in resource.data.contributors)
+          && !(request.auth.uid in resource.data.get('refunded', {}))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['refunded']))
+      );
+      allow delete: if false;
+    }
     match /sb_talk/{id} {
       allow read: if signedIn();
       allow create: if signedIn()

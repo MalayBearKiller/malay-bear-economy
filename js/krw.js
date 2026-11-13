@@ -177,17 +177,47 @@ async function kDoTrade() {
   if (sh.m === 'sell') { const pnl = Math.round(c.get - c.q * ((before.kCost || {})[sym] || p)); addFeed({ kind: 'k_sell', sym, amt: Math.round(c.get), pnl }); toast(`💸 ${n} 매도 · ${signKrw(pnl)}`); if (pnl > 0) bigWin(pnl); }
   sh.amt = ''; sh.qty = ''; sh.all = false; renderAll(); renderSheet();
 }
-// 실질 총자산 = 총자산 + 진행 중인 왕좌 저격 모금에 낸 돈 + 지금 도박장에 걸려 있는 돈 (모금함에 부어서 파산 지원금 받는 꼼수 방지)
-function realWorth(me) { if (!me) return 0; let v = worth(me);
+// 실질 총자산 = 총자산 + 진행 중인 왕좌 저격 모금 + 현상수배 예치금/미수령 환불금 + 지금 도박장에 걸려 있는 돈 (꼼수 파산 방지)
+function realWorth(me) {
+  if (!me) return 0;
+  let v = worth(me);
   Object.values(me.sf || {}).forEach(c => { if (c && c.amt > 0 && now() - c.at < 2 * H) v += c.amt; });
-  if (typeof C !== 'undefined') { if (C.rk && C.rk.live) v += C.rk.bet; if (C.mn && C.mn.live) v += C.mn.bet; }
-  return v; }
-const kRescueWait = () => Math.max(0, ((S.me && S.me.resAt) || 0) + K_RESCUE_CD - now());
+  const uid = me.id || (me === S.me ? S.uid : '');
+  if (uid && typeof openBountyStakeOf === 'function') v += openBountyStakeOf(uid);
+  if ((me === S.me || me.id === S.uid) && typeof C !== 'undefined') {
+    if (C.rk && C.rk.live) v += C.rk.bet;
+    if (C.mn && C.mn.live) v += C.mn.bet;
+  }
+  return v;
+}
+function lvSpent(me, ms) {
+  if (!me || !Array.isArray(me.lvLog)) return 0;
+  const cut = now() - ms;
+  return me.lvLog.reduce((a, x) => a + (Array.isArray(x) && x[0] > cut ? (+x[1] || 0) : 0), 0);
+}
+function kRescueInfo(me = S.me) {
+  if (!me) return { amt: K_RESCUE, bonus: 0, rawBonus: 0, spent24: 0, cd: K_RESCUE_CD, wait: 0, bonusCd: 0 };
+  const spent6 = lvSpent(me, 6 * H), spent24 = lvSpent(me, D);
+  const cd = spent6 >= 1_000_000_000 ? 6 * H : K_RESCUE_CD;
+  const wait = Math.max(0, (me.resAt || 0) + cd - now());
+  const rawBonus = Math.round(K_RESCUE * 0.6 * Math.tanh((lvOf(me) - 1) / 60));
+  const bonusCd = Math.max(0, (me.resBonusAt || 0) + D - now());
+  const bonus = bonusCd > 0 ? 0 : Math.max(0, rawBonus - spent24);
+  return { amt: K_RESCUE + bonus, bonus, rawBonus, spent24, cd, wait, bonusCd };
+}
+const kRescueWait = () => kRescueInfo(S.me).wait;
 const canKRescue = () => S.me && !S.readOnly && realWorth(S.me) < K_RESCUE_AT && !kRescueWait();
 async function kRescue() {
   if (!canKRescue() || S.saving) return;
-  const before = S.me, me = clone(before); me.cash += K_RESCUE; me.inflow = (me.inflow || CASH0) + K_RESCUE; me.kResN = (me.kResN || 0) + 1; me.resAt = now();
-  if (await kSave(me, before)) { addFeed({ kind: 'k_rescue' }); toast('💸 파산 지원금 20억원이 들어왔어요 (다음은 1시간 뒤)'); renderAll(); }
+  const ri = kRescueInfo(S.me);
+  const before = S.me, me = clone(before);
+  me.cash += ri.amt; me.inflow = (me.inflow || CASH0) + ri.amt; me.kResN = (me.kResN || 0) + 1; me.resAt = now();
+  if (ri.bonus > 0) me.resBonusAt = now();
+  if (await kSave(me, before)) {
+    addFeed({ kind: 'k_rescue', amt: ri.amt, bonus: ri.bonus || undefined });
+    toast(`💸 파산 지원금 ${krw(ri.amt)}이 들어왔어요${ri.bonus ? ` (전투력 보너스 +${krw(ri.bonus)} · 보너스 24시간 쿨)` : ''}`);
+    renderAll();
+  }
 }
 
 /* ───────── 연습봇: 원화 지갑도 채워요 ───────── */
@@ -303,10 +333,14 @@ function kFeedText(f) {
     case 'k_ubuy': return UC[f.sym] ? ['up', '🇺🇸', `<b>${nm}</b>님이 ${esc(UC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
     case 'k_usell': return UC[f.sym] ? [f.pnl >= 0 ? 'up' : 'down', '🇺🇸', `<b>${nm}</b>님이 ${esc(UC[f.sym].n)}을(를) 팔았어요 <b class="${cls(f.pnl)}">${signKrw(f.pnl)}</b>`] : null;
     case 'k_atk': { const a = KC[f.sym] || UC[f.sym], tn = esc(nameOf(f.target)), an = a ? esc(a.n) : '';
+      const ex = (f.udog ? ` · 🔥하극상 <b class="up">+${krw(f.udog)}</b>` : '') + (f.pen ? ` · 양학 -${Math.round(f.pen * 100)}%` : '');
       if (!f.ok) return ['gold', '🛡️', `<b>${tn}</b>님이 <b>${nm}</b>님의 ${an} 공격을 막았어요 · 위자료 <b class="up">+${krw(Math.floor(f.cost / 2))}</b>`];
-      return f.type === 'loot' ? ['up', '💰', `<b>${nm}</b>님이 <b>${tn}</b>님의 ${an} 수익 <b class="up">${krw(f.gain)}</b> 약탈!`]
-        : f.exec ? ['down', '☠️', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} <b>참수!</b> 현상금 <b class="up">${krw(f.gain)}</b>`]
-        : ['up', '🎯', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} 증거금 <b class="up">${krw(f.gain)}</b> 사냥`]; }
+      return f.type === 'loot' ? ['up', '💰', `<b>${nm}</b>님이 <b>${tn}</b>님의 ${an} 수익 <b class="up">${krw(f.gain)}</b> 약탈!${ex}`]
+        : f.exec ? ['down', '☠️', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} <b>참수!</b> <b class="up">${krw(f.gain)}</b>${ex}`]
+        : ['up', '🎯', `<b>${nm}</b>님이 <b>${tn}</b>님 ${an} 증거금 <b class="up">${krw(f.gain)}</b> 사냥${ex}`]; }
+    case 'k_bty_add': return ['gold', '📜', `<b>${nm}</b>님이 <b>${esc(nameOf(f.target))}</b>님에게 현상금 <b>${krw(f.amt)}</b> ${f.add ? '추가!' : '등록!'} (총 <b class="up">${krw(f.total)}</b>)${f.reason ? ` “${esc(f.reason)}”` : ''}`];
+    case 'k_bty_claim': return ['up', '📜', `<b>${nm}</b>님이 수배자 <b>${esc(nameOf(f.target))}</b>님을 잡고 현상금 <b class="up">${krw(f.amt)}</b> 수령!${f.pen ? ` (양학 -${Math.round(f.pen * 100)}% 차감분 환불)` : ''}`];
+    case 'k_bty_def': return ['gold', '🛡️', `수배자 <b>${esc(nameOf(f.target))}</b>님이 공격 3번을 막아내고 현상금 절반 <b class="up">${krw(f.amt)}</b> 역수령!`];
     case 'k_auto': return ['gold', f.lx ? '🎯' : '🤖', f.lx ? `<b>${nm}</b>님 레버리지 부족 → <b>${krw(f.amt)}</b> ${f.lx}배 강제 롱` : `<b>${nm}</b>님 현금 <b>${krw(f.amt)}</b> 자동 투자`];
     case 'k_refund': return ['gold', '🏛️', `<b>${nm}</b>님이 ${f.n ? `서울 구채 ${f.n}장` : ''}${f.n && f.br ? '·' : ''}${f.br ? '브라질 국채' : ''}를 지금 값 <b>${krw(f.amt)}</b>으로 환불받았어요`];
     case 'k_gbuy': return GC[f.sym] ? ['up', GC[f.sym].f, `<b>${nm}</b>님이 ${esc(GC[f.sym].n)}을(를) <b>${krw(f.amt)}</b>어치 샀어요`] : null;
@@ -314,7 +348,7 @@ function kFeedText(f) {
     case 'k_tax': return ['down', '💸', `<b>${nm}</b>님 현금세 <b class="down">-${krw(f.amt)}</b>`];
     case 'k_bond': return ['gold', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 지분 <b>${f.n}%</b>를 샀어요`];
     case 'k_bsell': return ['down', '🏛️', `<b>${nm}</b>님이 ${esc(f.gu)} 지분 ${f.n}%를 팔았어요`];
-    case 'k_rescue': return ['down', '🆘', `<b>${nm}</b>님이 파산해서 지원금을 받았어요`];
+    case 'k_rescue': return ['down', '🆘', `<b>${nm}</b>님이 파산해서 지원금${f.amt ? ` <b>${krw(f.amt)}</b>` : ''}을 받았어요`];
     default: return null;
   }
 }
